@@ -1,0 +1,12 @@
+rootProject.name = 'calcite-new'
+//include 'parser'
+include 'sql'
+include 'sql:parser'
+findProject(':sql:parser')?.name = 'parser'
+include 'sql:core'
+findProject(':sql:sql-core')?.name = 'sql-core'
+include 'core'
+include 'etl'
+include 'etl:datastage'
+findProject(':etl:datastage')?.name = 'datastage'
+
