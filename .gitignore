@@ -3,3 +3,4 @@
 # Gradle related files and caches
 .gradle/
 build/
+antlr/
