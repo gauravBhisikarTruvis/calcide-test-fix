@@ -1,6 +1,5 @@
 package com.calcite_new.sql.core.converter
 
-
 import groovy.transform.CompileDynamic
 import spock.lang.Specification
 
@@ -16,8 +15,7 @@ class BigQuerySqlToRelConverterSpec extends Specification {
                    |FROM foodmart.employee""".stripMargin()
 
     then:
-    String expectedPlan = """LogicalProject(employee_id=[\$0], full_name=[\$1], first_name=[\$2], last_name=[\$3], position_id=[\$4], position_title=[\$5], store_id=[\$6], department_id=[\$7], birth_date=[\$8], hire_date=[\$9], end_date=[\$10], salary=[\$11], supervisor_id=[\$12], education_level=[\$13], marital_status=[\$14], gender=[\$15], management_role=[\$16])
-                            |  LogicalTableScan(table=[[big_query, test, foodmart, employee]])
+    String expectedPlan = """LogicalTableScan(table=[[big_query, test, foodmart, employee]])
                             |""".stripMargin()
     withSql(sql).check(expectedPlan)
   }
@@ -54,9 +52,8 @@ class BigQuerySqlToRelConverterSpec extends Specification {
                  |GROUP BY store_id""".stripMargin()
 
     then:
-    withSql(sql).check("""LogicalProject(store_id=[\$0], total_sales=[\$1])
-                         |  LogicalAggregate(group=[{4}], SUM\$0=[SUM(\$5, \$5)])
-                         |    LogicalTableScan(table=[[big_query, test, foodmart-test, sales_fact_1997]])
+    withSql(sql).check("""LogicalAggregate(group=[{4}], total_sales=[SUM(\$5)])
+                         |  LogicalTableScan(table=[[big_query, test, foodmart-test, sales_fact_1997]])
                          |""".stripMargin())
   }
 
@@ -80,7 +77,7 @@ class BigQuerySqlToRelConverterSpec extends Specification {
                  |LIMIT 10""".stripMargin()
 
     then:
-    withSql(sql).check("""LogicalSort(fetch=[10:DECIMAL(10, 0)])
+    withSql(sql).check("""LogicalSort(fetch=[10:DECIMAL(3, 0)])
                          |  LogicalProject(promotion_id=[\$0], promotion_name=[\$2], media_type=[\$3])
                          |    LogicalTableScan(table=[[big_query, test, foodmart, promotion]])
                          |""".stripMargin())
@@ -93,9 +90,11 @@ class BigQuerySqlToRelConverterSpec extends Specification {
                  |JOIN `foodmart`.employee e ON s.store_id = e.store_id""".stripMargin()
 
     then:
-    withSql(sql).check("""SELECT s.store_id, s.store_name, e.employee_id, e.full_name
-                     |FROM foodmart.store AS s
-                     |INNER JOIN foodmart.employee AS e ON s.store_id = e.store_id""".stripMargin())
+    withSql(sql).check("""LogicalProject(EXPR\$0=[\$0], EXPR\$1=[\$3], EXPR\$2=[\$24], EXPR\$3=[\$25])
+                         |  LogicalJoin(condition=[=(\$0, \$30)], joinType=[inner])
+                         |    LogicalTableScan(table=[[big_query, test, foodmart, store]])
+                         |    LogicalTableScan(table=[[big_query, test, foodmart, employee]])
+                         |""".stripMargin())
   }
 
   def "SELECT with LEFT JOIN should be processed"() {
@@ -197,11 +196,12 @@ class BigQuerySqlToRelConverterSpec extends Specification {
                  |FROM `foodmart`.`sales_fact_1998`""".stripMargin()
 
     then:
-    withSql(sql).check("""SELECT product_id, time_id, store_sales
-                     |FROM foodmart.sales_fact_1997
-                     |UNION ALL
-                     |SELECT product_id, time_id, store_sales
-                     |FROM foodmart.sales_fact_1998""".stripMargin())
+    withSql(sql).check("""LogicalUnion(all=[true])
+                         |  LogicalProject(product_id=[\$0], time_id=[\$1], store_sales=[\$5])
+                         |    LogicalTableScan(table=[[big_query, test, foodmart, sales_fact_1997]])
+                         |  LogicalProject(product_id=[\$0], time_id=[\$1], store_sales=[\$5])
+                         |    LogicalTableScan(table=[[big_query, test, foodmart, sales_fact_1998]])
+                         |""".stripMargin())
   }
 
   def "SELECT with complex WHERE conditions should be processed"() {
@@ -238,9 +238,10 @@ class BigQuerySqlToRelConverterSpec extends Specification {
                  |GROUP BY product_id""".stripMargin()
 
     then:
-    withSql(sql).check("""SELECT product_id, AVG(store_sales) AS avg_sales, SUM(store_sales) / SUM(unit_sales) AS avg_price
-                     |FROM sales_fact_1997
-                     |GROUP BY product_id""".stripMargin())
+    withSql(sql).check("""LogicalProject(product_id=[\$0], avg_sales=[\$1], avg_price=[/(\$2, \$3)])
+                         |  LogicalAggregate(group=[{0}], avg_sales=[AVG(\$5)], \$f1=[SUM(\$5)], \$f2=[SUM(\$7)])
+                         |    LogicalTableScan(table=[[big_query, test, foodmart-test, sales_fact_1997]])
+                         |""".stripMargin())
   }
 
   def "SELECT with common table expression (CTE) should be processed"() {
@@ -293,7 +294,7 @@ class BigQuerySqlToRelConverterSpec extends Specification {
   }
 
   private static SqlToRelConverterFixture withSql(String sql) {
-    new BigQuerySqlToRelConverterFixture().withSql(sql)
+    BigQuerySqlToRelConverterFixture.with(sql)
   }
 
 }
