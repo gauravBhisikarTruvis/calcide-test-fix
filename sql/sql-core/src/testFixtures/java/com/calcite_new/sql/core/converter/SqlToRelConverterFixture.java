@@ -56,11 +56,11 @@ public abstract class SqlToRelConverterFixture {
   }
 
   public void check(String expectedRelPlan) {
-    RelNode rel = getRelNode();
+    RelNode rel = toRel();
     assertEquals(expectedRelPlan, rel.explain());
   }
 
-  public RelNode getRelNode() {
+  public RelNode toRel() {
     assertNotNull(sql, "SQL not provided.");
     assertNotNull(catalog, "Catalog not provided.");
 

@@ -31,4 +31,8 @@ public class BigQuerySqlToRelConverterFixture extends SqlToRelConverterFixture {
     withCatalog(catalog);
   }
 
+  public static SqlToRelConverterFixture with(String sql) {
+    return new BigQuerySqlToRelConverterFixture().withSql(sql);
+  }
+
 }
