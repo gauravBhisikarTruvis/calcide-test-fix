@@ -15,6 +15,7 @@ import org.apache.calcite.sql.SqlNode;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 /**
  * Fixture for testing SQL to Rel conversion.
@@ -55,6 +56,14 @@ public abstract class SqlToRelConverterFixture {
   }
 
   public void check(String expectedRelPlan) {
+    RelNode rel = getRelNode();
+    assertEquals(expectedRelPlan, rel.explain());
+  }
+
+  public RelNode getRelNode() {
+    assertNotNull(sql, "SQL not provided.");
+    assertNotNull(catalog, "Catalog not provided.");
+
     if (converter == null) {
       init();
     }
@@ -62,8 +71,7 @@ public abstract class SqlToRelConverterFixture {
 //    assert converter.validator != null;
 //    SqlNode validatedSqlNode = converter.validator.validate(sqlNode);
 //    RelNode rel = converter.convertSelect((SqlSelect) validatedSqlNode, true);
-    RelNode rel = converter.convert(sqlNode);
-    assertEquals(expectedRelPlan, rel.explain());
+    return converter.convert(sqlNode);
   }
 
   private void init() {
