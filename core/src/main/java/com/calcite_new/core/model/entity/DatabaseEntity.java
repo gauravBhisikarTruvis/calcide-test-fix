@@ -4,7 +4,11 @@ import com.calcite_new.core.model.Identifier;
 
 import java.util.List;
 
-public abstract class DatabaseEntity {
+/**
+ * Abstract class representing a database entity.
+ * This class serves as a base for different types of entities such as tables, views, etc.
+ */
+public abstract class DatabaseEntity implements Entity {
   private final List<Identifier> namespace;
   private final Identifier name;
   private final long createdTimestamp;
@@ -26,4 +30,7 @@ public abstract class DatabaseEntity {
   public long getCreatedTimestamp() {
     return createdTimestamp;
   }
+
+  public abstract EntityKind getKind();
+
 }

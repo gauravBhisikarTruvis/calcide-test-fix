@@ -1,6 +1,6 @@
 package com.calcite_new.core.model;
 
-import com.calcite_new.core.model.dialect.Dialect;
+import com.calcite_new.core.dialect.Dialect;
 
 public class Identifier {
   private final String name;
@@ -17,6 +17,11 @@ public class Identifier {
 
   public String getNormalizedName() {
     return dialect.normalize(name);
+  }
+
+  @Override
+  public String toString() {
+    return getNormalizedName();
   }
 
   public static Identifier of(String name, Dialect dialect) {

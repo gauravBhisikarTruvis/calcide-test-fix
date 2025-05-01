@@ -16,24 +16,6 @@ subprojects {
 //  apply plugin: 'jacoco'
   apply plugin: 'org.sonarqube'
 
-//  jacoco {
-//    toolVersion = "0.8.10"
-//  }
-//
-//  test {
-//    finalizedBy jacocoTestReport
-//  }
-//
-//  jacocoTestReport {
-//    dependsOn test
-//    reports {
-//      xml.required = true
-//      html.required = true
-//    }
-//  }
-
-  print("===================>>>>>>>>>>>>" + layout.buildDirectory.get())
-
   sonarqube {
     properties {
       property "sonar.projectKey", "calcite-new"
@@ -53,11 +35,6 @@ subprojects {
 }
 
 dependencies {
-//    // Testing
-//    testImplementation 'org.codehaus.groovy:groovy-all:3.0.19'
-//    testImplementation 'org.spockframework:spock-core:2.3-groovy-3.0'
-//    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.10.0'
-//    testImplementation 'org.junit.jupiter:junit-jupiter-engine:5.10.0'
 }
 
 java {

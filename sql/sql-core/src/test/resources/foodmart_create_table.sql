@@ -1,0 +1,593 @@
+CREATE TABLE
+    "foodmart"."sales_fact_1997" (
+        "product_id" INTEGER NOT NULL,
+        "time_id" INTEGER NOT NULL,
+        "customer_id" INTEGER NOT NULL,
+        "promotion_id" INTEGER NOT NULL,
+        "store_id" INTEGER NOT NULL,
+        "store_sales" DECIMAL(10, 4) NOT NULL,
+        "store_cost" DECIMAL(10, 4) NOT NULL,
+        "unit_sales" DECIMAL(10, 4) NOT NULL
+    );
+
+--CREATE INDEX "i_sls_97_cust_id" ON "foodmart"."sales_fact_1997"("customer_id");
+--CREATE INDEX "i_sls_97_prod_id" ON "foodmart"."sales_fact_1997"("product_id");
+--CREATE INDEX "i_sls_97_promo_id" ON "foodmart"."sales_fact_1997"("promotion_id");
+--CREATE INDEX "i_sls_97_store_id" ON "foodmart"."sales_fact_1997"("store_id");
+--CREATE INDEX "i_sls_97_time_id" ON "foodmart"."sales_fact_1997"("time_id");
+CREATE TABLE
+    "foodmart"."sales_fact_1998" (
+        "product_id" INTEGER NOT NULL,
+        "time_id" INTEGER NOT NULL,
+        "customer_id" INTEGER NOT NULL,
+        "promotion_id" INTEGER NOT NULL,
+        "store_id" INTEGER NOT NULL,
+        "store_sales" DECIMAL(10, 4) NOT NULL,
+        "store_cost" DECIMAL(10, 4) NOT NULL,
+        "unit_sales" DECIMAL(10, 4) NOT NULL
+    );
+
+--CREATE INDEX "i_sls_98_cust_id" ON "foodmart"."sales_fact_1998"("customer_id");
+--CREATE INDEX "i_sls_1998_prod_id" ON "foodmart"."sales_fact_1998"("product_id");
+--CREATE INDEX "i_sls_1998_promo" ON "foodmart"."sales_fact_1998"("promotion_id");
+--CREATE INDEX "i_sls_1998_store" ON "foodmart"."sales_fact_1998"("store_id");
+--CREATE INDEX "i_sls_1998_time_id" ON "foodmart"."sales_fact_1998"("time_id");
+CREATE TABLE
+    "foodmart"."sales_fact_dec_1998" (
+        "product_id" INTEGER NOT NULL,
+        "time_id" INTEGER NOT NULL,
+        "customer_id" INTEGER NOT NULL,
+        "promotion_id" INTEGER NOT NULL,
+        "store_id" INTEGER NOT NULL,
+        "store_sales" DECIMAL(10, 4) NOT NULL,
+        "store_cost" DECIMAL(10, 4) NOT NULL,
+        "unit_sales" DECIMAL(10, 4) NOT NULL
+    );
+
+--CREATE INDEX "i_sls_dec98_cust" ON "foodmart"."sales_fact_dec_1998"("customer_id");
+--CREATE INDEX "i_sls_dec98_prod" ON "foodmart"."sales_fact_dec_1998"("product_id");
+--CREATE INDEX "i_sls_dec98_promo" ON "foodmart"."sales_fact_dec_1998"("promotion_id");
+--CREATE INDEX "i_sls_dec98_store" ON "foodmart"."sales_fact_dec_1998"("store_id");
+--CREATE INDEX "i_sls_dec98_time" ON "foodmart"."sales_fact_dec_1998"("time_id");
+CREATE TABLE
+    "foodmart"."inventory_fact_1997" (
+        "product_id" INTEGER NOT NULL,
+        "time_id" INTEGER,
+        "warehouse_id" INTEGER,
+        "store_id" INTEGER,
+        "units_ordered" INTEGER,
+        "units_shipped" INTEGER,
+        "warehouse_sales" DECIMAL(10, 4),
+        "warehouse_cost" DECIMAL(10, 4),
+        "supply_time" SMALLINT,
+        "store_invoice" DECIMAL(10, 4)
+    );
+
+--CREATE INDEX "i_inv_97_prod_id" ON "foodmart"."inventory_fact_1997"("product_id");
+--CREATE INDEX "i_inv_97_store_id" ON "foodmart"."inventory_fact_1997"("store_id");
+--CREATE INDEX "i_inv_97_time_id" ON "foodmart"."inventory_fact_1997"("time_id");
+--CREATE INDEX "i_inv_97_wrhse_id" ON "foodmart"."inventory_fact_1997"("warehouse_id");
+CREATE TABLE
+    "foodmart"."inventory_fact_1998" (
+        "product_id" INTEGER NOT NULL,
+        "time_id" INTEGER,
+        "warehouse_id" INTEGER,
+        "store_id" INTEGER,
+        "units_ordered" INTEGER,
+        "units_shipped" INTEGER,
+        "warehouse_sales" DECIMAL(10, 4),
+        "warehouse_cost" DECIMAL(10, 4),
+        "supply_time" SMALLINT,
+        "store_invoice" DECIMAL(10, 4)
+    );
+
+--CREATE INDEX "i_inv_98_prod_id" ON "foodmart"."inventory_fact_1998"("product_id");
+--CREATE INDEX "i_inv_98_store_id" ON "foodmart"."inventory_fact_1998"("store_id");
+--CREATE INDEX "i_inv_98_time_id" ON "foodmart"."inventory_fact_1998"("time_id");
+--CREATE INDEX "i_inv_98_wrhse_id" ON "foodmart"."inventory_fact_1998"("warehouse_id");
+CREATE TABLE
+    "foodmart"."agg_pl_01_sales_fact_1997" (
+        "product_id" INTEGER NOT NULL,
+        "time_id" INTEGER NOT NULL,
+        "customer_id" INTEGER NOT NULL,
+        "store_sales_sum" DECIMAL(10, 4) NOT NULL,
+        "store_cost_sum" DECIMAL(10, 4) NOT NULL,
+        "unit_sales_sum" DECIMAL(10, 4) NOT NULL,
+        "fact_count" INTEGER NOT NULL
+    );
+
+--CREATE INDEX "i_sls97pl01cust" ON "foodmart"."agg_pl_01_sales_fact_1997"("customer_id");
+--CREATE INDEX "i_sls97pl01prod" ON "foodmart"."agg_pl_01_sales_fact_1997"("product_id");
+--CREATE INDEX "i_sls97pl01time" ON "foodmart"."agg_pl_01_sales_fact_1997"("time_id");
+CREATE TABLE
+    "foodmart"."agg_ll_01_sales_fact_1997" (
+        "product_id" INTEGER NOT NULL,
+        "time_id" INTEGER NOT NULL,
+        "customer_id" INTEGER NOT NULL,
+        "store_sales" DECIMAL(10, 4) NOT NULL,
+        "store_cost" DECIMAL(10, 4) NOT NULL,
+        "unit_sales" DECIMAL(10, 4) NOT NULL,
+        "fact_count" INTEGER NOT NULL
+    );
+
+--CREATE INDEX "i_sls97ll01cust" ON "foodmart"."agg_ll_01_sales_fact_1997"("customer_id");
+--CREATE INDEX "i_sls97ll01prod" ON "foodmart"."agg_ll_01_sales_fact_1997"("product_id");
+--CREATE INDEX "i_sls97ll01time" ON "foodmart"."agg_ll_01_sales_fact_1997"("time_id");
+CREATE TABLE
+    "foodmart"."agg_l_03_sales_fact_1997" (
+        "time_id" INTEGER NOT NULL,
+        "customer_id" INTEGER NOT NULL,
+        "store_sales" DECIMAL(10, 4) NOT NULL,
+        "store_cost" DECIMAL(10, 4) NOT NULL,
+        "unit_sales" DECIMAL(10, 4) NOT NULL,
+        "fact_count" INTEGER NOT NULL
+    );
+
+CREATE TABLE
+    "foodmart"."agg_l_04_sales_fact_1997" (
+        "time_id" INTEGER NOT NULL,
+        "store_sales" DECIMAL(10, 4) NOT NULL,
+        "store_cost" DECIMAL(10, 4) NOT NULL,
+        "unit_sales" DECIMAL(10, 4) NOT NULL,
+        "customer_count" INTEGER NOT NULL,
+        "fact_count" INTEGER NOT NULL
+    );
+
+CREATE TABLE
+    "foodmart"."agg_l_05_sales_fact_1997" (
+        "product_id" INTEGER NOT NULL,
+        "customer_id" INTEGER NOT NULL,
+        "promotion_id" INTEGER NOT NULL,
+        "store_id" INTEGER NOT NULL,
+        "store_sales" DECIMAL(10, 4) NOT NULL,
+        "store_cost" DECIMAL(10, 4) NOT NULL,
+        "unit_sales" DECIMAL(10, 4) NOT NULL,
+        "fact_count" INTEGER NOT NULL
+    );
+
+--CREATE INDEX "i_sls97l05cust" ON "foodmart"."agg_l_05_sales_fact_1997"("customer_id");
+--CREATE INDEX "i_sls97l05prod" ON "foodmart"."agg_l_05_sales_fact_1997"("product_id");
+--CREATE INDEX "i_sls97l05promo" ON "foodmart"."agg_l_05_sales_fact_1997"("promotion_id");
+--CREATE INDEX "i_sls97l05store" ON "foodmart"."agg_l_05_sales_fact_1997"("store_id");
+CREATE TABLE
+    "foodmart"."agg_c_10_sales_fact_1997" (
+        "month_of_year" SMALLINT NOT NULL,
+        "quarter" VARCHAR(30) NOT NULL,
+        "the_year" SMALLINT NOT NULL,
+        "store_sales" DECIMAL(10, 4) NOT NULL,
+        "store_cost" DECIMAL(10, 4) NOT NULL,
+        "unit_sales" DECIMAL(10, 4) NOT NULL,
+        "customer_count" INTEGER NOT NULL,
+        "fact_count" INTEGER NOT NULL
+    );
+
+CREATE TABLE
+    "foodmart"."agg_c_14_sales_fact_1997" (
+        "product_id" INTEGER NOT NULL,
+        "customer_id" INTEGER NOT NULL,
+        "store_id" INTEGER NOT NULL,
+        "promotion_id" INTEGER NOT NULL,
+        "month_of_year" SMALLINT NOT NULL,
+        "quarter" VARCHAR(30) NOT NULL,
+        "the_year" SMALLINT NOT NULL,
+        "store_sales" DECIMAL(10, 4) NOT NULL,
+        "store_cost" DECIMAL(10, 4) NOT NULL,
+        "unit_sales" DECIMAL(10, 4) NOT NULL,
+        "fact_count" INTEGER NOT NULL
+    );
+
+--CREATE INDEX "i_sls97c14cust" ON "foodmart"."agg_c_14_sales_fact_1997"("customer_id");
+--CREATE INDEX "i_sls97c14prod" ON "foodmart"."agg_c_14_sales_fact_1997"("product_id");
+--CREATE INDEX "i_sls97c14promo" ON "foodmart"."agg_c_14_sales_fact_1997"("promotion_id");
+--CREATE INDEX "i_sls97c14store" ON "foodmart"."agg_c_14_sales_fact_1997"("store_id");
+CREATE TABLE
+    "foodmart"."agg_lc_100_sales_fact_1997" (
+        "product_id" INTEGER NOT NULL,
+        "customer_id" INTEGER NOT NULL,
+        "quarter" VARCHAR(30) NOT NULL,
+        "the_year" SMALLINT NOT NULL,
+        "store_sales" DECIMAL(10, 4) NOT NULL,
+        "store_cost" DECIMAL(10, 4) NOT NULL,
+        "unit_sales" DECIMAL(10, 4) NOT NULL,
+        "fact_count" INTEGER NOT NULL
+    );
+
+--CREATE INDEX "i_sls97lc100cust" ON "foodmart"."agg_lc_100_sales_fact_1997"("customer_id");
+--CREATE INDEX "i_sls97lc100prod" ON "foodmart"."agg_lc_100_sales_fact_1997"("product_id");
+CREATE TABLE
+    "foodmart"."agg_c_special_sales_fact_1997" (
+        "product_id" INTEGER NOT NULL,
+        "promotion_id" INTEGER NOT NULL,
+        "customer_id" INTEGER NOT NULL,
+        "store_id" INTEGER NOT NULL,
+        "time_month" SMALLINT NOT NULL,
+        "time_quarter" VARCHAR(30) NOT NULL,
+        "time_year" SMALLINT NOT NULL,
+        "store_sales_sum" DECIMAL(10, 4) NOT NULL,
+        "store_cost_sum" DECIMAL(10, 4) NOT NULL,
+        "unit_sales_sum" DECIMAL(10, 4) NOT NULL,
+        "fact_count" INTEGER NOT NULL
+    );
+
+--CREATE INDEX "i_sls97speccust" ON "foodmart"."agg_c_special_sales_fact_1997"("customer_id");
+--CREATE INDEX "i_sls97specprod" ON "foodmart"."agg_c_special_sales_fact_1997"("product_id");
+--CREATE INDEX "i_sls97specpromo" ON "foodmart"."agg_c_special_sales_fact_1997"("promotion_id");
+--CREATE INDEX "i_sls97specstore" ON "foodmart"."agg_c_special_sales_fact_1997"("store_id");
+CREATE TABLE
+    "foodmart"."agg_g_ms_pcat_sales_fact_1997" (
+        "gender" VARCHAR(30) NOT NULL,
+        "marital_status" VARCHAR(30) NOT NULL,
+        "product_family" VARCHAR(30),
+        "product_department" VARCHAR(30),
+        "product_category" VARCHAR(30),
+        "month_of_year" SMALLINT NOT NULL,
+        "quarter" VARCHAR(30) NOT NULL,
+        "the_year" SMALLINT NOT NULL,
+        "store_sales" DECIMAL(10, 4) NOT NULL,
+        "store_cost" DECIMAL(10, 4) NOT NULL,
+        "unit_sales" DECIMAL(10, 4) NOT NULL,
+        "customer_count" INTEGER NOT NULL,
+        "fact_count" INTEGER NOT NULL
+    );
+
+--CREATE INDEX "i_sls97gmp_gender" ON "foodmart"."agg_g_ms_pcat_sales_fact_1997"("gender");
+--CREATE INDEX "i_sls97gmp_ms" ON "foodmart"."agg_g_ms_pcat_sales_fact_1997"("marital_status");
+--CREATE INDEX "i_sls97gmp_pfam" ON "foodmart"."agg_g_ms_pcat_sales_fact_1997"("product_family");
+--CREATE INDEX "i_sls97gmp_pdept" ON "foodmart"."agg_g_ms_pcat_sales_fact_1997"("product_department");
+--CREATE INDEX "i_sls97gmp_pcat" ON "foodmart"."agg_g_ms_pcat_sales_fact_1997"("product_category");
+--CREATE INDEX "i_sls97gmp_tmonth" ON "foodmart"."agg_g_ms_pcat_sales_fact_1997"("month_of_year");
+--CREATE INDEX "i_sls97gmp_tquarter" ON "foodmart"."agg_g_ms_pcat_sales_fact_1997"("quarter");
+--CREATE INDEX "i_sls97gmp_tyear" ON "foodmart"."agg_g_ms_pcat_sales_fact_1997"("the_year");
+CREATE TABLE
+    "foodmart"."agg_lc_06_sales_fact_1997" (
+        "time_id" INTEGER NOT NULL,
+        "city" VARCHAR(30) NOT NULL,
+        "state_province" VARCHAR(30) NOT NULL,
+        "country" VARCHAR(30) NOT NULL,
+        "store_sales" DECIMAL(10, 4) NOT NULL,
+        "store_cost" DECIMAL(10, 4) NOT NULL,
+        "unit_sales" DECIMAL(10, 4) NOT NULL,
+        "fact_count" INTEGER NOT NULL
+    );
+
+CREATE TABLE
+    "foodmart"."currency" (
+        "currency_id" INTEGER NOT NULL,
+        "date" DATE NOT NULL,
+        "currency" VARCHAR(30) NOT NULL,
+        "conversion_ratio" DECIMAL(10, 4) NOT NULL
+    );
+
+--CREATE UNIQUE INDEX "i_currency" ON "foodmart"."currency"("currency_id","date");
+CREATE TABLE
+    "foodmart"."account" (
+        "account_id" INTEGER NOT NULL,
+        "account_parent" INTEGER,
+        "account_description" VARCHAR(30),
+        "account_type" VARCHAR(30) NOT NULL,
+        "account_rollup" VARCHAR(30) NOT NULL,
+        "Custom_Members" VARCHAR(255)
+    );
+
+--CREATE UNIQUE INDEX "i_account_id" ON "foodmart"."account"("account_id");
+--CREATE INDEX "i_account_parent" ON "foodmart"."account"("account_parent");
+CREATE TABLE
+    "foodmart"."category" (
+        "category_id" VARCHAR(30) NOT NULL,
+        "category_parent" VARCHAR(30),
+        "category_description" VARCHAR(30) NOT NULL,
+        "category_rollup" VARCHAR(30)
+    );
+
+--CREATE UNIQUE INDEX "i_category_id" ON "foodmart"."category"("category_id");
+--CREATE INDEX "i_category_parent" ON "foodmart"."category"("category_parent");
+CREATE TABLE
+    "foodmart"."customer" (
+        "customer_id" INTEGER NOT NULL,
+        "account_num" BIGINT NOT NULL,
+        "lname" VARCHAR(30) NOT NULL,
+        "fname" VARCHAR(30) NOT NULL,
+        "mi" VARCHAR(30),
+        "address1" VARCHAR(30),
+        "address2" VARCHAR(30),
+        "address3" VARCHAR(30),
+        "address4" VARCHAR(30),
+        "city" VARCHAR(30),
+        "state_province" VARCHAR(30),
+        "postal_code" VARCHAR(30) NOT NULL,
+        "country" VARCHAR(30) NOT NULL,
+        "customer_region_id" INTEGER NOT NULL,
+        "phone1" VARCHAR(30) NOT NULL,
+        "phone2" VARCHAR(30) NOT NULL,
+        "birthdate" DATE NOT NULL,
+        "marital_status" VARCHAR(30) NOT NULL,
+        "yearly_income" VARCHAR(30) NOT NULL,
+        "gender" VARCHAR(30) NOT NULL,
+        "total_children" SMALLINT NOT NULL,
+        "num_children_at_home" SMALLINT NOT NULL,
+        "education" VARCHAR(30) NOT NULL,
+        "date_accnt_opened" DATE NOT NULL,
+        "member_card" VARCHAR(30),
+        "occupation" VARCHAR(30),
+        "houseowner" VARCHAR(30),
+        "num_cars_owned" INTEGER,
+        "fullname" VARCHAR(60) NOT NULL
+    );
+
+--CREATE INDEX "i_cust_acct_num" ON "foodmart"."customer"("account_num");
+--CREATE INDEX "i_customer_fname" ON "foodmart"."customer"("fname");
+--CREATE INDEX "i_customer_lname" ON "foodmart"."customer"("lname");
+--CREATE INDEX "i_cust_child_home" ON "foodmart"."customer"("num_children_at_home");
+--CREATE UNIQUE INDEX "i_customer_id" ON "foodmart"."customer"("customer_id");
+--CREATE INDEX "i_cust_postal_code" ON "foodmart"."customer"("postal_code");
+--CREATE INDEX "i_cust_region_id" ON "foodmart"."customer"("customer_region_id");
+CREATE TABLE
+    "foodmart"."days" (
+        "day" INTEGER NOT NULL,
+        "week_day" VARCHAR(30) NOT NULL
+    );
+
+CREATE TABLE
+    "foodmart"."department" (
+        "department_id" INTEGER NOT NULL,
+        "department_description" VARCHAR(30) NOT NULL
+    );
+
+--CREATE UNIQUE INDEX "i_department_id" ON "foodmart"."department"("department_id");
+CREATE TABLE
+    "foodmart"."employee" (
+        "employee_id" INTEGER NOT NULL,
+        "full_name" VARCHAR(30) NOT NULL,
+        "first_name" VARCHAR(30) NOT NULL,
+        "last_name" VARCHAR(30) NOT NULL,
+        "position_id" INTEGER,
+        "position_title" VARCHAR(30),
+        "store_id" INTEGER NOT NULL,
+        "department_id" INTEGER NOT NULL,
+        "birth_date" DATE NOT NULL,
+        "hire_date" TIMESTAMP,
+        "end_date" TIMESTAMP,
+        "salary" DECIMAL(10, 4) NOT NULL,
+        "supervisor_id" INTEGER,
+        "education_level" VARCHAR(30) NOT NULL,
+        "marital_status" VARCHAR(30) NOT NULL,
+        "gender" VARCHAR(30) NOT NULL,
+        "management_role" VARCHAR(30)
+    );
+
+--CREATE UNIQUE INDEX "i_employee_id" ON "foodmart"."employee"("employee_id");
+--CREATE INDEX "i_empl_dept_id" ON "foodmart"."employee"("department_id");
+--CREATE INDEX "i_empl_store_id" ON "foodmart"."employee"("store_id");
+--CREATE INDEX "i_empl_super_id" ON "foodmart"."employee"("supervisor_id");
+CREATE TABLE
+    "foodmart"."employee_closure" (
+        "employee_id" INTEGER NOT NULL,
+        "supervisor_id" INTEGER NOT NULL,
+        "distance" INTEGER
+    );
+
+--CREATE UNIQUE INDEX "i_empl_closure" ON "foodmart"."employee_closure"("supervisor_id","employee_id");
+--CREATE INDEX "i_empl_closure_emp" ON "foodmart"."employee_closure"("employee_id");
+CREATE TABLE
+    "foodmart"."expense_fact" (
+        "store_id" INTEGER NOT NULL,
+        "account_id" INTEGER NOT NULL,
+        "exp_date" TIMESTAMP NOT NULL,
+        "time_id" INTEGER NOT NULL,
+        "category_id" VARCHAR(30) NOT NULL,
+        "currency_id" INTEGER NOT NULL,
+        "amount" DECIMAL(10, 4) NOT NULL
+    );
+
+--CREATE INDEX "i_expense_store_id" ON "foodmart"."expense_fact"("store_id");
+--CREATE INDEX "i_expense_acct_id" ON "foodmart"."expense_fact"("account_id");
+--CREATE INDEX "i_expense_time_id" ON "foodmart"."expense_fact"("time_id");
+CREATE TABLE
+    "foodmart"."position" (
+        "position_id" INTEGER NOT NULL,
+        "position_title" VARCHAR(30) NOT NULL,
+        "pay_type" VARCHAR(30) NOT NULL,
+        "min_scale" DECIMAL(10, 4) NOT NULL,
+        "max_scale" DECIMAL(10, 4) NOT NULL,
+        "management_role" VARCHAR(30) NOT NULL
+    );
+
+--CREATE UNIQUE INDEX "i_position_id" ON "foodmart"."position"("position_id");
+CREATE TABLE
+    "foodmart"."product" (
+        "product_class_id" INTEGER NOT NULL,
+        "product_id" INTEGER NOT NULL,
+        "brand_name" VARCHAR(60),
+        "product_name" VARCHAR(60) NOT NULL,
+        "SKU" BIGINT NOT NULL,
+        "SRP" DECIMAL(10, 4),
+        "gross_weight" DOUBLE,
+        "net_weight" DOUBLE,
+        "recyclable_package" BOOLEAN,
+        "low_fat" BOOLEAN,
+        "units_per_case" SMALLINT,
+        "cases_per_pallet" SMALLINT,
+        "shelf_width" DOUBLE,
+        "shelf_height" DOUBLE,
+        "shelf_depth" DOUBLE
+    );
+
+--CREATE INDEX "i_prod_brand_name" ON "foodmart"."product"("brand_name");
+--CREATE UNIQUE INDEX "i_product_id" ON "foodmart"."product"("product_id");
+--CREATE INDEX "i_prod_class_id" ON "foodmart"."product"("product_class_id");
+--CREATE INDEX "i_product_name" ON "foodmart"."product"("product_name");
+--CREATE INDEX "i_product_SKU" ON "foodmart"."product"("SKU");
+CREATE TABLE
+    "foodmart"."product_class" (
+        "product_class_id" INTEGER NOT NULL,
+        "product_subcategory" VARCHAR(30),
+        "product_category" VARCHAR(30),
+        "product_department" VARCHAR(30),
+        "product_family" VARCHAR(30)
+    );
+
+CREATE TABLE
+    "foodmart"."promotion" (
+        "promotion_id" INTEGER NOT NULL,
+        "promotion_district_id" INTEGER,
+        "promotion_name" VARCHAR(30),
+        "media_type" VARCHAR(30),
+        "cost" DECIMAL(10, 4),
+        "start_date" TIMESTAMP,
+        "end_date" TIMESTAMP
+    );
+
+--CREATE UNIQUE INDEX "i_promotion_id" ON "foodmart"."promotion"("promotion_id");
+--CREATE INDEX "i_promo_dist_id" ON "foodmart"."promotion"("promotion_district_id");
+CREATE TABLE
+    "foodmart"."region" (
+        "region_id" INTEGER NOT NULL,
+        "sales_city" VARCHAR(30),
+        "sales_state_province" VARCHAR(30),
+        "sales_district" VARCHAR(30),
+        "sales_region" VARCHAR(30),
+        "sales_country" VARCHAR(30),
+        "sales_district_id" INTEGER
+    );
+
+CREATE TABLE
+    "foodmart"."reserve_employee" (
+        "employee_id" INTEGER NOT NULL,
+        "full_name" VARCHAR(30) NOT NULL,
+        "first_name" VARCHAR(30) NOT NULL,
+        "last_name" VARCHAR(30) NOT NULL,
+        "position_id" INTEGER,
+        "position_title" VARCHAR(30),
+        "store_id" INTEGER NOT NULL,
+        "department_id" INTEGER NOT NULL,
+        "birth_date" TIMESTAMP NOT NULL,
+        "hire_date" TIMESTAMP,
+        "end_date" TIMESTAMP,
+        "salary" DECIMAL(10, 4) NOT NULL,
+        "supervisor_id" INTEGER,
+        "education_level" VARCHAR(30) NOT NULL,
+        "marital_status" VARCHAR(30) NOT NULL,
+        "gender" VARCHAR(30) NOT NULL
+    );
+
+--CREATE UNIQUE INDEX "i_rsrv_empl_id" ON "foodmart"."reserve_employee"("employee_id");
+--CREATE INDEX "i_rsrv_empl_dept" ON "foodmart"."reserve_employee"("department_id");
+--CREATE INDEX "i_rsrv_empl_store" ON "foodmart"."reserve_employee"("store_id");
+--CREATE INDEX "i_rsrv_empl_sup" ON "foodmart"."reserve_employee"("supervisor_id");
+CREATE TABLE
+    "foodmart"."salary" (
+        "pay_date" TIMESTAMP NOT NULL,
+        "employee_id" INTEGER NOT NULL,
+        "department_id" INTEGER NOT NULL,
+        "currency_id" INTEGER NOT NULL,
+        "salary_paid" DECIMAL(10, 4) NOT NULL,
+        "overtime_paid" DECIMAL(10, 4) NOT NULL,
+        "vacation_accrued" DOUBLE NOT NULL,
+        "vacation_used" DOUBLE NOT NULL
+    );
+
+--CREATE INDEX "i_salary_pay_date" ON "foodmart"."salary"("pay_date");
+--CREATE INDEX "i_salary_employee" ON "foodmart"."salary"("employee_id");
+CREATE TABLE
+    "foodmart"."store" (
+        "store_id" INTEGER NOT NULL,
+        "store_type" VARCHAR(30),
+        "region_id" INTEGER,
+        "store_name" VARCHAR(30),
+        "store_number" INTEGER,
+        "store_street_address" VARCHAR(30),
+        "store_city" VARCHAR(30),
+        "store_state" VARCHAR(30),
+        "store_postal_code" VARCHAR(30),
+        "store_country" VARCHAR(30),
+        "store_manager" VARCHAR(30),
+        "store_phone" VARCHAR(30),
+        "store_fax" VARCHAR(30),
+        "first_opened_date" TIMESTAMP,
+        "last_remodel_date" TIMESTAMP,
+        "store_sqft" INTEGER,
+        "grocery_sqft" INTEGER,
+        "frozen_sqft" INTEGER,
+        "meat_sqft" INTEGER,
+        "coffee_bar" BOOLEAN,
+        "video_store" BOOLEAN,
+        "salad_bar" BOOLEAN,
+        "prepared_food" BOOLEAN,
+        "florist" BOOLEAN
+    );
+
+--CREATE UNIQUE INDEX "i_store_id" ON "foodmart"."store"("store_id");
+--CREATE INDEX "i_store_region_id" ON "foodmart"."store"("region_id");
+CREATE TABLE
+    "foodmart"."store_ragged" (
+        "store_id" INTEGER NOT NULL,
+        "store_type" VARCHAR(30),
+        "region_id" INTEGER,
+        "store_name" VARCHAR(30),
+        "store_number" INTEGER,
+        "store_street_address" VARCHAR(30),
+        "store_city" VARCHAR(30),
+        "store_state" VARCHAR(30),
+        "store_postal_code" VARCHAR(30),
+        "store_country" VARCHAR(30),
+        "store_manager" VARCHAR(30),
+        "store_phone" VARCHAR(30),
+        "store_fax" VARCHAR(30),
+        "first_opened_date" TIMESTAMP,
+        "last_remodel_date" TIMESTAMP,
+        "store_sqft" INTEGER,
+        "grocery_sqft" INTEGER,
+        "frozen_sqft" INTEGER,
+        "meat_sqft" INTEGER,
+        "coffee_bar" BOOLEAN,
+        "video_store" BOOLEAN,
+        "salad_bar" BOOLEAN,
+        "prepared_food" BOOLEAN,
+        "florist" BOOLEAN
+    );
+
+--CREATE UNIQUE INDEX "i_store_raggd_id" ON "foodmart"."store_ragged"("store_id");
+--CREATE INDEX "i_store_rggd_reg" ON "foodmart"."store_ragged"("region_id");
+CREATE TABLE
+    "foodmart"."time_by_day" (
+        "time_id" INTEGER NOT NULL,
+        "the_date" TIMESTAMP,
+        "the_day" VARCHAR(30),
+        "the_month" VARCHAR(30),
+        "the_year" SMALLINT,
+        "day_of_month" SMALLINT,
+        "week_of_year" INTEGER,
+        "month_of_year" SMALLINT,
+        "quarter" VARCHAR(30),
+        "fiscal_period" VARCHAR(30)
+    );
+
+--CREATE UNIQUE INDEX "i_time_id" ON "foodmart"."time_by_day"("time_id");
+--CREATE UNIQUE INDEX "i_time_day" ON "foodmart"."time_by_day"("the_date");
+--CREATE INDEX "i_time_year" ON "foodmart"."time_by_day"("the_year");
+--CREATE INDEX "i_time_quarter" ON "foodmart"."time_by_day"("quarter");
+--CREATE INDEX "i_time_month" ON "foodmart"."time_by_day"("month_of_year");
+CREATE TABLE
+    "foodmart"."warehouse" (
+        "warehouse_id" INTEGER NOT NULL,
+        "warehouse_class_id" INTEGER,
+        "stores_id" INTEGER,
+        "warehouse_name" VARCHAR(60),
+        "wa_address1" VARCHAR(30),
+        "wa_address2" VARCHAR(30),
+        "wa_address3" VARCHAR(30),
+        "wa_address4" VARCHAR(30),
+        "warehouse_city" VARCHAR(30),
+        "warehouse_state_province" VARCHAR(30),
+        "warehouse_postal_code" VARCHAR(30),
+        "warehouse_country" VARCHAR(30),
+        "warehouse_owner_name" VARCHAR(30),
+        "warehouse_phone" VARCHAR(30),
+        "warehouse_fax" VARCHAR(30)
+    );
+
+CREATE TABLE
+    "foodmart"."warehouse_class" (
+        "warehouse_class_id" INTEGER NOT NULL,
+        "description" VARCHAR(30)
+    )

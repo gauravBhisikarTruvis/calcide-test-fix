@@ -2,18 +2,30 @@ package com.calcite_new.core.model;
 
 import com.calcite_new.core.model.entity.DatabaseEntity;
 import com.calcite_new.core.model.entity.Table;
+import org.apache.calcite.schema.Schema;
+import org.apache.calcite.schema.impl.AbstractSchema;
 
-import java.util.*;
+import java.util.Map;
+import java.util.NavigableMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.stream.Collectors;
 
-public class Namespace {
+/**
+ * Namespace is a schema that contains a collection of database entities and child namespaces.
+ * It is used to represent a database schema in the EntityCatalog.
+ */
+public class Namespace extends AbstractSchema {
   private final Identifier name;
-  private Map<Identifier, Namespace> children = new ConcurrentHashMap<>();
-  private EntityMap<Table> tables = new EntityMap<>();
+  private final Map<Identifier, Namespace> children = new ConcurrentHashMap<>();
+  private final EntityMap<Table> tables = new EntityMap<>();
 
   public Namespace(Identifier name) {
     this.name = name;
+  }
+
+  public Identifier getName() {
+    return name;
   }
 
   public void addTable(Table table) {
@@ -30,6 +42,24 @@ public class Namespace {
 
   Namespace getOrAddNamespace(Identifier name) {
     return children.computeIfAbsent(name, Namespace::new);
+  }
+
+  @Override
+  protected Map<String, Schema> getSubSchemaMap() {
+    // convert children to a map of string to schema
+    return children.entrySet().stream()
+        .collect(Collectors.toMap(
+            entry -> entry.getKey().getNormalizedName(),
+            Map.Entry::getValue));
+  }
+
+  @Override
+  protected Map<String, org.apache.calcite.schema.Table> getTableMap() {
+    // return a map of string to table
+    return tables.entities.entrySet().stream()
+        .collect(Collectors.toMap(
+            entry -> entry.getKey().name.getNormalizedName(),
+            entry -> ScannableTable.create(entry.getValue())));
   }
 
   private record Key(Identifier name, long createdTimestamp) implements Comparable<Key> {
@@ -50,7 +80,11 @@ public class Namespace {
 
     public V get(Identifier name) {
       Key key = new Key(name, System.currentTimeMillis());
-      return entities.get(key);
+      Map.Entry<Key, V> entry = entities.floorEntry(key);
+      if (entry.getKey().name.equals(name)) {
+        return entry.getValue();
+      }
+      return null;
     }
 
     public void put(V entity) {

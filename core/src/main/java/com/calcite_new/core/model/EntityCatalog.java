@@ -2,15 +2,22 @@ package com.calcite_new.core.model;
 
 import com.calcite_new.core.model.entity.DatabaseEntity;
 import com.calcite_new.core.model.entity.Table;
+import org.apache.calcite.schema.Schema;
+import org.apache.calcite.schema.impl.AbstractSchema;
 
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
-public class EntityCatalog {
+/**
+ * EntityCatalog is a schema that contains a collection of namespaces and tables.
+ */
+public class EntityCatalog extends AbstractSchema {
   private Map<Identifier, Namespace> products = new ConcurrentHashMap<>();
 
-  DatabaseEntity getEntity(List<Identifier> qualifiedName) {
+  public Table getTable(EntityQualifier qualifier) {
+    List<Identifier> qualifiedName = qualifier.getQualifiers();
     if (qualifiedName.size() < 2) {
       throw new IllegalArgumentException("Qualified name must have at least two parts");
     }
@@ -51,4 +58,11 @@ public class EntityCatalog {
     }
   }
 
+  @Override
+  protected Map<String, Schema> getSubSchemaMap() {
+    return products.entrySet().stream()
+        .collect(Collectors.toMap(
+            entry -> entry.getKey().getNormalizedName(),
+            Map.Entry::getValue));
+  }
 }

@@ -5,9 +5,19 @@ import com.calcite_new.core.model.Identifier;
 import java.util.List;
 
 public class Table extends DatabaseEntity {
+  private final List<Column> columns;
 
-  public Table(List<Identifier> namespace, Identifier name, long createdTimestamp) {
+  public Table(List<Identifier> namespace, Identifier name, List<Column> columns, long createdTimestamp) {
     super(namespace.stream().toList(), name, createdTimestamp);
+    this.columns = columns;
   }
 
+  @Override
+  public EntityKind getKind() {
+    return EntityKind.TABLE;
+  }
+
+  public List<Column> getColumns() {
+    return columns;
+  }
 }
