@@ -5,10 +5,10 @@ import com.calcite_new.sql.parser.antlr.BigQuerySqlParser;
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.tree.TerminalNode;
 import org.apache.calcite.sql.*;
+import org.apache.calcite.sql.fun.SqlCase;
 import org.apache.calcite.sql.fun.SqlLibraryOperators;
 import org.apache.calcite.sql.fun.SqlStdOperatorTable;
 import org.apache.calcite.sql.parser.SqlParserPos;
-import org.apache.calcite.sql.type.InferTypes;
 import org.apache.calcite.sql.type.SqlTypeName;
 import org.apache.calcite.sql.validate.SqlUserDefinedAggFunction;
 import org.apache.calcite.sql.validate.SqlUserDefinedFunction;
@@ -21,12 +21,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static org.apache.calcite.sql.SqlOperator.MDX_PRECEDENCE;
-
 /**
  * Visitor to convert BigQuery SQL AST to Calcite {@link SqlNode}.
  */
-public class BigQueryToCalciteVisitor extends BigQuerySqlBaseVisitor<SqlNode> {
+public class BigQueryToSqlNodeVisitor extends BigQuerySqlBaseVisitor<SqlNode> {
 
   @Override
   public SqlNode visitSelectStatement(BigQuerySqlParser.SelectStatementContext ctx) {
@@ -127,9 +125,9 @@ public class BigQueryToCalciteVisitor extends BigQuerySqlBaseVisitor<SqlNode> {
       TerminalNode distinct = ctx.selectClause().setQuantifier().DISTINCT();
       TerminalNode all = ctx.selectClause().setQuantifier().ALL();
       if (distinct != null) {
-        keywordList = SqlNodeList.of(SqlLiteral.createSymbol(SetQualifier.DISTINCT, parserPos(distinct)));
+        keywordList = SqlNodeList.of(SqlLiteral.createSymbol(SqlSelectKeyword.DISTINCT, parserPos(distinct)));
       } else {
-        keywordList = SqlNodeList.of(SqlLiteral.createSymbol(SetQualifier.ALL, parserPos(all)));
+        keywordList = SqlNodeList.of(SqlLiteral.createSymbol(SqlSelectKeyword.ALL, parserPos(all)));
       }
 
     }
@@ -604,7 +602,7 @@ public class BigQueryToCalciteVisitor extends BigQuerySqlBaseVisitor<SqlNode> {
 //
 //      window = window.over(frameType, start, end);
     }
-    SqlLiteral isRows = SqlLiteral.createSymbol(FrameUnit.FALSE, parserPos(ctx));
+    SqlLiteral isRows = SqlLiteral.createBoolean(false, parserPos(ctx));
     return new SqlWindow(parserPos(ctx), declName, null, partitionList, orderList, isRows, null, null, null);
   }
 
@@ -877,46 +875,20 @@ public class BigQueryToCalciteVisitor extends BigQuerySqlBaseVisitor<SqlNode> {
 
     @Override
     public SqlNode visitSearchedCaseExpression(BigQuerySqlParser.SearchedCaseExpressionContext ctx) {
-      List<SqlNode> operands = new ArrayList<>();
-      operands.add(null); // First operand is null for a searched CASE
+      SqlNodeList whenList = new SqlNodeList(parserPos(ctx));
+      SqlNodeList thenList = new SqlNodeList(parserPos(ctx));
+      SqlNode elseExpr = null;
 
       for (int i = 0; i < ctx.WHEN().size(); i++) {
-        operands.add(visit(ctx.expression(i * 2))); // When expression
-        operands.add(visit(ctx.expression(i * 2 + 1))); // Then expression
+        whenList.add(visit(ctx.expression(i * 2))); // When expression
+        thenList.add(visit(ctx.expression(i * 2 + 1))); // Then expression
       }
 
       if (ctx.ELSE() != null) {
-        operands.add(visit(ctx.expression().get(ctx.expression().size() - 1))); // Else expression
+        elseExpr = visit(ctx.expression().get(ctx.expression().size() - 1)); // Else expression
       }
 
-      return new SqlOperator("CASE", SqlKind.CASE, MDX_PRECEDENCE, true, null,
-          InferTypes.RETURN_TYPE, null) {
-        @Override
-        public SqlSyntax getSyntax() {
-          return SqlSyntax.SPECIAL;
-        }
-
-        @Override
-        public void unparse(SqlWriter writer, SqlCall call, int leftPrec, int rightPrec) {
-          writer.newlineAndIndent();
-          final SqlWriter.Frame frame =
-              writer.startList(SqlWriter.FrameTypeEnum.CASE, "CASE", "END");
-          for (int i = 1; i + 1 < call.operandCount(); i += 2) {
-            writer.newlineAndIndent();
-            writer.keyword("WHEN");
-            call.operand(i).unparse(writer, leftPrec, rightPrec);
-            writer.keyword("THEN");
-            call.operand(i + 1).unparse(writer, leftPrec, rightPrec);
-          }
-          if (call.operandCount() % 2 == 0) {
-            writer.newlineAndIndent();
-            writer.keyword("ELSE");
-            call.operand(call.operandCount() - 1).unparse(writer, leftPrec, rightPrec);
-          }
-          writer.newlineAndIndent();
-          writer.endList(frame);
-        }
-      }.createCall(parserPos(ctx), operands);
+      return new SqlCase(parserPos(ctx), null, whenList, thenList, elseExpr);
     }
 
   private SqlBasicCall createUnresolvedCall(SqlParserPos pos, String opName, List<SqlNode> operands) {
@@ -1162,27 +1134,34 @@ public class BigQueryToCalciteVisitor extends BigQuerySqlBaseVisitor<SqlNode> {
 //          return new SqlGenerateDateArrayFunction(parserPos(ctx)).createCall(parserPos(ctx), startDate, endDate);
 //        }
       } else {
-        // Generic function call
-        SqlIdentifier funcName = new SqlIdentifier(ctx.identifier().getText(), parserPos(ctx));
-        List<SqlNode> operands = new ArrayList<>();
+        SqlNode call;
+         if (ctx.ROW_NUMBER() != null) {
+          call = createAggFunction(SqlStdOperatorTable.ROW_NUMBER, false);
+        } else if (ctx.RANK() != null) {
+           call = createAggFunction(SqlStdOperatorTable.RANK, false);
+        } else {
+          // Generic function call
+          SqlIdentifier funcName = new SqlIdentifier(ctx.identifier().getText(), parserPos(ctx));
+          List<SqlNode> operands = new ArrayList<>();
 
-        boolean distinct = ctx.DISTINCT() != null;
+          boolean distinct = ctx.DISTINCT() != null;
 
-        // Handle arguments
-        if (!ctx.expression().isEmpty()) {
-          operands.addAll(ctx.expression().stream()
-              .map(this::visit)
-              .toList());
-        } else if (ctx.getChild(2).getText().equals("*")) {
-          operands.add(SqlIdentifier.star(parserPos(ctx)));
+          // Handle arguments
+          if (!ctx.expression().isEmpty()) {
+            operands.addAll(ctx.expression().stream()
+                .map(this::visit)
+                .toList());
+          } else if (ctx.getChild(2).getText().equals("*")) {
+            operands.add(SqlIdentifier.star(parserPos(ctx)));
+          }
+
+          // Create the function
+          SqlFunction sqlFunction = distinct
+              ? new SqlUserDefinedAggFunction(funcName, SqlKind.OTHER_FUNCTION, null, null, null, null, false, false, Optionality.OPTIONAL)
+              : new SqlUserDefinedFunction(funcName, SqlKind.OTHER_FUNCTION, null, null, null, null);
+
+          call = sqlFunction.createCall(parserPos(ctx), operands);
         }
-
-        // Create the function
-        SqlFunction sqlFunction = distinct
-            ? new SqlUserDefinedAggFunction(funcName, SqlKind.OTHER_FUNCTION, null, null, null, null, false, false, Optionality.OPTIONAL)
-            : new SqlUserDefinedFunction(funcName, SqlKind.OTHER_FUNCTION, null, null, null, null);
-
-        SqlNode call = sqlFunction.createCall(parserPos(ctx), operands);
 
         // Handle OVER clause if present
         if (ctx.windowSpecification() != null) {
@@ -1194,9 +1173,9 @@ public class BigQueryToCalciteVisitor extends BigQuerySqlBaseVisitor<SqlNode> {
       }
     }
 
-  private SqlNode createAggFunction(SqlAggFunction aggFunction, boolean distinct, SqlNode operand) {
+  private SqlNode createAggFunction(SqlAggFunction aggFunction, boolean distinct, SqlNode... operands) {
     assert !distinct;
-    return aggFunction.createCall(SqlParserPos.ZERO, operand);
+    return aggFunction.createCall(SqlParserPos.ZERO, operands);
   }
 
   @Override

@@ -8,6 +8,7 @@ import org.apache.calcite.schema.Function;
 import org.apache.calcite.schema.Schema;
 import org.apache.calcite.schema.SchemaVersion;
 import org.apache.calcite.schema.Table;
+import org.apache.calcite.sql.type.SqlTypeName;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
 import java.util.List;
@@ -33,12 +34,14 @@ public class SchemaWrapper extends CalciteSchema {
   @Override
   protected @Nullable TableEntry getImplicitTable(String tableName, boolean caseSensitive) {
     Table table = schema.getTable(tableName);
+    assert table != null;
     return tableEntry(tableName, table);
   }
 
   @Override
   protected @Nullable TypeEntry getImplicitType(String name, boolean caseSensitive) {
-    throw new UnsupportedOperationException("Implicit type resolution is not supported");
+    return new TypeEntryImpl(this, name, factory -> factory.createSqlType(SqlTypeName.ANY));
+//    throw new UnsupportedOperationException("Implicit type resolution is not supported");
   }
 
   @Override

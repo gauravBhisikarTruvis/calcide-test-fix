@@ -29,7 +29,9 @@ public abstract class SqlToRelConverterFixture {
   protected String sql;
   protected EntityCatalog catalog;
 //  protected SqlToRelConverter converter;
-  protected SqlToRelConverter converter;
+//  protected SqlToRelConverterG converter;
+//  protected SqlToRelConverter converter;
+  protected CustomSqlToRelConverter converter;
 
   protected SqlToRelConverterFixture(
       SqlDialect dialect,
@@ -69,8 +71,10 @@ public abstract class SqlToRelConverterFixture {
     }
     SqlNode sqlNode = parserFixture.withSql(sql).parse();
 //    assert converter.validator != null;
-//    SqlNode validatedSqlNode = converter.validator.validate(sqlNode);
-//    RelNode rel = converter.convertSelect((SqlSelect) validatedSqlNode, true);
+//    SqlNode validatedNode = converter.validator.validate(sqlNode);
+//    RelNode rel = converter.convertQuery(validatedNode, false, true).rel;
+//    return rel;
+
     return converter.convert(sqlNode);
   }
 
@@ -82,21 +86,25 @@ public abstract class SqlToRelConverterFixture {
     RelOptCluster cluster = RelOptCluster.create(planner, rexBuilder);
     EntityCatalogReader catalogReader =
         EntityCatalogReader.create(cluster, entityResolver, dialect, defaultQualification);
-    this.converter = new SqlToRelConverter(
+    this.converter = new CustomSqlToRelConverter(
         cluster,
         catalogReader,
         defaultQualification,
         dialect
     );
 
+
 //    // Initialize SqlToRelConverter
 ////    this.converter = new SqlToRelConverter(cluster, entityResolver, new BigQuerySqlDialect(), defaultQualification);
-//    SqlOperatorTable operatorTable = new SqlStdOperatorTable();
+//    SqlOperatorTable operatorTable = SqlStdOperatorTable.instance();
 //    RelDataTypeFactory typeFactory = cluster.getTypeFactory();
-//    SqlValidator.Config config = SqlValidator.Config.DEFAULT;
+//    SqlValidator.Config config = SqlValidator.Config.DEFAULT.withIdentifierExpansion(true);
 ////    Prepare.CatalogReader cr = new CalciteCatalogReader(entityResolver.getSchema(),
 ////        defaultQualification, typeFactory, CalciteConnectionConfig.DEFAULT);
-//    SqlValidator sqlValidator = SqlValidatorUtil.newValidator(operatorTable, catalogReader, typeFactory, config);
+//    SqlValidator sqlValidator =
+//        new SqlValidatorImpl(operatorTable, catalogReader, typeFactory, config, dialect);
+////        new TFSqlValidator(operatorTable, catalogReader, typeFactory, config, dialect);
+////        SqlValidatorUtil.newValidator(operatorTable, catalogReader, typeFactory, config);
 //    RelOptTable.ViewExpander viewExpander = new ViewExpanderImpl();
 //    SqlRexConvertletTable convertletTable = StandardConvertletTable.INSTANCE;
 //

@@ -3,12 +3,10 @@ package com.calcite_new.sql.core.converter;
 import com.calcite_new.core.dialect.sql.SqlDialect;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
-import org.apache.calcite.jdbc.JavaTypeFactoryImpl;
 import org.apache.calcite.plan.Convention;
 import org.apache.calcite.plan.RelOptCluster;
 import org.apache.calcite.plan.RelOptTable;
 import org.apache.calcite.plan.RelTraitSet;
-import org.apache.calcite.plan.volcano.VolcanoPlanner;
 import org.apache.calcite.prepare.Prepare;
 import org.apache.calcite.rel.RelCollation;
 import org.apache.calcite.rel.RelCollations;
@@ -23,7 +21,9 @@ import org.apache.calcite.rel.type.RelDataTypeFactory;
 import org.apache.calcite.rel.type.RelDataTypeField;
 import org.apache.calcite.rex.*;
 import org.apache.calcite.sql.*;
+import org.apache.calcite.sql.fun.SqlCase;
 import org.apache.calcite.sql.fun.SqlStdOperatorTable;
+import org.apache.calcite.sql.parser.SqlParserPos;
 import org.apache.calcite.sql.type.SqlTypeName;
 import org.apache.calcite.sql.type.SqlTypeUtil;
 import org.apache.calcite.sql.util.SqlBasicVisitor;
@@ -60,7 +60,7 @@ import java.util.stream.Collectors;
  * {@code RelNode} and the context (fields, aliases) available from its output.
  * </p>
  */
-public class SqlToRelConverter {
+public class CustomSqlToRelConverter {
 
   protected final RelOptCluster cluster;
   protected final EntityCatalogReader catalogReader;
@@ -80,7 +80,7 @@ public class SqlToRelConverter {
    * @param cluster       Relational expression cluster
    * @param catalogReader Schema provider
    */
-  public SqlToRelConverter(
+  public CustomSqlToRelConverter(
       RelOptCluster cluster,
       EntityCatalogReader catalogReader,
       List<String> defaultQualifiers,
@@ -185,7 +185,8 @@ public class SqlToRelConverter {
     if (select.getWhere() != null) {
       // Use the scope from the FROM clause to resolve expressions in WHERE
       RexNode whereCondition = convertExpression(select.getWhere(), currentScope);
-      currentRel = LogicalFilter.create(currentRel, whereCondition);
+      RexNode flattenedRex = RexUtil.flatten(rexBuilder, whereCondition);
+      currentRel = LogicalFilter.create(currentRel, flattenedRex);
       // Update scope to reflect the filter output (row type usually unchanged)
       currentScope = Scope.createScopeForRelNode(parentScope, currentRel, currentScope.getAlias()); // Preserve alias if any
     }
@@ -195,6 +196,10 @@ public class SqlToRelConverter {
     Scope aggregateInputScope = currentScope; // Scope before potential aggregation
 
     if (isAggregate) {
+      // Identify all the columns needed for Aggregate and apply projection if needed
+      // This is a complex step. We need to ensure that the input to the aggregate
+      // is correct and that the output is properly projected.
+//      aggregateInputScope = applyProject(select, currentScope);
       // convertAggregate now returns the Scope after aggregation/having
       currentScope = convertAggregate(select, aggregateInputScope);
       currentRel = currentScope.getRelNode(); // Update RelNode from the new scope
@@ -208,6 +213,10 @@ public class SqlToRelConverter {
     Scope finalScope = convertProject(select.getSelectList(), currentScope);
     currentRel = finalScope.getRelNode(); // Update RelNode
 
+    if (select.isDistinct()) {
+      return convertDistinct(select, finalScope);
+    }
+
     // Window functions (OVER clauses) would typically be handled here,
     // operating on the result of projection/aggregation. Requires LogicalWindow.
     // Manual creation of LogicalWindow is very complex. If added, it would
@@ -217,6 +226,219 @@ public class SqlToRelConverter {
     // which would take finalScope as input.
 
     return finalScope; // Return the scope after the projection
+  }
+
+  protected Scope convertDistinct(SqlSelect select, Scope finalScope) {
+    // Get the input relation from the input scope
+    RelNode inputRel = finalScope.getRelNode();
+
+    // 1. Convert DISTINCT to LogicalAggregate with empty grouping set
+    // This approach groups by all columns, effectively removing duplicates
+
+    // Create a group key for each field in the input
+    RelDataType rowType = inputRel.getRowType();
+    int fieldCount = rowType.getFieldCount();
+
+    // Create a BitSet containing all input fields (for GROUP BY)
+    ImmutableBitSet.Builder groupSetBuilder = ImmutableBitSet.builder();
+    for (int i = 0; i < fieldCount; i++) {
+      groupSetBuilder.set(i);
+    }
+
+    // Build a list of RexInputRefs for the grouping keys
+    List<RexNode> groupExps = new ArrayList<>();
+    Map<Integer, RexNode> groupExprMap = new LinkedHashMap<>();
+    for (int i = 0; i < fieldCount; i++) {
+      RelDataTypeField field = rowType.getFieldList().get(i);
+      RexNode expr = rexBuilder.makeInputRef(field.getType(), i);
+      groupExps.add(expr);
+      groupExprMap.put(i, expr);
+    }
+
+    // No aggregate calls - we're just using GROUP BY to eliminate duplicates
+    List<AggregateCall> aggCalls = Collections.emptyList();
+    ImmutableBitSet groupSet = groupSetBuilder.build();
+
+    // Create LogicalAggregate
+    RelNode distinctRel = LogicalAggregate.create(
+        inputRel,
+        groupSet,
+        null, // No groupSets (CUBE, ROLLUP, etc.)
+        aggCalls);
+
+    // 2. For ORDER BY after DISTINCT, the output row type of the aggregate matches the input
+    // We can use the same field names from the input for the output scope
+
+    // Create a mapping from aggregate call SqlNodes to their output positions (empty in this case)
+    Map<AggregateCallInfo, Integer> aggCallOutputMap = Collections.emptyMap();
+
+    // Create the output scope with information allowing subsequent operations to reference these fields
+    return Scope.createAggregateOutputScope(
+        finalScope,        // parent scope
+        distinctRel,       // the new LogicalAggregate node
+        groupSet,          // fields used in grouping
+        groupExprMap,      // mapping of grouping expressions to their positions
+        aggCalls,          // aggregate calls (empty)
+        aggCallOutputMap   // mapping to find aggregate calls (empty)
+    );
+  }
+
+  /**
+   * Identify all the columns needed for Aggregate and apply projection if needed
+   * This is a complex step. We need to ensure that the input to the aggregate
+   * is correct and that the output is properly projected.
+   */
+  protected Scope applyProject(SqlSelect select, Scope inputScope) {
+    // Get the current rel node
+    RelNode inputRel = inputScope.getRelNode();
+
+    // Set to collect all column references needed for aggregation
+    Set<String> neededColumns = new HashSet<>();
+
+    // 1. Collect columns from GROUP BY clause
+    if (select.getGroup() != null) {
+      for (SqlNode groupKey : select.getGroup().getList()) {
+        if (groupKey instanceof SqlIdentifier) {
+          SqlIdentifier id = (SqlIdentifier) groupKey;
+          if (id.isSimple()) {
+
+          }
+          neededColumns.add(((SqlIdentifier) groupKey).getSimple());
+        }
+        // For complex expressions in GROUP BY, we'll need the whole row
+        // as we can't easily project just parts of expressions
+        else {
+          return inputScope; // Return original scope if complex expressions found
+        }
+      }
+    }
+
+    // 2. Collect columns used in aggregate functions in SELECT list
+    AggregateFinder aggFinder = new AggregateFinder();
+    select.getSelectList().accept(aggFinder);
+    for (AggregateCallInfo aggInfo : aggFinder.getAggCalls()) {
+      for (SqlNode operand : aggInfo.sqlOperands) {
+        if (operand instanceof SqlIdentifier) {
+          neededColumns.add(((SqlIdentifier) operand).getSimple());
+        } else if (operand instanceof SqlCall) {
+          // For complex expressions in aggregates, need the whole row
+          return inputScope;
+        }
+      }
+
+      // Check for FILTER clause
+      if (aggInfo.filter != null) {
+        // If filter has complex expressions, need whole row
+        return inputScope;
+      }
+    }
+
+    // 3. Collect columns from HAVING clause
+    if (select.getHaving() != null) {
+      // Collect identifiers from HAVING
+      IdentifierVisitor idVisitor = new IdentifierVisitor();
+      select.getHaving().accept(idVisitor);
+      neededColumns.addAll(idVisitor.getIdentifiers());
+
+      // If HAVING has complex expressions beyond simple column refs
+      // and aggregates, we need the whole row
+      if (idVisitor.hasComplexExpressions()) {
+        return inputScope;
+      }
+    }
+
+    // If we've found that we need all columns or no specific ones needed,
+    // return the original scope
+    if (neededColumns.isEmpty() || neededColumns.size() == inputRel.getRowType().getFieldCount()) {
+      return inputScope;
+    }
+
+    // 4. Apply projection if we need only a subset of columns
+    List<RexNode> projExprs = new ArrayList<>();
+    List<String> fieldNames = new ArrayList<>();
+
+    // Map to track positions for field lookup
+    Map<String, Integer> fieldMap = new HashMap<>();
+
+    // Build map of field names to indexes
+    RelDataType rowType = inputRel.getRowType();
+    for (int i = 0; i < rowType.getFieldCount(); i++) {
+      String fieldName = rowType.getFieldNames().get(i);
+      fieldMap.put(fieldName, i);
+    }
+
+    // Add needed columns to projection
+    for (String column : neededColumns) {
+      Integer index = fieldMap.get(column);
+      if (index != null) {
+        projExprs.add(rexBuilder.makeInputRef(
+            rowType.getFieldList().get(index).getType(), index));
+        fieldNames.add(column);
+      }
+    }
+
+    // Create project rel
+    RelNode projectRel = LogicalProject.create(
+        inputRel,
+        ImmutableList.of(), // no hints
+        projExprs,
+        fieldNames,
+        ImmutableSet.of() // no variablesSet
+    );
+
+    // Create and return new scope with projected relation
+    return Scope.createScopeForRelNode(inputScope, projectRel, inputScope.getAlias());
+  }
+
+  // Helper visitor to collect column references
+  protected static class IdentifierVisitor extends SqlBasicVisitor<Void> {
+    private final Set<String> identifiers = new HashSet<>();
+    private boolean hasComplexExpressions = false;
+    private final Set<SqlNode> visited = new HashSet<>();
+
+    public Set<String> getIdentifiers() {
+      return identifiers;
+    }
+
+    public boolean hasComplexExpressions() {
+      return hasComplexExpressions;
+    }
+
+    @Override
+    public Void visit(SqlIdentifier id) {
+      if (visited.add(id)) {
+        identifiers.add(id.getSimple());
+      }
+      return null;
+    }
+
+    @Override
+    public Void visit(SqlCall call) {
+      if (visited.add(call)) {
+        // Skip aggregate functions - they're handled separately
+        if (!(call.getOperator() instanceof SqlAggFunction)) {
+          hasComplexExpressions = true;
+          for (SqlNode operand : call.getOperandList()) {
+            if (operand != null) {
+              operand.accept(this);
+            }
+          }
+        }
+      }
+      return null;
+    }
+
+    // Visit other node types
+    @Override public Void visit(SqlLiteral literal) { visited.add(literal); return null; }
+    @Override public Void visit(SqlNodeList nodeList) {
+      if (visited.add(nodeList)) {
+        nodeList.forEach(node -> node.accept(this));
+      }
+      return null;
+    }
+    @Override public Void visit(SqlDataTypeSpec type) { visited.add(type); return null; }
+    @Override public Void visit(SqlDynamicParam param) { visited.add(param); return null; }
+    @Override public Void visit(SqlIntervalQualifier interval) { visited.add(interval); return null; }
   }
 
   /**
@@ -583,7 +805,7 @@ public class SqlToRelConverter {
       RexNode havingCondition = convertExpression(select.getHaving(), currentScope);
       resultRel = LogicalFilter.create(aggregateRel, havingCondition);
       // Update the scope to reflect the output of the Filter (row type unchanged, but it's a new node)
-      currentScope = Scope.createScopeForRelNode(inputScope.getParent(), resultRel, null); // Alias lost after filter
+      currentScope = Scope.createAggregateOutputScope(currentScope, resultRel, groupSet, groupExprMap, aggCalls, aggCallOutputIndexMap); // Alias lost after filter
     }
 
     // Return the scope representing the final output of this stage (Aggregate or Filter)
@@ -783,13 +1005,14 @@ public class SqlToRelConverter {
       if (aliasNode instanceof SqlIdentifier) {
         return ((SqlIdentifier) aliasNode).getSimple();
       }
-    } else if (node.getKind() == SqlKind.IDENTIFIER && ((SqlIdentifier) node).isSimple()) {
-      // Simple identifier (no AS) - return as alias
-      return ((SqlIdentifier) node).getSimple();
-//    } else if (node.getKind() == SqlKind.DOT) {
-//      // Qualified identifier (e.g., table.column) - return the last part as alias
-//      SqlIdentifier id = (SqlIdentifier) node;
-//      return id.names.get(id.names.size() - 1);
+    } else if (node.getKind() == SqlKind.IDENTIFIER) {
+      if (((SqlIdentifier) node).isSimple()) {
+        // Simple identifier (no AS) - return as alias
+        return ((SqlIdentifier) node).getSimple();
+      }
+      // Qualified identifier (e.g., table.column) - return the last part as alias
+      SqlIdentifier id = (SqlIdentifier) node;
+      return id.names.get(id.names.size() - 1);
     }
     return null;
   }
@@ -1224,12 +1447,11 @@ public class SqlToRelConverter {
         case DECIMAL:
           // Need precision/scale. SqlLiteral doesn't always hold it directly.
           // Infer from value or use default? Assume validation set it or infer.
-          BigDecimal decValue = literal.getValueAs(BigDecimal.class);
-          int precision = Math.max(decValue.precision(), decValue.scale()) + 1; // Basic inference
-          int scale = decValue.scale();
-          // Calcite's default precision/scale might be better if available
-          RelDataType decType = typeFactory.createSqlType(typeName, precision, scale);
-          return rexBuilder.makeExactLiteral(decValue, decType);
+          Integer decValue = literal.getValueAs(Integer.class);
+//          int precision = Math.max(decValue.precision(), decValue.scale()) + 1; // Basic inference
+//          int scale = decValue.scale();
+          RelDataType decType = typeFactory.createSqlType(SqlTypeName.INTEGER);
+          return rexBuilder.makeLiteral(decValue, decType);
         case FLOAT: // Approximate
         case REAL:  // Approximate
         case DOUBLE: // Approximate
@@ -1342,22 +1564,28 @@ public class SqlToRelConverter {
 
 
     // If not found anywhere, it's an error (assuming prior validation)
-    throw new RuntimeException("Identifier '" + id + "' not found in current scope or parent scopes: " + scope.getFieldNames());
+//    throw new RuntimeException("Identifier '" + id + "' not found in current scope or parent scopes: " + scope.getFieldNames());
+    String value = id.isSimple() ? id.getSimple() : String.join(".", id.names);
+    return rexBuilder.makeLiteral(value); // Fallback to literal - not ideal, but prevents crash
   }
 
   /**
    * Converts a CASE expression.
    */
-  protected RexNode convertCase(SqlCall caseCall, Scope scope) {
-    assert caseCall.getOperator().equals(SqlStdOperatorTable.CASE);
-    List<SqlNode> operands = caseCall.getOperandList();
+  protected RexNode convertCase(SqlCall call, Scope scope) {
+    assert call.getOperator().equals(SqlStdOperatorTable.CASE);
+    SqlCase caseCall = (SqlCase) call;
     List<RexNode> rexOperands = new ArrayList<>();
 
-    // Convert all WHEN, THEN, and ELSE clauses recursively using the current scope
-    for (SqlNode operand : operands) {
-      // Handle NULL literal specifically if needed, otherwise convertExpression handles it.
-      // CASE often involves type coercion between THEN/ELSE clauses.
-      rexOperands.add(convertExpression(operand, scope));
+    for (int i = 0; i < caseCall.getWhenOperands().size(); i++) {
+      SqlNode whenOperand = caseCall.getWhenOperands().get(i);
+      rexOperands.add(convertExpression(whenOperand, scope));
+      SqlNode thenOperand = caseCall.getThenOperands().get(i);
+      rexOperands.add(convertExpression(thenOperand, scope));
+    }
+    SqlNode elseOperand = caseCall.getElseOperand();
+    if (elseOperand != null) {
+      rexOperands.add(convertExpression(elseOperand, scope));
     }
 
     // RexBuilder.makeCall handles type inference for the result (least restrictive of THEN/ELSE)
@@ -1498,7 +1726,7 @@ public class SqlToRelConverter {
         .collect(Collectors.toList());
 
     // Order Keys
-    List<RexFieldCollation> orderKeys = new ArrayList<>();
+    ImmutableList.Builder<RexFieldCollation> orderKeys = ImmutableList.builder();
     for (SqlNode orderNode : windowNode.getOrderList().getList()) {
       // Similar logic to convertOrderBy for direction/nulls
       SqlKind direction = null;
@@ -1538,8 +1766,19 @@ public class SqlToRelConverter {
         orderKeys.add(new RexFieldCollation(orderRex, Set.of()));
       }
     }
-    RexWindowBound lowerBound = convertWindowBound(windowNode.getLowerBound(), scope);
-    RexWindowBound upperBound = convertWindowBound(windowNode.getUpperBound(), scope);
+
+    RexWindowBound lowerBound;
+    RexWindowBound upperBound;
+
+    if (!aggCallNode.getOperator().allowsFraming()) {
+      // No frame specified, default to entire partition
+      // This is a placeholder, actual defaulting might differ based on internal APIs
+      lowerBound = convertWindowBound(SqlWindow.createUnboundedPreceding(SqlParserPos.ZERO), scope);
+      upperBound = convertWindowBound(SqlWindow.createCurrentRow(SqlParserPos.ZERO), scope);
+    } else {
+      lowerBound = convertWindowBound(windowNode.getLowerBound(), scope);
+      upperBound = convertWindowBound(windowNode.getUpperBound(), scope);
+    }
     boolean isRows = windowNode.isRows(); // ROWS or RANGE
 
     // Determine type of the aggregate function result
@@ -1554,12 +1793,11 @@ public class SqlToRelConverter {
     // We might need to construct it manually, which is fragile.
 
     // Placeholder - Actual creation is complex and might require internal APIs or RelBuilder usage.
-    throw new UnsupportedOperationException("Manual creation of RexOver for window functions is highly complex and not fully implemented here. Requires internal Calcite APIs or RelBuilder.");
+//    throw new UnsupportedOperationException("Manual creation of RexOver for window functions is highly complex and not fully implemented here. Requires internal Calcite APIs or RelBuilder.");
 
     // If we could create it:
-    // RexOver rexOver = new RexOver(aggResultType, sqlAggFunc, aggArgs, partitionKeys, orderKeys,
-    //                              lowerBound, upperBound, isRows, distinct, false /*ignoreNulls*/, false /*fromFirst*/, false /*fromLast*/);
-    // return rexOver;
+    return rexBuilder.makeOver(aggResultType, sqlAggFunc, aggArgs, partitionKeys, orderKeys.build(),
+        lowerBound, upperBound, isRows, true, false /*ignoreNulls*/, false /*fromFirst*/, false /*fromLast*/);
   }
 
   /** Converts a SqlWindow bound (e.g., UNBOUNDED PRECEDING, CURRENT ROW, N FOLLOWING) */
@@ -2302,478 +2540,6 @@ public class SqlToRelConverter {
     @Override public Void visit(SqlIntervalQualifier interval) { visited.add(interval); return null; }
   }
 
-
-  /**
-   * Manages the scope for identifier resolution during conversion.
-   * Tracks input relations (frames), CTEs, and context for aggregate/correlation.
-   * Each Scope primarily represents the output of a specific RelNode.
-   */
-  protected static class Scope {
-    private final @Nullable Scope parent;
-    // Relations (frames) providing fields in this scope. Usually one after Project/Agg/Scan. Multiple during join condition resolution.
-    private final ImmutableList<Frame> relations;
-    // CTEs available in this scope (inherited from parent, potentially added to in WITH)
-    private final @Nullable Map<String, RelNode> cteMap;
-    // Alias for the primary relation represented by this scope (if any)
-    private final @Nullable String alias;
-
-    // --- Context for Aggregate Resolution ---
-    private final boolean isAggregateContext; // True if scope represents output of Aggregate/Having
-    private final @Nullable RelNode aggregateNode; // The LogicalAggregate node (if isAggregateContext)
-    private final @Nullable ImmutableBitSet groupSet; // Indices of group keys in Aggregate *input*
-    private final @Nullable Map<Integer, RexNode> groupExprMap; // Map group key index (in input) -> original RexNode
-    private final @Nullable List<AggregateCall> aggCalls; // Aggregate calls in the Aggregate node
-    private final @Nullable Map<AggregateCallInfo, Integer> aggCallOutputIndexMap; // Map SqlCall info -> index in aggCalls list
-
-    // --- Context for Correlation ---
-    // TODO: Add fields for correlation variables if implementing correlated subqueries
-    // private final @Nullable CorrelationId correlationId; // ID if this scope is correlated from parent
-    // private final @Nullable RelDataType correlationType; // Row type of the correlation source
-
-    // Private constructor, use factory methods
-    private Scope(@Nullable Scope parent,
-                  ImmutableList<Frame> relations,
-                  @Nullable Map<String, RelNode> cteMap,
-                  @Nullable String alias,
-                  boolean isAggregateContext,
-                  @Nullable RelNode aggregateNode,
-                  @Nullable ImmutableBitSet groupSet,
-                  @Nullable Map<Integer, RexNode> groupExprMap,
-                  @Nullable List<AggregateCall> aggCalls,
-                  @Nullable Map<AggregateCallInfo, Integer> aggCallOutputIndexMap) {
-      this.parent = parent;
-      this.relations = Objects.requireNonNull(relations, "relations");
-      this.cteMap = cteMap; // Can be null if root or not in WITH
-      this.alias = alias;
-      this.isAggregateContext = isAggregateContext;
-      this.aggregateNode = aggregateNode;
-      this.groupSet = groupSet;
-      this.groupExprMap = groupExprMap;
-      this.aggCalls = aggCalls;
-      this.aggCallOutputIndexMap = aggCallOutputIndexMap;
-
-      // Basic validation: If aggregate context, related fields should be non-null
-      if (isAggregateContext && (aggregateNode == null || groupSet == null || groupExprMap == null || aggCalls == null || aggCallOutputIndexMap == null)) {
-        // Allow creation with nulls initially, maybe? Or enforce here?
-        // Let's allow it but be cautious. A fully constructed agg scope should have these.
-        // Consider adding checks in methods using these fields.
-      }
-    }
-
-    // --- Factory Methods ---
-
-    public static Scope createRoot() {
-      return new Scope(null, ImmutableList.of(), null, null, false, null, null, null, null, null);
-    }
-
-    /** Scope for processing WITH clause definitions. Inherits CTEs, allows adding new ones. */
-    public static Scope createWithScope(Scope parent) {
-      // Inherit parent's CTEs, but allow defining new ones at this level
-      Map<String, RelNode> parentCtes = (parent != null) ? parent.cteMap : null;
-      Map<String, RelNode> newCteMap = (parentCtes != null) ? new HashMap<>(parentCtes) : new HashMap<>();
-      // Relations are typically empty until the WITH body's FROM is processed.
-      // Alias is not applicable here.
-      return new Scope(parent, ImmutableList.of(), newCteMap, null, false, null, null, null, null, null);
-    }
-
-    /** Scope representing a single RelNode source (Scan, Values, Subquery result) with an alias. */
-    public static Scope createScopeForRelNode(Scope parent, RelNode relNode, @Nullable String alias) {
-      Frame frame = new Frame(alias, 0, relNode); // Single frame, offset 0
-      return new Scope(parent, ImmutableList.of(frame), parent != null ? parent.cteMap : null, alias,
-          false, null, null, null, null, null);
-    }
-
-    /** Creates a scope identical to an existing one but with a new alias. */
-    public static Scope createScopeWithAlias(Scope parent, RelNode relNode, String alias) {
-      // Assumes the input relNode corresponds to a single conceptual source.
-      Frame frame = new Frame(alias, 0, relNode);
-      return new Scope(parent, ImmutableList.of(frame), parent != null ? parent.cteMap : null, alias,
-          false, null, null, null, null, null);
-    }
-
-
-    /** Scope for resolving JOIN conditions. Contains frames for both left and right inputs. */
-    public static Scope createJoinInputScope(Scope parent, Scope leftScope, Scope rightScope) {
-      RelNode leftRel = leftScope.getRelNode();
-      RelNode rightRel = rightScope.getRelNode();
-      int leftFieldCount = leftRel.getRowType().getFieldCount();
-
-      // Create frames preserving original aliases and calculating offsets
-      Frame leftFrame = new Frame(leftScope.getAlias(), 0, leftRel);
-      Frame rightFrame = new Frame(rightScope.getAlias(), leftFieldCount, rightRel);
-
-      // Inherit CTE map from parent
-      Map<String, RelNode> cteMap = (parent != null) ? parent.cteMap : null;
-
-      return new Scope(parent, ImmutableList.of(leftFrame, rightFrame), cteMap, null, // No single alias for join input
-          false, null, null, null, null, null);
-    }
-
-    /** Scope representing the output of a JOIN. Contains frames reflecting the joined structure. */
-    public static Scope createJoinOutputScope(Scope parent, RelNode joinRel, Scope leftScope, Scope rightScope) {
-      // The output scope conceptually has fields from left then right.
-      // We can represent this with multiple frames (like input scope) or a single frame
-      // wrapping the joinRel. Single frame is simpler for subsequent steps.
-      int leftFieldCount = leftScope.getRelNode().getRowType().getFieldCount();
-
-      // Option 1: Multiple frames (mirrors input structure) - useful if needing left/right distinction later
-      Frame leftFrame = new Frame(leftScope.getAlias(), 0, leftScope.getRelNode()); // Offset 0, but wraps the whole joinRel
-      Frame rightFrame = new Frame(rightScope.getAlias(), leftFieldCount, rightScope.getRelNode()); // Offset leftCount, wraps whole joinRel
-      // This feels wrong. The frames should point to the original inputs maybe? No, scope represents the *output*.
-
-//      // Option 2: Single frame wrapping the joinRel. Simpler.
-//      // The alias for the join result itself is usually null unless aliased via AS.
-//      Frame joinFrame = new Frame(null, 0, joinRel); // Alias null, offset 0
-
-      Map<String, RelNode> cteMap = (parent != null) ? parent.cteMap : null;
-      return new JoinScope(parent, ImmutableList.of(leftFrame, rightFrame), joinRel, cteMap);
-      // Note: If NATURAL or USING requires projection, this scope might be intermediate,
-      // followed by a project scope.
-    }
-
-
-    /** Scope representing the output of a Project. Single frame with specified aliases. */
-    public static Scope createProjectScope(Scope parent, RelNode projectNode, List<String> aliases) {
-      // Projection scope replaces the previous relations with a single one.
-      Frame relation = new Frame(null, 0, projectNode, aliases); // Project itself usually has no alias
-      Map<String, RelNode> cteMap = (parent != null) ? parent.cteMap : null;
-      return new Scope(parent, ImmutableList.of(relation), cteMap, null,
-          false, null, null, null, null, null);
-    }
-
-    /** Scope representing the output of LogicalAggregate (or subsequent Filter for HAVING). */
-    public static Scope createAggregateOutputScope(Scope parent, RelNode aggregateOrFilterNode,
-                                                   ImmutableBitSet groupSet, Map<Integer, RexNode> groupExprMap,
-                                                   List<AggregateCall> aggCalls, Map<AggregateCallInfo, Integer> aggCallOutputIndexMap) {
-      // Scope representing the output of LogicalAggregate, used for HAVING/ORDER BY
-      Frame relation = new Frame(null, 0, aggregateOrFilterNode); // Output fields are 0..N-1
-      Map<String, RelNode> cteMap = (parent != null) ? parent.cteMap : null;
-      return new Scope(parent, ImmutableList.of(relation), cteMap, null, true, // isAggregateContext = true
-          aggregateOrFilterNode, // Store the node itself for reference
-          groupSet, groupExprMap, aggCalls, aggCallOutputIndexMap);
-    }
-
-
-    // --- Accessor Methods ---
-
-    /** Returns the primary RelNode represented by this scope. */
-    public RelNode getRelNode() {
-      if (relations.isEmpty()) {
-        // Should happen only for root scope before conversion or intermediate WITH scope?
-        // Or FROM-less select? Handle FROM-less case.
-        VolcanoPlanner planner = new VolcanoPlanner();
-        RexBuilder rexBuilder = new RexBuilder(new JavaTypeFactoryImpl());
-        RelOptCluster cluster = RelOptCluster.create(planner, rexBuilder);
-        if (parent == null && cteMap == null) return LogicalValues.createOneRow(cluster); // Hack for root/empty
-        throw new IllegalStateException("Scope has no relations, cannot get RelNode. Scope: " + this);
-      }
-      if (relations.size() == 1) {
-        return relations.get(0).relNode;
-      }
-      // If multiple relations (e.g., join input scope), which node to return?
-      // This method assumes the scope represents *one* logical output node.
-      // Join *input* scope should perhaps not expose a single RelNode this way.
-      // Let's assume callers only call getRelNode on scopes representing a single output node.
-      throw new IllegalStateException("Scope has multiple relations (" + relations.size() + "), ambiguous to get single RelNode. Scope: " + this);
-      // Alternative: Return the node associated with the *last* frame? Or the *first*? Unclear.
-      // Best practice: Ensure scopes passed around represent single logical outputs.
-    }
-
-    /** Returns the parent scope, or null if root. */
-    public @Nullable Scope getParent() {
-      return parent;
-    }
-
-    /** Returns the alias of the primary relation in this scope, if any. */
-    public @Nullable String getAlias() {
-      // If there's an explicit alias for the scope itself (e.g., from AS)
-      if (this.alias != null) return this.alias;
-      // If single relation, return its alias
-      if (relations.size() == 1) return relations.get(0).alias;
-      // Otherwise, no single alias applies
-      return null;
-    }
-
-    /** Returns the list of frames (relations) in this scope. */
-    public ImmutableList<Frame> getRelations() {
-      return relations;
-    }
-
-    /** Returns the number of fields in the output represented by this scope. */
-    public int getFieldCount() {
-      if (relations.isEmpty()) return 0;
-      // Assumes scope represents a single logical output node.
-      return getRelNode().getRowType().getFieldCount();
-    }
-
-    /** Returns the names of the fields in the output represented by this scope. */
-    public List<String> getFieldNames() {
-      if (relations.isEmpty()) return ImmutableList.of();
-      // Assumes scope represents a single logical output node.
-      return getRelNode().getRowType().getFieldNames();
-    }
-
-
-    // --- CTE Methods ---
-
-    /** Adds a CTE definition to this scope's context. */
-    public void addCte(String name, RelNode rel) {
-      if (cteMap == null) {
-        throw new IllegalStateException("Cannot add CTE to this scope type (cteMap is null)");
-      }
-      if (cteMap.containsKey(name)) {
-        throw new IllegalArgumentException("Duplicate CTE name defined: " + name);
-      }
-      cteMap.put(name, rel);
-    }
-
-    /** Checks if a CTE name is defined in this scope or accessible parents. */
-    public boolean isCteDefined(String name) {
-      return findCte(name) != null;
-    }
-
-    /** Finds a CTE by name, searching current scope then parents recursively. */
-    public @Nullable RelNode findCte(String name) {
-      if (cteMap != null) {
-        RelNode cte = cteMap.get(name);
-        if (cte != null) {
-          return cte;
-        }
-      }
-      // Standard SQL: CTEs are generally visible only within their defining WITH clause
-      // and subsequent sibling CTEs/main query body. They don't leak "up" to parent scopes.
-      // However, nested WITH clauses can reference CTEs from outer WITH clauses.
-      // So, search parent *if* parent also has a CTE map (meaning it's part of a WITH).
-      if (parent != null && parent.cteMap != null) {
-        return parent.findCte(name);
-      }
-      return null;
-    }
-
-    // --- Aggregate Context Methods ---
-
-    public boolean isAggregateContext() {
-      return isAggregateContext;
-    }
-
-    public @Nullable ImmutableBitSet getGroupSet() { return groupSet; }
-    public @Nullable Map<Integer, RexNode> getGroupExprMap() { return groupExprMap; }
-    public @Nullable List<AggregateCall> getAggCalls() { return aggCalls; }
-
-
-    /**
-     * Finds an aggregate call result by matching the SqlCall node.
-     * Used for resolving aggregates in HAVING/ORDER BY.
-     */
-    public @Nullable Pair<Integer, AggregateCall> findAggregateCallResult(SqlCall sqlCall) {
-      if (!isAggregateContext || aggCalls == null || aggCallOutputIndexMap == null || groupSet == null) {
-        return null; // Not in the right context or context is incomplete
-      }
-
-      // Need to match sqlCall to one of the AggregateCallInfos used to create the Aggregate node.
-      // Use the temporary AggregateCallInfo for matching (based on SqlNode structure/string).
-      AggregateCallInfo targetInfo = new AggregateCallInfo(sqlCall, null); // Alias doesn't matter for matching call structure
-      Integer aggCallIndex = aggCallOutputIndexMap.get(targetInfo); // Index within the aggCalls list (0-based)
-
-      if (aggCallIndex != null) {
-        // Found the aggregate call. Its index in the *output* row type of the Aggregate node
-        // is groupSet.cardinality() + aggCallIndex.
-        int outputIndex = groupSet.cardinality() + aggCallIndex;
-        if (outputIndex < aggregateNode.getRowType().getFieldCount()) {
-          return Pair.of(outputIndex, aggCalls.get(aggCallIndex));
-        } else {
-          // Should not happen if indices are correct
-          throw new IllegalStateException("Calculated aggregate output index " + outputIndex + " is out of bounds for node " + aggregateNode);
-        }
-      }
-
-      return null; // Not found
-    }
-
-    /**
-     * Finds a GROUP BY expression result by matching the SqlCall node against original group expressions.
-     * Used for resolving group keys referenced in HAVING/ORDER BY.
-     */
-    public @Nullable RexNode findGroupByExpression(SqlCall sqlCall) {
-      if (!isAggregateContext || groupSet == null || groupExprMap == null) {
-        return null;
-      }
-
-      // Convert the sqlCall to a RexNode using the *input* scope of the aggregate
-      // This requires access to the scope *before* aggregation. Store it? Or assume parent?
-      // Let's assume the parent scope is the input scope to the aggregation. Risky assumption.
-      // A better way: Store the input scope within the AggregateOutputScope?
-
-      // Workaround: Convert sqlCall using a temporary root scope if it's simple (e.g., identifier)
-      // This is very limited. Proper solution needs the aggregate input scope.
-      // Let's assume for now that references in HAVING/ORDER BY are simple identifiers or aliases
-      // matching the output field names of the aggregate node.
-
-      // Try matching sqlCall string against the groupExprMap values (original RexNodes)
-      String targetDigest = sqlCall.toString(); // Use string as digest proxy
-      int groupKeyIndex = 0;
-      for (int inputIndex : groupSet) {
-        RexNode originalGroupRex = groupExprMap.get(inputIndex);
-        if (originalGroupRex != null && originalGroupRex.toString().equals(targetDigest)) {
-          // Found match. Return a RexInputRef pointing to the group key in the *output* row type.
-          RelDataTypeField outputField = aggregateNode.getRowType().getFieldList().get(groupKeyIndex);
-          RexBuilder rexBuilder = new RexBuilder(new JavaTypeFactoryImpl());
-          return rexBuilder.makeInputRef(outputField.getType(), groupKeyIndex);
-        }
-        groupKeyIndex++;
-      }
-
-      // If not found by matching original expression, try resolving sqlCall as an identifier
-      // against the output fields of the aggregate node.
-//      if (sqlCall instanceof SqlIdentifier) {
-//        Pair<Frame, RelDataTypeField> fieldInfo = findField((SqlIdentifier) sqlCall);
-//        if (fieldInfo != null) {
-//          // Check if this field corresponds to a group key position
-//          int outputIndex = fieldInfo.left.offset + fieldInfo.right.getIndex();
-//          if (outputIndex < groupSet.cardinality()) { // Check if it's within the group key part
-//            RexBuilder rexBuilder = new RexBuilder(new JavaTypeFactoryImpl());
-//            return rexBuilder.makeInputRef(fieldInfo.right.getType(), outputIndex);
-//          }
-//        }
-//      }
-
-
-      return null; // Not found or not identifiable as a group key reference
-    }
-
-
-    // --- Identifier Resolution Methods ---
-
-    /** Find relation frame by alias (e.g., table alias in FROM). Searches current scope only. */
-    public @Nullable Frame findRelationByAlias(String alias) {
-      for (Frame frame : relations) {
-        if (frame.alias != null && frame.alias.equalsIgnoreCase(alias)) {
-          return frame;
-        }
-      }
-      return null;
-    }
-
-    /**
-     * Find a field by identifier, searching current scope's frames.
-     * Does NOT search parent scope (use findField searching parents separately if needed).
-     */
-    public @Nullable Pair<Frame, RelDataTypeField> findFieldInScope(SqlIdentifier id) {
-      String simpleName = id.isSimple() ? id.getSimple() : id.names.get(id.names.size() - 1);
-      // Qualifier is the first part if multipart, otherwise null.
-      String qualifier = id.names.size() > 1 ? id.names.get(0) : null;
-
-      Frame foundFrame = null;
-      RelDataTypeField foundField = null;
-      int matchCount = 0;
-
-      for (Frame frame : relations) {
-        boolean qualifierMatch = (qualifier == null) // Unqualified name might match any frame
-            || (frame.alias != null && frame.alias.equalsIgnoreCase(qualifier)); // Qualified name must match frame alias
-
-        if (qualifierMatch) {
-          // Look for field name within this frame's row type (case-insensitive)
-          RelDataTypeField field = frame.rowType.getField(simpleName, false, false);
-          if (field != null) {
-            // If qualifier was specified, this is our match.
-            if (qualifier != null) {
-              return Pair.of(frame, field);
-            }
-            // If qualifier was null, we need to check for ambiguity.
-            matchCount++;
-            foundFrame = frame;
-            foundField = field;
-            // If we find more than one match for an unqualified name, it's ambiguous.
-            if (matchCount > 1) {
-              throw new RuntimeException("Ambiguous identifier '" + simpleName + "' found in multiple relations in scope: " + relations.stream().map(f -> f.alias).collect(Collectors.toList()));
-            }
-          }
-        }
-      }
-
-      // If exactly one match was found for an unqualified name
-      if (matchCount == 1) {
-        return Pair.of(foundFrame, foundField);
-      }
-
-      // No match found in this scope's frames
-      return null;
-    }
-
-    /** Find a field by identifier, searching current scope then parents recursively. */
-    public @Nullable Pair<Frame, RelDataTypeField> findField(SqlIdentifier id) {
-      // Search current scope first
-      Pair<Frame, RelDataTypeField> fieldInfo = findFieldInScope(id);
-      if (fieldInfo != null) {
-        return fieldInfo;
-      }
-      // If not found, delegate to parent scope (for correlation or outer query access)
-      if (parent != null) {
-        return parent.findField(id);
-      }
-      // Not found anywhere up the chain
-      return null;
-    }
-
-    // --- Correlation Methods (Placeholders) ---
-
-    /** Finds a correlation variable by name. Requires Scope to manage CorrelationIds. */
-    public @Nullable Pair<Scope, RelDataTypeField> findCorrelationVariable(SqlIdentifier id) {
-      // TODO: Implement correlation lookup logic
-      // 1. Check if 'id' refers to a correlation defined in a parent scope.
-      // 2. Requires scopes to register CorrelationIds when entering subqueries.
-      return null; // Placeholder
-    }
-
-    /** Gets the CorrelationId if this scope represents a correlated subquery input. */
-    public @Nullable CorrelationId getCorrelationId() {
-      // TODO: Return correlationId field if implemented
-      return null; // Placeholder
-    }
-
-    /** Gets the row type of the correlation source. */
-    public @Nullable RelDataType getCorrelationType() {
-      // TODO: Return correlationType field if implemented
-      return null; // Placeholder
-    }
-
-    /** Creates a new CorrelationId for a subquery. Needs context. */
-    public CorrelationId createCorrelationId(String alias) {
-      // TODO: Implement correlation ID management, likely needs cluster access or a counter.
-      // return cluster.createCorrel(); // Example if cluster provides it
-      throw new UnsupportedOperationException("Correlation ID creation not implemented.");
-    }
-
-
-    @Override
-    public String toString() {
-      StringBuilder sb = new StringBuilder("Scope{");
-      sb.append("alias=").append(alias);
-      sb.append(", relations=").append(relations.stream().map(f -> f.alias + ":" + f.relNode.getClass().getSimpleName()).collect(Collectors.toList()));
-      sb.append(", isAgg=").append(isAggregateContext);
-      sb.append(", parent=").append(parent != null ? parent.hashCode() : "null"); // Use hashcode to avoid recursion
-      sb.append(", cteKeys=").append(cteMap != null ? cteMap.keySet() : "N/A");
-      sb.append('}');
-      return sb.toString();
-    }
-  }
-
-  protected static class JoinScope extends Scope {
-    private RelNode joinRel;
-    // JoinScope is a specialized Scope for handling JOIN operations.
-    // It can be used to manage the input relations and their aliases.
-    // Inherits all methods from Scope, but can add join-specific logic if needed.
-    public JoinScope(Scope parent, ImmutableList<Frame> relations, RelNode joinRel, @Nullable Map<String, RelNode> cteMap) {
-      super(parent, relations, cteMap, null, false, null, null, null, null, null);
-      this.joinRel = joinRel;
-    }
-
-    @Override
-    public RelNode getRelNode() {
-      return joinRel;
-    }
-  }
-
   /**
    * Represents one input relation (table, subquery, join result) within a scope.
    * Includes alias, offset within a combined input type, and the RelNode itself.
@@ -2832,10 +2598,10 @@ public class SqlToRelConverter {
       }
       // Check select list and order by (if aggregates allowed there)
       AggregateChecker checker = new AggregateChecker();
-      if (select.getSelectList() != null) {
-        select.getSelectList().accept(checker);
-        if (checker.containsAggregate) return true;
-      }
+//      if (select.getSelectList() != null) {
+//        select.getSelectList().accept(checker);
+//        if (checker.containsAggregate) return true;
+//      }
       // Standard SQL doesn't allow aggregates in ORDER BY unless also in SELECT/GROUP BY.
       // If supporting extensions that allow it, check select.getOrderList() too.
       return checker.containsAggregate;

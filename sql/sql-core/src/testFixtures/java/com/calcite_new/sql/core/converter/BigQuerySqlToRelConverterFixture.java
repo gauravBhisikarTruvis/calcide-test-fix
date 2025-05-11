@@ -27,6 +27,7 @@ public class BigQuerySqlToRelConverterFixture extends SqlToRelConverterFixture {
   public BigQuerySqlToRelConverterFixture() {
     super(new BigQuerySqlDialect(),
         new BigQuerySqlParserFixture(),
+//        List.of(Product.BIG_QUERY.name.toLowerCase(), PROJECT_NAME));
         List.of(Product.BIG_QUERY.name, PROJECT_NAME, DATASET_NAME));
     withCatalog(catalog);
   }

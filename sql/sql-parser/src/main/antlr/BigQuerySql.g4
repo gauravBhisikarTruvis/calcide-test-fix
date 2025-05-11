@@ -277,7 +277,7 @@ structField
 
 functionCall
     : (COUNT | SUM | AVG | MIN | MAX) LPAREN (DISTINCT | ALL)? (expression | '*') RPAREN
-    | identifier LPAREN (DISTINCT | ALL)? (expression (',' expression)*)? RPAREN (OVER windowSpecification)?
+    | (identifier LPAREN (DISTINCT | ALL)? (expression (',' expression)*)? RPAREN | (ROW_NUMBER | RANK) LPAREN RPAREN) (OVER windowSpecification)?
     | identifier LPAREN '*' RPAREN
     | EXTRACT LPAREN identifier FROM expression RPAREN
     | DATE_ADD LPAREN expression ',' INTERVAL expression dateUnit RPAREN
@@ -498,6 +498,8 @@ LEFT                    : [Ll] [Ee] [Ff] [Tt] ;
 LIKE                    : [Ll] [Ii] [Kk] [Ee] ;
 LIMIT                   : [Ll] [Ii] [Mm] [Ii] [Tt] ;
 MAX                     : [Mm] [Aa] [Xx] ;
+ROW_NUMBER             : [Rr] [Oo] [Ww] [_] [Nn] [Uu] [Mm] [Bb] [Ee] [Rr] ;
+RANK                    : [Rr] [Aa] [Nn] [Kk] ;
 MIN                     : [Mm] [Ii] [Nn] ;
 NOT                     : [Nn] [Oo] [Tt] ;
 NULLS                   : [Nn] [Uu] [Ll] [Ll] [Ss] ;

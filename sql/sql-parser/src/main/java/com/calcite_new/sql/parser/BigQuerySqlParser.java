@@ -1,7 +1,7 @@
 package com.calcite_new.sql.parser;
 
 import com.calcite_new.sql.parser.antlr.BigQuerySqlLexer;
-import com.calcite_new.sql.parser.bigquery.BigQueryToCalciteVisitor;
+import com.calcite_new.sql.parser.bigquery.BigQueryToSqlNodeVisitor;
 import org.antlr.v4.runtime.*;
 import org.apache.calcite.sql.SqlNode;
 import org.slf4j.Logger;
@@ -36,7 +36,7 @@ public class BigQuerySqlParser extends SqlParser {
     }
     parser.addErrorListener(syntaxErrorListener);
     // Create visitor
-    BigQueryToCalciteVisitor visitor = new BigQueryToCalciteVisitor();
+    BigQueryToSqlNodeVisitor visitor = new BigQueryToSqlNodeVisitor();
     ParserRuleContext selectStatement = parser.selectStatement();
     if (syntaxErrorListener.hasErrors()) {
       logger.error("Parsing failed.");

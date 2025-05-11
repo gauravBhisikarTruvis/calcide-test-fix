@@ -2,7 +2,8 @@ package com.calcite_new.core.model;
 
 import com.calcite_new.core.dialect.Dialect;
 
-import java.util.Arrays;
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.List;
 
 /**
@@ -36,17 +37,17 @@ public class EntityQualifier {
 
   private List<Identifier> initQualifiers() {
     int supportedQualificationLevels = dialect.supportedQualificationLevels() + 1;
-    Identifier[] actualQualifiers = new Identifier[supportedQualificationLevels];
+    Deque<Identifier> actualQualifiers = new ArrayDeque<>();
     for (int i = 0; i < supportedQualificationLevels; i++) {
-      int idx = supportedQualificationLevels - i - 1;
       if (qualifiers.size() > i) {
-        actualQualifiers[idx] = createId(qualifiers.get(qualifiers.size() - i - 1));
+        actualQualifiers.push(createId(qualifiers.get(qualifiers.size() - i - 1)));
         continue;
       }
-      actualQualifiers[idx] = createId(defaultQualifiers.get(idx));
+      int idx = supportedQualificationLevels - i - 1;
+      actualQualifiers.push(createId(defaultQualifiers.get(idx)));
     }
-    actualQualifiers[0] = createId(dialect.product.name());
-    return Arrays.stream(actualQualifiers).toList();
+//    actualQualifiers.push(createId(dialect.product.name()));
+    return actualQualifiers.stream().toList();
   }
 
 

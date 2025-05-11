@@ -69,6 +69,40 @@ public class BigQueryFoodmartCatalogBuilder {
     catalog.addEntity(table);
   }
 
+  private void addProductClassTable(EntityCatalog catalog) {
+    List<Column> columns = new ArrayList<>();
+    int position = 0;
+
+    columns.add(new Column(Identifier.of("product_class_id", new BigQuerySqlDialect()),
+        position++,
+        new DataType(SqlTypeName.INTEGER, 0, 0),
+        false));
+    columns.add(new Column(Identifier.of("product_subcategory", new BigQuerySqlDialect()),
+        position++,
+        new DataType(SqlTypeName.VARCHAR, 30, 0),
+        true));
+    columns.add(new Column(Identifier.of("product_category", new BigQuerySqlDialect()),
+        position++,
+        new DataType(SqlTypeName.VARCHAR, 30, 0),
+        true));
+    columns.add(new Column(Identifier.of("product_department", new BigQuerySqlDialect()),
+        position++,
+        new DataType(SqlTypeName.VARCHAR, 30, 0),
+        true));
+    columns.add(new Column(Identifier.of("product_family", new BigQuerySqlDialect()),
+        position++,
+        new DataType(SqlTypeName.VARCHAR, 30, 0),
+        true));
+
+    List<Identifier> namespace = List.of(dialect, projectName, datasetName);
+    catalog.addEntity(new Table(
+        namespace,
+        Identifier.of("product_class", new BigQuerySqlDialect()),
+        columns,
+        System.currentTimeMillis()
+    ));
+  }
+
   private void addStoreTable(EntityCatalog catalog) {
     List<Column> columns = new ArrayList<>();
     int position = 0;
@@ -174,6 +208,60 @@ public class BigQueryFoodmartCatalogBuilder {
     catalog.addEntity(new Table(
         namespace,
         Identifier.of("store", new BigQuerySqlDialect()),
+        columns,
+        System.currentTimeMillis()
+    ));
+  }
+
+  private void addTimeByDayTable(EntityCatalog catalog) {
+    List<Column> columns = new ArrayList<>();
+    int position = 0;
+
+    columns.add(new Column(Identifier.of("time_id", new BigQuerySqlDialect()),
+        position++,
+        new DataType(SqlTypeName.INTEGER, 0, 0),
+        false));
+    columns.add(new Column(Identifier.of("the_date", new BigQuerySqlDialect()),
+        position++,
+        new DataType(SqlTypeName.TIMESTAMP, 0, 0),
+        true));
+    columns.add(new Column(Identifier.of("the_day", new BigQuerySqlDialect()),
+        position++,
+        new DataType(SqlTypeName.VARCHAR, 30, 0),
+        true));
+    columns.add(new Column(Identifier.of("the_month", new BigQuerySqlDialect()),
+        position++,
+        new DataType(SqlTypeName.VARCHAR, 30, 0),
+        true));
+    columns.add(new Column(Identifier.of("the_year", new BigQuerySqlDialect()),
+        position++,
+        new DataType(SqlTypeName.SMALLINT, 0, 0),
+        true));
+    columns.add(new Column(Identifier.of("day_of_month", new BigQuerySqlDialect()),
+        position++,
+        new DataType(SqlTypeName.SMALLINT, 0, 0),
+        true));
+    columns.add(new Column(Identifier.of("week_of_year", new BigQuerySqlDialect()),
+        position++,
+        new DataType(SqlTypeName.INTEGER, 0, 0),
+        true));
+    columns.add(new Column(Identifier.of("month_of_year", new BigQuerySqlDialect()),
+        position++,
+        new DataType(SqlTypeName.SMALLINT, 0, 0),
+        true));
+    columns.add(new Column(Identifier.of("quarter", new BigQuerySqlDialect()),
+        position++,
+        new DataType(SqlTypeName.VARCHAR, 30, 0),
+        true));
+    columns.add(new Column(Identifier.of("fiscal_period", new BigQuerySqlDialect()),
+        position++,
+        new DataType(SqlTypeName.VARCHAR, 30, 0),
+        true));
+
+    List<Identifier> namespace = List.of(dialect, projectName, datasetName);
+    catalog.addEntity(new Table(
+        namespace,
+        Identifier.of("time_by_day", new BigQuerySqlDialect()),
         columns,
         System.currentTimeMillis()
     ));
@@ -346,6 +434,12 @@ public class BigQueryFoodmartCatalogBuilder {
 
     // Add store table
     addStoreTable(catalog);
+
+    // Add product class table
+    addProductClassTable(catalog);
+
+    // Add time by day table
+    addTimeByDayTable(catalog);
 
     // Other dimension tables would be implemented similarly
   }
