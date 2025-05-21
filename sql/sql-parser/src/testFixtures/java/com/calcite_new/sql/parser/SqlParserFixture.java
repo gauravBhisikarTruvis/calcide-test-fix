@@ -29,7 +29,7 @@ public abstract class SqlParserFixture {
     return this;
   }
 
-  void check(String expectedSql) {
+  public void check(String expectedSql) {
     Objects.requireNonNull(sql, "SQL string is null");
     SqlNode node = parse();
     assertEquals(expectedSql, node.toSqlString(CALCITE_DIALECT).toString());

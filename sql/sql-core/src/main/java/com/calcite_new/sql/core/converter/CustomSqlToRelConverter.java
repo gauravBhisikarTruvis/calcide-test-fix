@@ -199,7 +199,7 @@ public class CustomSqlToRelConverter {
       // Identify all the columns needed for Aggregate and apply projection if needed
       // This is a complex step. We need to ensure that the input to the aggregate
       // is correct and that the output is properly projected.
-//      aggregateInputScope = applyProject(select, currentScope);
+      aggregateInputScope = applyProject(select, currentScope);
       // convertAggregate now returns the Scope after aggregation/having
       currentScope = convertAggregate(select, aggregateInputScope);
       currentRel = currentScope.getRelNode(); // Update RelNode from the new scope
@@ -293,37 +293,20 @@ public class CustomSqlToRelConverter {
     RelNode inputRel = inputScope.getRelNode();
 
     // Set to collect all column references needed for aggregation
-    Set<String> neededColumns = new HashSet<>();
+    Set<SqlIdentifier> neededColumns = new HashSet<>();
 
-    // 1. Collect columns from GROUP BY clause
-    if (select.getGroup() != null) {
-      for (SqlNode groupKey : select.getGroup().getList()) {
-        if (groupKey instanceof SqlIdentifier) {
-          SqlIdentifier id = (SqlIdentifier) groupKey;
-          if (id.isSimple()) {
-
-          }
-          neededColumns.add(((SqlIdentifier) groupKey).getSimple());
-        }
-        // For complex expressions in GROUP BY, we'll need the whole row
-        // as we can't easily project just parts of expressions
-        else {
-          return inputScope; // Return original scope if complex expressions found
-        }
-      }
-    }
-
-    // 2. Collect columns used in aggregate functions in SELECT list
+    // 1. Collect columns used in aggregate functions in SELECT list
     AggregateFinder aggFinder = new AggregateFinder();
-    select.getSelectList().accept(aggFinder);
+    neededColumns.addAll(IdentifierCollector.collect(select.getSelectList()));
     for (AggregateCallInfo aggInfo : aggFinder.getAggCalls()) {
       for (SqlNode operand : aggInfo.sqlOperands) {
-        if (operand instanceof SqlIdentifier) {
-          neededColumns.add(((SqlIdentifier) operand).getSimple());
-        } else if (operand instanceof SqlCall) {
-          // For complex expressions in aggregates, need the whole row
-          return inputScope;
-        }
+//        if (operand instanceof SqlIdentifier) {
+//          neededColumns.add(((SqlIdentifier) operand).getSimple());
+//        } else if (operand instanceof SqlCall) {
+//          // For complex expressions in aggregates, need the whole row
+//          return inputScope;
+//        }
+        neededColumns.addAll(IdentifierCollector.collect(operand));
       }
 
       // Check for FILTER clause
@@ -333,18 +316,35 @@ public class CustomSqlToRelConverter {
       }
     }
 
+    // 2. Collect columns from GROUP BY clause
+    if (select.getGroup() != null) {
+      neededColumns.addAll(IdentifierCollector.collect(select.getGroup()));
+      for (SqlNode groupKey : select.getGroup().getList()) {
+        if (groupKey instanceof SqlIdentifier) {
+          SqlIdentifier id = (SqlIdentifier) groupKey;
+          if (id.isSimple()) {
+
+          }
+        }
+        // For complex expressions in GROUP BY, we'll need the whole row
+        // as we can't easily project just parts of expressions
+        else {
+          return inputScope; // Return original scope if complex expressions found
+        }
+      }
+    }
+
     // 3. Collect columns from HAVING clause
     if (select.getHaving() != null) {
       // Collect identifiers from HAVING
-      IdentifierVisitor idVisitor = new IdentifierVisitor();
-      select.getHaving().accept(idVisitor);
-      neededColumns.addAll(idVisitor.getIdentifiers());
+//      IdentifierVisitor idVisitor = new IdentifierVisitor();
+      neededColumns.addAll(IdentifierCollector.collect(select.getHaving()));
 
-      // If HAVING has complex expressions beyond simple column refs
-      // and aggregates, we need the whole row
-      if (idVisitor.hasComplexExpressions()) {
-        return inputScope;
-      }
+//      // If HAVING has complex expressions beyond simple column refs
+//      // and aggregates, we need the whole row
+//      if (idVisitor.hasComplexExpressions()) {
+//        return inputScope;
+//      }
     }
 
     // If we've found that we need all columns or no specific ones needed,
@@ -368,14 +368,14 @@ public class CustomSqlToRelConverter {
     }
 
     // Add needed columns to projection
-    for (String column : neededColumns) {
-      Integer index = fieldMap.get(column);
-      if (index != null) {
-        projExprs.add(rexBuilder.makeInputRef(
-            rowType.getFieldList().get(index).getType(), index));
-        fieldNames.add(column);
-      }
-    }
+//    for (String column : neededColumns) {
+//      Integer index = fieldMap.get(column);
+//      if (index != null) {
+//        projExprs.add(rexBuilder.makeInputRef(
+//            rowType.getFieldList().get(index).getType(), index));
+//        fieldNames.add(column);
+//      }
+//    }
 
     // Create project rel
     RelNode projectRel = LogicalProject.create(
@@ -1398,8 +1398,24 @@ public class CustomSqlToRelConverter {
                 + " encountered outside of aggregation context or OVER clause.");
           }
         }
+        // create RexCall for unhandled function
+        if (node instanceof SqlCall sqlCall) {
+          List<RexNode> operands = sqlCall.getOperandList().stream()
+              .map(op -> convertExpression(op, scope))
+              .toList();
+          RelDataType type = typeFactory.createSqlType(SqlTypeName.ANY);
+          return rexBuilder.makeCall(type, sqlCall.getOperator(), operands);
+        }
         throw new UnsupportedOperationException("Unsupported expression node type: " + kind + " (" + node.getClass().getSimpleName() + ")");
     }
+  }
+
+  private SqlFunction createUDF(String functionName) {
+    // Create a SqlFunction instance for the UDF
+    SqlIdentifier functionId = new SqlIdentifier(functionName, SqlParserPos.ZERO);
+    SqlFunction function = new SqlFunction(functionId.getSimple(), SqlKind.OTHER_FUNCTION,
+        null, null, null, null);
+    return function;
   }
 
   /**
@@ -2434,6 +2450,22 @@ public class CustomSqlToRelConverter {
     @Override
     public String toString() {
       return originalNode.toString() + (alias != null ? " AS " + alias : "");
+    }
+  }
+
+  protected static class IdentifierCollector extends SqlBasicVisitor<Void> {
+    private final List<SqlIdentifier> identifiers = new ArrayList<>();
+
+    @Override
+    public Void visit(SqlIdentifier identifier) {
+      identifiers.add(identifier);
+      return super.visit(identifier);
+    }
+
+    public static List<SqlIdentifier> collect(SqlNode node) {
+      IdentifierCollector collector = new IdentifierCollector();
+      node.accept(collector);
+      return collector.identifiers;
     }
   }
 

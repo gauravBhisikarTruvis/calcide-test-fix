@@ -37,7 +37,7 @@ public class BigQuerySqlParser extends SqlParser {
     parser.addErrorListener(syntaxErrorListener);
     // Create visitor
     BigQueryToSqlNodeVisitor visitor = new BigQueryToSqlNodeVisitor();
-    ParserRuleContext selectStatement = parser.selectStatement();
+    ParserRuleContext statement = parser.statement();
     if (syntaxErrorListener.hasErrors()) {
       logger.error("Parsing failed.");
       if (mode == Mode.DEBUG) {
@@ -45,6 +45,6 @@ public class BigQuerySqlParser extends SqlParser {
             .forEach(e -> logger.error(e.getMessage()));
       }
     }
-    return visitor.visit(selectStatement);
+    return visitor.visit(statement);
   }
 }

@@ -4,7 +4,228 @@ grammar BigQuerySql;
 package com.calcite_new.sql.parser.antlr;
 }
 
-// Parser Rules
+statement
+    : dmlStatement
+    | ddlStatement
+    ;
+
+ddlStatement
+    : createTableStatement
+    | createViewStatement
+    ;
+
+dmlStatement
+    : selectStatement
+    | insertStatement
+    | deleteStatement
+    | updateStatement
+    | mergeStatement
+    ;
+
+createViewStatement
+    : CREATE (OR REPLACE)? (TEMPORARY | TEMP)? VIEW
+      (IF NOT EXISTS)? tableIdentifier
+      (
+          (LPAREN columnName (',' columnName)* RPAREN)?
+          AS queryExpression
+          (OPTIONS LPAREN viewOptionList RPAREN)?
+      )
+    ;
+
+viewOptionList
+    : viewOption (',' viewOption)*
+    ;
+
+viewOption
+    : optionName '=' optionValue
+    ;
+
+createTableStatement
+    : CREATE (OR REPLACE)? (TEMPORARY | TEMP)? TABLE
+      (IF NOT EXISTS)? tableIdentifier
+      (
+          LIKE sourceTable=tableIdentifier
+          | COPY sourceTable=tableIdentifier
+          | AS queryExpression
+          | CLONE sourceTable=tableIdentifier
+          | LPAREN tableElementList RPAREN
+            (PARTITION BY partitionExpression)?
+            (CLUSTER BY clusteringColumnList)?
+            (OPTIONS LPAREN tableOptionList RPAREN)?
+      )
+    ;
+
+tableElementList
+    : tableElement (',' tableElement)*
+    ;
+
+tableElement
+    : columnDefinition
+    | tableConstraint
+    ;
+
+columnDefinition
+    : columnName dataType
+      (DEFAULT defaultExpression)?
+      (NOT NULL)?
+      (HIDDEN_COLUMN)?
+      (PRIMARY KEY)?
+      (REFERENCES tableIdentifier (LPAREN columnName RPAREN)? (ON DELETE referentialAction)? (ON UPDATE referentialAction)?)?
+      (OPTIONS LPAREN columnOptionList RPAREN)?
+      (AS LPAREN generationExpression RPAREN)?
+      (GENERATED ALWAYS AS LPAREN generationExpression RPAREN (STORED | VIRTUAL)?)?
+    ;
+
+tableConstraint
+    : (CONSTRAINT constraintName)?
+      (
+          PRIMARY KEY LPAREN columnName (',' columnName)* RPAREN
+          | FOREIGN KEY LPAREN columnName (',' columnName)* RPAREN
+            REFERENCES tableIdentifier (LPAREN columnName (',' columnName)* RPAREN)?
+            (ON DELETE referentialAction)?
+            (ON UPDATE referentialAction)?
+      )
+    ;
+
+referentialAction
+    : RESTRICT
+    | CASCADE
+    | SET NULL
+    | NO ACTION
+    ;
+
+partitionExpression
+    : columnName
+    | DATE_TRUNC LPAREN columnName ',' dateUnit RPAREN
+    | TIMESTAMP_TRUNC LPAREN columnName ',' dateUnit RPAREN
+    | RANGE_BUCKET LPAREN columnName ',' GENERATE_ARRAY LPAREN startExpr ',' endExpr ',' stepExpr RPAREN RPAREN
+    | RANGE LPAREN startExpr ',' endExpr (',' stepExpr)? RPAREN
+    | expression
+    ;
+
+clusteringColumnList
+    : columnName (',' columnName)*
+    ;
+
+tableOptionList
+    : tableOption (',' tableOption)*
+    ;
+
+tableOption
+    : optionName '=' optionValue
+    ;
+
+columnOptionList
+    : columnOption (',' columnOption)*
+    ;
+
+columnOption
+    : optionName '=' optionValue
+    ;
+
+optionName
+    : identifier (DOT identifier)*
+    ;
+
+optionValue
+    : literal
+    | identifier
+    ;
+
+defaultExpression
+    : expression
+    ;
+
+generationExpression
+    : expression
+    ;
+
+startExpr
+    : expression
+    ;
+
+endExpr
+    : expression
+    ;
+
+stepExpr
+    : expression
+    ;
+
+columnName
+    : identifier
+    ;
+
+constraintName
+    : identifier
+    ;
+
+insertStatement
+    : INSERT (INTO)? tableIdentifier (AS? alias=identifier)?
+      (LPAREN columnReference (',' columnReference)* RPAREN)?
+      (
+          VALUES valueRow (',' valueRow)*
+          | queryExpression
+          | ROW (LPAREN expression (',' expression)* RPAREN)?
+      )
+    ;
+
+valueRow
+    : LPAREN expression (',' expression)* RPAREN
+    ;
+
+deleteStatement
+    : DELETE (FROM)? tableFactor
+      WHERE whereCondition=expression
+    ;
+
+updateStatement
+    : UPDATE tableIdentifier (AS? alias=identifier)?
+      SET updateSetItem (',' updateSetItem)*
+      (FROM tableExpression (',' tableExpression)*)?
+      (WHERE whereCondition=expression)?
+    ;
+
+updateSetItem
+    : columnReference '=' expression
+    | LPAREN columnReference (',' columnReference)* RPAREN '='
+      LPAREN expression (',' expression)* RPAREN
+    | LPAREN columnReference (',' columnReference)* RPAREN '='
+      LPAREN queryExpression RPAREN
+    | columnReference '=' DEFAULT
+    ;
+
+mergeStatement
+    : MERGE INTO targetTable=tableIdentifier (AS? targetAlias=identifier)?
+      USING sourceTable=tableExpression
+      ON mergeCondition=expression
+      mergeMatchedClause*
+      mergeNotMatchedByTargetClause*
+      mergeNotMatchedBySourceClause*
+    ;
+
+mergeMatchedClause
+    : WHEN MATCHED (AND matchCondition=expression)? THEN mergeAction
+    ;
+
+mergeNotMatchedByTargetClause
+    : WHEN NOT MATCHED (BY TARGET)? (AND matchCondition=expression)? THEN mergeAction
+    ;
+
+mergeNotMatchedBySourceClause
+    : WHEN NOT MATCHED BY SOURCE (AND matchCondition=expression)? THEN mergeAction
+    ;
+
+mergeAction
+    : UPDATE SET updateSetItem (',' updateSetItem)*
+    | DELETE
+    | INSERT (LPAREN columnReference (',' columnReference)* RPAREN)?
+      VALUES LPAREN expression (',' expression)* RPAREN
+    | INSERT ROW
+    | INSERT (LPAREN columnReference (',' columnReference)* RPAREN)?
+      (ROW | valueRow)
+    ;
+
 selectStatement
     : withClause? queryExpression orderByClause? limitClause?
     ;
@@ -51,12 +272,12 @@ selectClause
 
 selectItem
     : expression (AS? identifier)?
-    | '*'
+    | STAR
     | tableWildcard
     ;
 
 tableWildcard
-    : tableIdentifier '.' '*'
+    : tableIdentifier DOT STAR
     ;
 
 fromClause
@@ -70,7 +291,6 @@ tableExpression
 
 tableFactor
     : tableIdentifier tableAlias?
-    | tableIdentifier '.' tableIdentifier tableAlias?
     | LPAREN queryExpression RPAREN tableAlias?
     | LPAREN tableExpression RPAREN tableAlias?
     | UNNEST LPAREN expression RPAREN tableAlias? (WITH OFFSET (AS? identifier)?)?
@@ -204,42 +424,116 @@ setQuantifier
 
 // Expression syntax
 expression
-    : literal
-    | columnReference
-    | castExpression
-    | functionCall
-    | caseExpression
-    | arrayExpression
-    | structExpression
-    | EXISTS LPAREN queryExpression RPAREN
-    | (ALL | SOME | ANY) LPAREN queryExpression RPAREN
-    | expression comparisonOperator (ALL | SOME | ANY) LPAREN queryExpression RPAREN
-    | LPAREN queryExpression RPAREN
-    | LPAREN expression RPAREN
-    | expression IS (NOT)? NULL
-    | NOT expression
-    | expression comparisonOperator expression
-    | expression AND expression
-    | expression OR expression
-    | expression LIKE expression
-    | expression (BETWEEN expression AND expression)
-    | expression (NOT)? IN inPredicateValue
-    | expression COLLATE identifier
-    | expression '||' expression
-    | expression '+' expression
-    | expression '-' expression
-    | expression '*' expression
-    | expression '/' expression
-    | expression '%' expression
-    | '-' expression
-    | '+' expression
-    | expression '?' expression ':' expression  // Ternary operator
+    : logicalOrExpression
     ;
 
-inPredicateValue
-    : LPAREN (expression (',' expression)*)? RPAREN
-    | LPAREN queryExpression RPAREN
+// Logical OR has the lowest precedence
+logicalOrExpression
+    : logicalAndExpression (OR logicalAndExpression)*
+    ;
+
+logicalAndExpression
+    : equalityExpression (AND equalityExpression)*
+    ;
+
+equalityExpression
+    : comparisonExpression ((EQ | NEQ | NE) comparisonExpression)*
+    ;
+
+comparisonExpression
+    : rangeExpression ((LT | GT | LTE | GTE) rangeExpression)*
+    ;
+
+rangeExpression
+    : additiveExpression (BETWEEN additiveExpression AND additiveExpression)?
+    | additiveExpression (NOT? IN inExpressionList)?
+    | additiveExpression (NOT? LIKE additiveExpression (ESCAPE additiveExpression)?)?
+    ;
+
+inExpressionList
+    : LPAREN queryExpression RPAREN
+    | LPAREN (expression (',' expression)*)? RPAREN
     | UNNEST LPAREN expression RPAREN
+    ;
+
+additiveExpression
+    : multiplicativeExpression ((PLUS | MINUS | CONCAT) multiplicativeExpression)*
+    ;
+
+multiplicativeExpression
+    : unaryExpression ((STAR | DIVIDE | DIV | MOD) unaryExpression)*
+    ;
+
+unaryExpression
+    : (NOT | PLUS | MINUS) unaryExpression
+    | isExpression
+    ;
+
+isExpression
+    : primaryExpression (IS NOT? (NULL | NAN | TRUE | FALSE))?
+    ;
+
+primaryExpression
+    : literalValue                                                                  # literalPE
+    | caseExpression                                                                # casePE
+    | castExpression                                                                # castPE
+    | extractExpression                                                             # extractPE
+    | functionCall                                                                  # functionCallPE
+    | columnReference                                                               # columnReferencePE
+    | arrayExpression                                                               # arrayPE
+    | structExpression                                                              # structPE
+//    | subquery
+    | queryExpression                                                               # queryPE
+    | ifExpression                                                                  # ifPE
+    | primaryExpression LBRACKET expression RBRACKET                                # arrayElementAccess
+    | primaryExpression LBRACKET expression ':' expression RBRACKET                 # arraySlice
+    | primaryExpression LBRACKET 'OFFSET' LPAREN expression RPAREN RBRACKET         # arrayOffset
+    | primaryExpression LBRACKET 'SAFE_OFFSET' LPAREN expression RPAREN RBRACKET    # arraySafeOffset
+    | primaryExpression LBRACKET 'ORDINAL' LPAREN expression RPAREN RBRACKET        # arrayOrdinal
+    | primaryExpression LBRACKET 'SAFE_ORDINAL' LPAREN expression RPAREN RBRACKET   # arraySafeOrdinal
+//    | primaryExpression DOT identifier
+    | LPAREN expression RPAREN                                                      # parenthesisedPE
+    ;
+
+ifExpression
+    : IF LPAREN expression ',' expression ',' expression RPAREN
+    ;
+
+extractExpression
+    : EXTRACT LPAREN extractField FROM expression RPAREN
+    ;
+
+extractField
+    : MICROSECOND
+    | MILLISECOND
+    | SECOND
+    | MINUTE
+    | HOUR
+    | DAY
+    | DAYOFWEEK
+    | DAYOFYEAR
+    | WEEK
+    | MONTH
+    | QUARTER
+    | YEAR
+    | DATE
+    | TIME
+    | DATETIME
+    | identifier
+    ;
+
+//subquery
+//    : LPAREN SELECT expression RPAREN
+//    ;
+
+literalValue
+    : NUMERIC_LITERAL      // Numbers (integer, float)
+    | STRING_LITERAL       // String literals
+    | BYTES_LITERAL        // Bytes literals
+    | DATE_LITERAL         // Date literals
+    | TIMESTAMP_LITERAL    // Timestamp literals
+    | BOOL_LITERAL         // Boolean literals (true/false)
+    | NULL                 // NULL value
     ;
 
 caseExpression
@@ -261,8 +555,8 @@ castExpression
     ;
 
 arrayExpression
-    : '[' (expression (',' expression)*)? ']'
-    | ARRAY '<' dataType '>' '[' (expression (',' expression)*)? ']'
+    : LBRACKET (expression (',' expression)*)? RBRACKET
+    | ARRAY '<' dataType '>' LBRACKET (expression (',' expression)*)? RBRACKET
     | ARRAY (SELECT selectItem FROM tableExpression whereClause?)
     ;
 
@@ -309,14 +603,25 @@ comparisonOperator
     | '!='
     ;
 
+// It could refer nested struct field as well
+//columnReference
+//    : identifier
+//    | tableIdentifier DOT identifier
+//    | tableIdentifier DOT tableIdentifier DOT identifier
+//    ;
+
 columnReference
-    : identifier
-    | tableIdentifier '.' identifier
-    | tableIdentifier '.' tableIdentifier '.' identifier
+    : identifier (DOT identifier)*                                           //#simpleColumnReference
+//    | tableIdentifier DOT identifier                       //#qualifiedColumnReference
+//    | tableIdentifier DOT tableIdentifier DOT identifier   //#fullyQualifiedColumnReference
+//    | identifier (DOT identifier)+                         //#structFieldAccess
+//    | tableIdentifier DOT identifier (DOT identifier)+     //#qualifiedStructFieldAccess
+//    | primaryExpression '[' expression ']'                 #arrayElementAccess
+//    | primaryExpression '.' identifier                     #structFieldReferenceAccess
     ;
 
 tableIdentifier
-    : identifier
+    : identifier (DOT identifier)*
     ;
 
 dataType
@@ -434,6 +739,7 @@ nonReservedKeyword
     | WINDOW
     | WITH
     | YEAR
+    | QUARTER
     ;
 
 // Lexer Rules
@@ -443,6 +749,8 @@ AND                     : [Aa] [Nn] [Dd] ;
 ANY                     : [Aa] [Nn] [Yy] ;
 ARRAY                   : [Aa] [Rr] [Rr] [Aa] [Yy] ;
 AS                      : [Aa] [Ss] ;
+INTO                   : [Ii] [Nn] [Tt] [Oo] ;
+SET                    : [Ss] [Ee] [Tt] ;
 ASC                     : [Aa] [Ss] [Cc] ;
 AVG                     : [Aa] [Vv] [Gg] ;
 BETWEEN                 : [Bb] [Ee] [Tt] [Ww] [Ee] [Ee] [Nn] ;
@@ -476,6 +784,21 @@ EXISTS                  : [Ee] [Xx] [Ii] [Ss] [Tt] [Ss] ;
 EXTRACT                 : [Ee] [Xx] [Tt] [Rr] [Aa] [Cc] [Tt] ;
 FIRST                   : [Ff] [Ii] [Rr] [Ss] [Tt] ;
 FOLLOWING               : [Ff] [Oo] [Ll] [Ll] [Oo] [Ww] [Ii] [Nn] [Gg] ;
+CREATE                  : [Cc] [Rr] [Ee] [Aa] [Tt] [Ee] ;
+REPLACE                 : [Rr] [Ee] [Pp] [Ll] [Aa] [Cc] [Ee] ;
+TEMPORARY               : [Tt] [Ee] [Mm] [Pp] [Oo] [Rr] [Aa] [Rr] [Yy] ;
+TEMP                    : [Tt] [Ee] [Mm] [Pp] ;
+TABLE                   : [Tt] [Aa] [Bb] [Ll] [Ee] ;
+VIEW                    : [Vv] [Ii] [Ee] [Ww] ;
+IF                      : [Ii] [Ff] ;
+COPY                    : [Cc] [Oo] [Pp] [Yy] ;
+CLONE                   : [Cc] [Ll] [Oo] [Nn] [Ee] ;
+CLUSTER                 : [Cc] [Ll] [Uu] [Ss] [Tt] [Ee] [Rr] ;
+OPTIONS                 : [Oo] [Pp] [Tt] [Ii] [Oo] [Nn] [Ss] ;
+INSERT                  : [Ii] [Nn] [Ss] [Ee] [Rr] [Tt] ;
+DELETE                  : [Dd] [Ee] [Ll] [Ee] [Tt] [Ee] ;
+UPDATE                  : [Uu] [Pp] [Dd] [Aa] [Tt] [Ee] ;
+MERGE                   : [Mm] [Ee] [Rr] [Gg] [Ee] ;
 FROM                    : [Ff] [Rr] [Oo] [Mm] ;
 FULL                    : [Ff] [Uu] [Ll] [Ll] ;
 GENERATE_ARRAY          : [Gg] [Ee] [Nn] [Ee] [Rr] [Aa] [Tt] [Ee] [_] [Aa] [Rr] [Rr] [Aa] [Yy] ;
@@ -496,12 +819,28 @@ JSON_VALUE              : [Jj] [Ss] [Oo] [Nn] [_] [Vv] [Aa] [Ll] [Uu] [Ee] ;
 LAST                    : [Ll] [Aa] [Ss] [Tt] ;
 LEFT                    : [Ll] [Ee] [Ff] [Tt] ;
 LIKE                    : [Ll] [Ii] [Kk] [Ee] ;
+ESCAPE                 : [Ee] [Ss] [Cc] [Aa] [Pp] [Ee] ;
 LIMIT                   : [Ll] [Ii] [Mm] [Ii] [Tt] ;
 MAX                     : [Mm] [Aa] [Xx] ;
-ROW_NUMBER             : [Rr] [Oo] [Ww] [_] [Nn] [Uu] [Mm] [Bb] [Ee] [Rr] ;
+ROW_NUMBER              : [Rr] [Oo] [Ww] [_] [Nn] [Uu] [Mm] [Bb] [Ee] [Rr] ;
 RANK                    : [Rr] [Aa] [Nn] [Kk] ;
 MIN                     : [Mm] [Ii] [Nn] ;
 NOT                     : [Nn] [Oo] [Tt] ;
+HIDDEN_COLUMN           : [Hh] [Ii] [Dd] [Dd] [Ee] [Nn] ;
+PRIMARY                 : [Pp] [Rr] [Ii] [Mm] [Aa] [Rr] [Yy] ;
+FOREIGN                 : [Ff] [Oo] [Rr] [Ee] [Ii] [Gg] [Nn] ;
+RESTRICT                : [Rr] [Ee] [Ss] [Tt] [Rr] [Ii] [Cc] [Tt] ;
+CASCADE                 : [Cc] [Aa] [Ss] [Cc] [Aa] [Dd] [Ee] ;
+ACTION                  : [Aa] [Cc] [Tt] [Ii] [Oo] [Nn] ;
+RANGE_BUCKET           : [Rr] [Aa] [Nn] [Gg] [Ee] [_] [Bb] [Uu] [Cc] [Kk] [Ee] [Tt] ;
+NO                      : [Nn] [Oo] ;
+KEY                     : [Kk] [Ee] [Yy] ;
+REFERENCES              : [Rr] [Ee] [Ff] [Ee] [Rr] [Ee] [Nn] [Cc] [Ee] [Ss] ;
+GENERATED               : [Gg] [Ee] [Nn] [Ee] [Rr] [Aa] [Tt] [Ee] [Dd] ;
+ALWAYS                  : [Aa] [Ll] [Ww] [Aa] [Yy] [Ss] ;
+STORED                  : [Ss] [Tt] [Oo] [Rr] [Ee] [Dd] ;
+VIRTUAL                 : [Vv] [Ii] [Rr] [Tt] [Uu] [Aa] [Ll] ;
+CONSTRAINT              : [Cc] [Oo] [Nn] [Ss] [Tt] [Rr] [Aa] [Ii] [Nn] [Tt] ;
 NULLS                   : [Nn] [Uu] [Ll] [Ll] [Ss] ;
 OFFSET                  : [Oo] [Ff] [Ff] [Ss] [Ee] [Tt] ;
 ON                      : [Oo] [Nn] ;
@@ -516,6 +855,7 @@ QUALIFY                 : [Qq] [Uu] [Aa] [Ll] [Ii] [Ff] [Yy] ;
 RANGE                   : [Rr] [Aa] [Nn] [Gg] [Ee] ;
 RIGHT                   : [Rr] [Ii] [Gg] [Hh] [Tt] ;
 ROLLUP                  : [Rr] [Oo] [Ll] [Ll] [Uu] [Pp] ;
+VALUES                  : [Vv] [Aa] [Ll] [Uu] [Ee] [Ss] ;
 ROW                     : [Rr] [Oo] [Ww] ;
 ROWS                    : [Rr] [Oo] [Ww] [Ss] ;
 SAFE_CAST               : [Ss] [Aa] [Ff] [Ee] [_] [Cc] [Aa] [Ss] [Tt] ;
@@ -527,11 +867,14 @@ BOOLEAN                 : [Bb] [Oo] [Oo] [Ll] [Ee] [Aa] [Nn] ;
 NUMERIC                 : [Nn] [Uu] [Mm] [Ee] [Rr] [Ii] [Cc] ;
 BIGNUMERIC              : [Bb] [Ii] [Gg] [Nn] [Uu] [Mm] [Ee] [Rr] [Ii] [Cc] ;
 GEOGRAPHY               : [Gg] [Ee] [Oo] [Gg] [Rr] [Aa] [Pp] [Hh] [Yy] ;
+DEFAULT                 : [Dd] [Ee] [Ff] [Aa] [Uu] [Ll] [Tt] ;
 YEAR         : [Yy] [Ee] [Aa] [Rr] ;
 QUARTER      : [Qq] [Uu] [Aa] [Rr] [Tt] [Ee] [Rr] ;
 MONTH        : [Mm] [Oo] [Nn] [Tt] [Hh] ;
 WEEK         : [Ww] [Ee] [Ee] [Kk] ;
 DAY          : [Dd] [Aa] [Yy] ;
+DAYOFWEEK       : [Dd] [Aa] [Yy] [Oo] [Ff] [Ww] [Ee] [Ee] [Kk] ;
+DAYOFYEAR       : [Dd] [Aa] [Yy] [Oo] [Ff] [Yy] [Ee] [Aa] [Rr] ;
 HOUR         : [Hh] [Oo] [Uu] [Rr] ;
 MINUTE       : [Mm] [Ii] [Nn] [Uu] [Tt] [Ee] ;
 SECOND       : [Ss] [Ee] [Cc] [Oo] [Nn] [Dd] ;
@@ -539,6 +882,7 @@ MILLISECOND  : [Mm] [Ii] [Ll] [Ll] [Ii] [Ss] [Ee] [Cc] [Oo] [Nn] [Dd] ;
 MICROSECOND  : [Mm] [Ii] [Cc] [Rr] [Oo] [Ss] [Ee] [Cc] [Oo] [Nn] [Dd] ;
 NANOSECOND   : [Nn] [Aa] [Nn] [Oo] [Ss] [Ee] [Cc] [Oo] [Nn] [Dd] ;
 TRUE  : [Tt] [Rr] [Uu] [Ee] ;
+NAN   : [Nn] [Aa] [Nn] ;
 FALSE : [Ff] [Aa] [Ll] [Ss] [Ee] ;
 NULL  : [Nn] [Uu] [Ll] [Ll] ;
 WITH                    : [Ww] [Ii] [Tt] [Hh] ;
@@ -550,6 +894,9 @@ SETS                    : [Ss] [Ee] [Tt] [Ss] ;
 WINDOW                  : [Ww] [Ii] [Nn] [Dd] [Oo] [Ww] ;
 UNBOUNDED               : [Uu] [Nn] [Bb] [Oo] [Uu] [Nn] [Dd] [Ee] [Dd] ;
 WHEN                    : [Ww] [Hh] [Ee] [Nn] ;
+MATCHED                 : [Mm] [Aa] [Tt] [Cc] [Hh] [Ee] [Dd] ;
+SOURCE                  : [Ss] [Oo] [Uu] [Rr] [Cc] [Ee] ;
+TARGET                  : [Tt] [Aa] [Rr] [Gg] [Ee] [Tt] ;
 THEN                    : [Tt] [Hh] [Ee] [Nn] ;
 STRUCT                  : [Ss] [Tt] [Rr] [Uu] [Cc] [Tt] ;
 SUM                     : [Ss] [Uu] [Mm] ;
@@ -559,6 +906,23 @@ FLOAT64                 : [Ff] [Ll] [Oo] [Aa] [Tt] '64' ;
 JSON                    : [Jj] [Ss] [Oo] [Nn] ;
 LPAREN                  : '(' ;
 RPAREN                  : ')' ;
+LBRACKET                : '[' ;
+RBRACKET                : ']' ;
+EQ                      : '=';
+NEQ                     : '!=';
+NE                      : '<>';
+LT                      : '<';
+GT                      : '>';
+LTE                     : '<=';
+GTE                     : '>=';
+PLUS                    : '+';
+MINUS                   : '-';
+STAR                    : '*';
+DIVIDE                  : '/';
+DIV                     : 'DIV';
+MOD                     : 'MOD';
+CONCAT                  : '||';
+DOT                     : '.';
 
 
 
@@ -574,8 +938,29 @@ QUOTED_IDENTIFIER
     : '"' ( ~'"' | '""' )* '"'
     ;
 
+NUMERIC_LITERAL
+    : DIGIT+ (DOT DIGIT*)? (('E'|'e') ('+'|'-')? DIGIT+)?
+    ;
+
 STRING_LITERAL
     : '\'' ( ~'\'' | '\'\'' )* '\''
+    ;
+
+BYTES_LITERAL
+    : 'b' STRING_LITERAL
+    | 'rb' STRING_LITERAL
+    ;
+
+DATE_LITERAL
+    : 'DATE' STRING_LITERAL
+    ;
+
+TIMESTAMP_LITERAL
+    : 'TIMESTAMP' STRING_LITERAL
+    ;
+
+BOOL_LITERAL
+    : TRUE | FALSE
     ;
 
 INTEGER_LITERAL
@@ -583,8 +968,8 @@ INTEGER_LITERAL
     ;
 
 FLOAT_LITERAL
-    : DIGIT+ '.' DIGIT* EXPONENT?
-    | '.' DIGIT+ EXPONENT?
+    : DIGIT+ DOT DIGIT* EXPONENT?
+    | DOT DIGIT+ EXPONENT?
     | DIGIT+ EXPONENT
     ;
 

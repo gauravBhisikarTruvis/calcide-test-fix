@@ -265,9 +265,8 @@ class CustomBigQuerySqlToRelConverterSpec extends Specification {
 
     then:
     withSql(sql).check("""LogicalProject(product_id=[\$0], avg_sales=[\$1], avg_price=[/(\$2, \$3)])
-                         |  LogicalAggregate(group=[{0}], avg_sales=[AVG(\$1)], agg#1=[SUM(\$1)], agg#2=[SUM(\$2)])
-                         |    LogicalProject(product_id=[\$0], store_sales=[\$5], unit_sales=[\$7])
-                         |      LogicalTableScan(table=[[big_query, test, foodmart-test, sales_fact_1997]])
+                         |  LogicalAggregate(group=[{0}], avg_sales=[AVG(\$5)], \$f1=[SUM(\$5)], \$f2=[SUM(\$7)])
+                         |    LogicalTableScan(table=[[big_query, test, foodmart-test, sales_fact_1997]])
                          |""".stripMargin())
   }
 
@@ -288,9 +287,8 @@ class CustomBigQuerySqlToRelConverterSpec extends Specification {
     withSql(sql).check("""LogicalProject(product_id=[\$0], product_name=[\$5], total_sales=[\$1])
                          |  LogicalJoin(condition=[=(\$0, \$3)], joinType=[inner])
                          |    LogicalSort(sort0=[\$1], dir0=[DESC], fetch=[10])
-                         |      LogicalAggregate(group=[{0}], total_sales=[SUM(\$1)])
-                         |        LogicalProject(product_id=[\$0], store_sales=[\$5])
-                         |          LogicalTableScan(table=[[big_query, test, foodmart, sales_fact_1997]])
+                         |      LogicalAggregate(group=[{0}], total_sales=[SUM(\$5)])
+                         |        LogicalTableScan(table=[[big_query, test, foodmart, sales_fact_1997]])
                          |    LogicalTableScan(table=[[big_query, test, foodmart-test, product]])
                          |""".stripMargin())
   }
@@ -318,9 +316,10 @@ class CustomBigQuerySqlToRelConverterSpec extends Specification {
                  |AND last_remodel_date IS NOT NULL""".stripMargin()
 
     then:
-    withSql(sql).check("""SELECT store_id, TIMESTAMP_DIFF(last_remodel_date, first_opened_date, DAY) AS days_until_remodel
-                     |FROM foodmart.store
-                     |WHERE first_opened_date IS NOT NULL AND last_remodel_date IS NOT NULL""".stripMargin())
+    withSql(sql).check("""LogicalProject(store_id=[\$0], days_until_remodel=[TIMESTAMP_DIFF(\$14, \$13, 'DAY')])
+                         |  LogicalFilter(condition=[AND(IS NOT NULL(\$13), IS NOT NULL(\$14))])
+                         |    LogicalTableScan(table=[[big_query, test, foodmart, store]])
+                         |""".stripMargin())
   }
 
   private static SqlToRelConverterFixture withSql(String sql) {

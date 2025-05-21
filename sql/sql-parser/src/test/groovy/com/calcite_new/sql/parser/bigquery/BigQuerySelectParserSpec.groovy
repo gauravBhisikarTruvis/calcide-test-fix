@@ -1,8 +1,8 @@
-package com.calcite_new.sql.parser
+package com.calcite_new.sql.parser.bigquery
 /**
  * Test cases for BigQuery SQL parser.
  */
-class BigQuerySqlParserSpec extends SqlParserSpec {
+class BigQuerySelectParserSpec extends BigQuerySqlParserSpec {
 
   def "Simple SELECT should parse"() {
     when:
@@ -172,16 +172,11 @@ class BigQuerySqlParserSpec extends SqlParserSpec {
                  |  WHEN yearly_income = 'Medium' THEN 'Standard'
                  |  ELSE 'Basic'
                  |END AS customer_tier
-                 |FROM `foodmart`.customer""".stripMargin()
+                 |FROM `project`.`foodmart`.customer""".stripMargin()
 
     then:
-    parse(sql).check("""SELECT customer_id, yearly_income,
-                     |CASE
-                     |WHEN yearly_income = 'High' THEN 'Premium'
-                     |WHEN yearly_income = 'Medium' THEN 'Standard'
-                     |ELSE 'Basic'
-                     |END AS customer_tier
-                     |FROM foodmart.customer""".stripMargin())
+    parse(sql).check("""SELECT customer_id, yearly_income, CASE WHEN yearly_income = 'High' THEN 'Premium' WHEN yearly_income = 'Medium' THEN 'Standard' ELSE 'Basic' END AS customer_tier
+                     |FROM project.foodmart.customer""".stripMargin())
   }
 
   def "SELECT with UNION should parse"() {
@@ -223,6 +218,24 @@ class BigQuerySqlParserSpec extends SqlParserSpec {
     then:
     parse(sql).check("""SELECT employee_id, full_name, salary, RANK() OVER (PARTITION BY department_id ORDER BY salary DESC) AS salary_rank
                      |FROM foodmart.employee""".stripMargin())
+  }
+
+  def "SELECT with IN clause subquery"() {
+    when:
+    String sql = """SELECT product_id, product_name
+                 |FROM `project`.`foodmart`.`product`
+                 |WHERE product_id IN (
+                 |  SELECT DISTINCT product_id
+                 |  FROM foodmart.sales_fact_1997
+                 |  WHERE store_sales > 100
+                 |)""".stripMargin()
+
+    then:
+    parse(sql).check("""SELECT product_id, product_name
+                     |FROM project.foodmart.product
+                     |WHERE product_id IN (SELECT DISTINCT product_id
+                     |FROM foodmart.sales_fact_1997
+                     |WHERE store_sales > 100)""".stripMargin())
   }
 
   def "SELECT with aggregations and math operations should parse"() {
@@ -286,10 +299,6 @@ class BigQuerySqlParserSpec extends SqlParserSpec {
     parse(sql).check("""SELECT store_id, TIMESTAMP_DIFF(last_remodel_date, first_opened_date, DAY) AS days_until_remodel
                      |FROM foodmart.store
                      |WHERE first_opened_date IS NOT NULL AND last_remodel_date IS NOT NULL""".stripMargin())
-  }
-
-  SqlParserFixture parse(String sql) {
-    new BigQuerySqlParserFixture().withSql(sql)
   }
 
 }
