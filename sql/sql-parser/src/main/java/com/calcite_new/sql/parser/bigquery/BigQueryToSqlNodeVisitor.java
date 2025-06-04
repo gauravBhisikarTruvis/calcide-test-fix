@@ -1,5 +1,6 @@
 package com.calcite_new.sql.parser.bigquery;
 
+import com.calcite_new.sql.SqlUpdate;
 import com.calcite_new.sql.parser.antlr.BigQuerySqlBaseVisitor;
 import com.calcite_new.sql.parser.antlr.BigQuerySqlParser;
 import org.antlr.v4.runtime.ParserRuleContext;
@@ -11,6 +12,8 @@ import org.apache.calcite.sql.fun.SqlCase;
 import org.apache.calcite.sql.fun.SqlLibraryOperators;
 import org.apache.calcite.sql.fun.SqlStdOperatorTable;
 import org.apache.calcite.sql.parser.SqlParserPos;
+import org.apache.calcite.sql.type.OperandTypes;
+import org.apache.calcite.sql.type.ReturnTypes;
 import org.apache.calcite.sql.type.SqlTypeName;
 import org.apache.calcite.sql.validate.SqlUserDefinedAggFunction;
 import org.apache.calcite.sql.validate.SqlUserDefinedFunction;
@@ -27,6 +30,12 @@ import java.util.stream.Collectors;
  * Visitor to convert BigQuery SQL AST to Calcite {@link SqlNode}.
  */
 public class BigQueryToSqlNodeVisitor extends BigQuerySqlBaseVisitor<SqlNode> {
+
+  private static final SqlFunction SAFE_ACCESS =
+      SqlBasicFunction.create("SAFE_ACCESS",
+          ReturnTypes.ARG0_NULLABLE,
+          OperandTypes.ANY,
+          SqlFunctionCategory.SYSTEM);
 
   @Override
   public SqlNode visitSelectStatement(BigQuerySqlParser.SelectStatementContext ctx) {
@@ -113,11 +122,18 @@ public class BigQueryToSqlNodeVisitor extends BigQuerySqlBaseVisitor<SqlNode> {
     }
 
     // Process SET items
-    List<SqlNode> updateSetItems = new ArrayList<>();
+    SqlNodeList targetColumns = new SqlNodeList(parserPos(ctx));
+    SqlNodeList sourceExpressions = new SqlNodeList(parserPos(ctx));
     for (BigQuerySqlParser.UpdateSetItemContext setItemCtx : ctx.updateSetItem()) {
-      updateSetItems.add(visit(setItemCtx));
+      SqlNode setItem = visit(setItemCtx);
+      if (setItem instanceof SqlNodeList) {
+        targetColumns.add(((SqlNodeList) setItem).get(0));
+        sourceExpressions.add(((SqlNodeList) setItem).get(1));
+      } else {
+        throw new UnsupportedOperationException(
+            "Unsupported update set item: " + setItem.getClass().getSimpleName());
+      }
     }
-    SqlNodeList targetColumnList = new SqlNodeList(updateSetItems, parserPos(ctx));
 
     // Process optional FROM clause
     SqlNode source = null;
@@ -152,8 +168,29 @@ public class BigQueryToSqlNodeVisitor extends BigQuerySqlBaseVisitor<SqlNode> {
               null
           );
         }
+
       }
     }
+
+//    if (source != null && source.getKind() != SqlKind.SELECT) {
+//      SqlIdentifier star = SqlIdentifier.star(parserPos(ctx));
+//      // convert source to SqlSelect
+//      source = new SqlSelect(
+//          parserPos(ctx),
+//          SqlNodeList.EMPTY, // No keyword list
+//          new SqlNodeList(List.of(star), parserPos(ctx)), // Select the joined source
+//          source, // No FROM clause needed
+//          null, // No WHERE condition
+//          null, // No GROUP BY
+//          null, // No HAVING
+//          null, // No window list
+//          null, // No QUALIFY
+//          null, // No ORDER BY
+//          null, // No OFFSET
+//          null, // No FETCH
+//          null  // No hints
+//      );
+//    }
 
     // Process optional WHERE clause
     SqlNode condition = null;
@@ -162,14 +199,48 @@ public class BigQueryToSqlNodeVisitor extends BigQuerySqlBaseVisitor<SqlNode> {
     }
 
     // Create UPDATE statement
-//    return new SqlUpdate(
-//        parserPos(ctx),
-//        targetTable,
-//        targetColumnList,
-//        source,
-//        condition
-//    );
-    return null;
+    return new SqlUpdate(
+        parserPos(ctx),
+        targetTable,
+        targetColumns,
+        sourceExpressions,
+        condition,
+        source,
+        null // alias (handled separately in targetTable)
+    );
+  }
+
+  @Override
+  public SqlNode visitUpdateSetItem(BigQuerySqlParser.UpdateSetItemContext ctx) {
+    SqlNodeList pair = new SqlNodeList(parserPos(ctx));
+    if (ctx.primaryExpression() != null) {
+      // Simple case: columnReference = expression
+      SqlNode colRef = visit(ctx.primaryExpression());
+      pair.add(colRef);
+      pair.add(visit(ctx.expression(0)));
+      return pair;
+    } else if (ctx.DEFAULT() != null) {
+      // Case: columnReference = DEFAULT
+      pair.add(visit(ctx.columnReference(0)));
+      pair.add(SqlLiteral.createSymbol(SqlKind.DEFAULT, parserPos(ctx)));
+      return pair;
+//      throw new UnsupportedOperationException("DEFAULT not supported in BigQuery UPDATE");
+    } else if (ctx.columnReference().size() > 1) {
+//      // Multi-column update: (col1, col2, ...) = (expr1, expr2, ...) or = (SELECT ...)
+//      SqlNode firstColumn = visit(ctx.columnReference(0));
+//      if (ctx.queryExpression() != null) {
+//        // Case: (col1, col2, ...) = (SELECT ...)
+//        // For UPDATE, we return the first column as the target
+//        return firstColumn;
+//      } else {
+//        // Case: (col1, col2, ...) = (expr1, expr2, ...)
+//        // For UPDATE, we return the first column as the target
+//        return firstColumn;
+//      }
+      throw new UnsupportedOperationException("Multi-column updates not supported in BigQuery UPDATE");
+    }
+
+    throw new UnsupportedOperationException("Unsupported update set item");
   }
 
   @Override
@@ -316,6 +387,26 @@ public class BigQueryToSqlNodeVisitor extends BigQuerySqlBaseVisitor<SqlNode> {
       selectItems.add(visit(itemCtx));
     }
 
+    if (ctx.AS() != null && ctx.STRUCT() != null) {
+      SqlNode selectRow = SqlStdOperatorTable.ROW.createCall(parserPos(ctx), selectItems);
+      selectItems = List.of(selectRow);
+      // Handle STRUCT AS alias
+//      SqlIdentifier structAlias = createIdentifier(ctx.identifier());
+//      selectItems.add(new SqlBasicCall(
+//          SqlStdOperatorTable.AS,
+//          List.of(new SqlNodeList(selectItems, parserPos(ctx)), structAlias),
+//          parserPos(ctx)
+//      ));
+    } /*else if (ctx.AS() != null) {
+      // Handle AS alias for the entire select list
+      SqlIdentifier alias = createIdentifier(ctx.identifier());
+      selectItems.add(new SqlBasicCall(
+          SqlStdOperatorTable.AS,
+          List.of(new SqlNodeList(selectItems, parserPos(ctx)), alias),
+          parserPos(ctx)
+      ));
+    }*/
+
     return new SqlNodeList(selectItems, parserPos(ctx));
   }
 
@@ -392,22 +483,28 @@ public class BigQueryToSqlNodeVisitor extends BigQuerySqlBaseVisitor<SqlNode> {
 
     if (ctx.queryExpression() != null) {
       // Subquery
-      fromSource = new SqlBasicCall(
-          SqlStdOperatorTable.AS,
-          new SqlNode[]{
-              visit(ctx.queryExpression()),
-              createIdentifier(ctx.tableAlias().identifier())
-          },
-          parserPos(ctx)
-      );
+      if (ctx.tableAlias() == null) {
+        // No alias provided
+        fromSource = visit(ctx.queryExpression());
+      } else {
+        // Alias provided
+        fromSource = new SqlBasicCall(
+            SqlStdOperatorTable.AS,
+            List.of(
+                visit(ctx.queryExpression()),
+                createIdentifier(ctx.tableAlias().identifier())
+            ),
+            parserPos(ctx)
+        );
+      }
     } else if (ctx.tableExpression() != null) {
       // Parenthesized table expression
       fromSource = new SqlBasicCall(
           SqlStdOperatorTable.AS,
-          new SqlNode[]{
+          List.of(
               visit(ctx.tableExpression()),
               createIdentifier(ctx.tableAlias().identifier())
-          },
+          ),
           parserPos(ctx)
       );
     } else if (ctx.UNNEST() != null) {
@@ -429,10 +526,10 @@ public class BigQueryToSqlNodeVisitor extends BigQuerySqlBaseVisitor<SqlNode> {
       if (ctx.tableAlias() != null) {
         fromSource = new SqlBasicCall(
             SqlStdOperatorTable.AS,
-            new SqlNode[]{
+            List.of(
                 fromSource,
                 createIdentifier(ctx.tableAlias().identifier())
-            },
+            ),
             parserPos(ctx)
         );
       }
@@ -455,7 +552,7 @@ public class BigQueryToSqlNodeVisitor extends BigQuerySqlBaseVisitor<SqlNode> {
                 null,
                 SqlFunctionCategory.USER_DEFINED_FUNCTION
             ),
-            new SqlNode[]{fromSource, offsetAlias},
+            List.of(fromSource, offsetAlias),
             parserPos(ctx)
         );
       }
@@ -1214,6 +1311,129 @@ public class BigQueryToSqlNodeVisitor extends BigQuerySqlBaseVisitor<SqlNode> {
   }
 
   @Override
+  public SqlNode visitIfExpression(BigQuerySqlParser.IfExpressionContext ctx) {
+    // Get the three required expressions for IF(condition, then_expr, else_expr)
+    SqlNode conditionExpr = visit(ctx.expression(0));
+    SqlNode thenExpr = visit(ctx.expression(1));
+    SqlNode elseExpr = visit(ctx.expression(2));
+
+    return SqlLibraryOperators.IF.createCall(
+        parserPos(ctx),
+        conditionExpr, // Condition expression
+        thenExpr, // Then expression
+        elseExpr // Else expression
+    );
+  }
+
+  @Override
+  public SqlNode visitArrayOffsetPE(BigQuerySqlParser.ArrayOffsetPEContext ctx) {
+    // Get the array expression
+    SqlNode arrayExpr = visit(ctx.primaryExpression());
+
+    // Get the offset/index expression
+    SqlNode offsetExpr = visit(ctx.expression());
+
+    return new SqlBasicCall(
+        SqlLibraryOperators.OFFSET, // OFFSET operator
+        List.of(arrayExpr, offsetExpr), // Operand: 0
+        SqlParserPos.ZERO
+    );
+  }
+
+  @Override
+  public SqlNode visitStructOrdinalAccessPE(BigQuerySqlParser.StructOrdinalAccessPEContext ctx) {
+    try {
+      // Get the base struct expression
+      SqlNode structExpr = visit(ctx.primaryExpression());
+
+      // Get the float literal which is used as the ordinal index
+      String ordinalText = ctx.FLOAT_LITERAL().getText();
+
+      // Convert to integer index (remove decimal part if any)
+      int ordinalIndex;
+      try {
+        ordinalIndex = Integer.parseInt(ordinalText.split("\\.")[1]);
+      } catch (NumberFormatException e) {
+        throw new UnsupportedOperationException(
+            "Invalid ordinal index for struct access: " + ordinalText
+        );
+      }
+
+      // Handle SAFE access if present (using '?' operator for nullable structs)
+      boolean isSafeAccess = ctx.SAFE() != null;
+
+      // Create a SqlLiteral for the ordinal index
+      SqlLiteral ordinalLiteral = SqlLiteral.createExactNumeric(
+          String.valueOf(ordinalIndex),
+          parserPos(ctx)
+      );
+
+      if (isSafeAccess) {
+        // Use special operator for safe struct access by ordinal
+        return SAFE_ACCESS.createCall(
+            parserPos(ctx),
+            structExpr,
+            ordinalLiteral
+        );
+      } else {
+        // Standard struct field access by ordinal
+        return SqlStdOperatorTable.ITEM.createCall(
+            parserPos(ctx),
+            structExpr,
+            ordinalLiteral
+        );
+      }
+    } catch (Exception e) {
+      throw new UnsupportedOperationException(
+          "Failed to process struct ordinal access: " + ctx.getText() + " - " + e.getMessage()
+      );
+    }
+  }
+
+  @Override
+  public SqlNode visitSimpleStructAccessPE(BigQuerySqlParser.SimpleStructAccessPEContext ctx) {
+    try {
+      // Get the base struct expression
+      SqlNode structExpr = visit(ctx.primaryExpression());
+
+      // Get the field identifier
+      SqlIdentifier fieldName = createIdentifier(ctx.identifier());
+
+      // Handle SAFE access if present (struct?.field syntax)
+      boolean isSafeAccess = ctx.SAFE() != null;
+
+      if (isSafeAccess) {
+        // Use a special operator for safe struct access to prevent NULL errors
+        return SAFE_ACCESS.createCall(
+            parserPos(ctx),
+            structExpr,
+            fieldName
+        );
+      } else {
+        // Standard struct field access
+        return SqlStdOperatorTable.DOT.createCall(
+            parserPos(ctx),
+            structExpr,
+            fieldName
+        );
+      }
+    } catch (Exception e) {
+      throw new UnsupportedOperationException(
+          "Failed to process struct field access: " + ctx.getText() + " - " + e.getMessage()
+      );
+    }
+  }
+
+  @Override
+  public SqlNode visitParameterReference(BigQuerySqlParser.ParameterReferenceContext ctx) {
+    // Extract the parameter name without the '@' symbol
+    String paramName = ctx.getText();
+
+    // Create a parameter name identifier
+    return new SqlIdentifier(paramName, parserPos(ctx));
+  }
+
+  @Override
   public SqlNode visitExtractExpression(BigQuerySqlParser.ExtractExpressionContext ctx) {
     // Get the source datetime expression
     SqlNode sourceExpression = visit(ctx.expression());
@@ -1292,11 +1512,6 @@ public class BigQueryToSqlNodeVisitor extends BigQuerySqlBaseVisitor<SqlNode> {
   @Override
   public SqlNode visitArraySlice(BigQuerySqlParser.ArraySliceContext ctx) {
     throw new UnsupportedOperationException("Array slice not supported");
-  }
-
-  @Override
-  public SqlNode visitArrayOffset(BigQuerySqlParser.ArrayOffsetContext ctx) {
-    throw new UnsupportedOperationException("Array offset not supported");
   }
 
   @Override
@@ -1470,7 +1685,7 @@ public class BigQueryToSqlNodeVisitor extends BigQuerySqlBaseVisitor<SqlNode> {
 
   @Override
   public SqlNode visitArrayExpression(BigQuerySqlParser.ArrayExpressionContext ctx) {
-    if (ctx.expression().size() > 0) {
+    if (!ctx.expression().isEmpty()) {
       // Array literal [expr1, expr2, ...]
       List<SqlNode> elements = ctx.expression().stream()
           .map(this::visit)
@@ -1485,20 +1700,20 @@ public class BigQueryToSqlNodeVisitor extends BigQuerySqlBaseVisitor<SqlNode> {
         // Simple array literal
         return SqlStdOperatorTable.ARRAY_VALUE_CONSTRUCTOR.createCall(parserPos(ctx), elements);
       }
-    } else if (ctx.SELECT() != null) {
-      // ARRAY subquery
-      SqlNode selectItem = visit(ctx.selectItem());
-      SqlNode from = visit(ctx.tableExpression());
-      SqlNode where = ctx.whereClause() != null ? visit(ctx.whereClause()) : null;
-
-      List<SqlNode> operands = new ArrayList<>();
-      operands.add(selectItem);
-      operands.add(from);
-      if (where != null) {
-        operands.add(where);
-      }
-
-      return SqlStdOperatorTable.ARRAY_VALUE_CONSTRUCTOR.createCall(parserPos(ctx), operands);
+//    } else if (ctx.SELECT() != null) {
+//      // ARRAY subquery
+//      SqlNode selectItem = visit(ctx.selectItem());
+//      SqlNode from = visit(ctx.tableExpression());
+//      SqlNode where = ctx.whereClause() != null ? visit(ctx.whereClause()) : null;
+//
+//      List<SqlNode> operands = new ArrayList<>();
+//      operands.add(selectItem);
+//      operands.add(from);
+//      if (where != null) {
+//        operands.add(where);
+//      }
+//
+//      return SqlStdOperatorTable.ARRAY_VALUE_CONSTRUCTOR.createCall(parserPos(ctx), operands);
     } else {
       // Empty array
       return SqlStdOperatorTable.ARRAY_VALUE_CONSTRUCTOR.createCall(parserPos(ctx));

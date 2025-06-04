@@ -301,4 +301,41 @@ class BigQuerySelectParserSpec extends BigQuerySqlParserSpec {
                      |WHERE first_opened_date IS NOT NULL AND last_remodel_date IS NOT NULL""".stripMargin())
   }
 
+  def "SELECT with ARRAY function"() {
+    when:
+    String sql = """select
+    array (
+        select distinct
+            day
+        from
+            (
+                select distinct
+                    date (bq_insert_timestamp) as day,
+                    lifecycle_id
+                from
+                    `AMH_FZ_FDR_DEV_SIT.event_store`
+                where
+                    lifecycle_id in (
+                        select distinct
+                            id.identifier
+                        from
+                            AMH_FZ_FDR_DEV_SIT.cm_event_arrival
+                        where
+                            lower(id.payload.schema.event_type) in ('transfer_initiation', 'credentials_update')
+                            and updatedTimestamp >= '2025-05-01 16:00:00+00'
+                            and timestamp_millis (id.timestamp) >= '2025-05-01 16:00:00+00'
+                            and timestamp_millis (id.timestamp) < '2025-05-02 16:00:00+00'
+                    )
+            )
+    );""".stripMargin()
+
+    then:
+    parse(sql).check("""SELECT array((SELECT DISTINCT day
+                       |FROM (SELECT DISTINCT date(bq_insert_timestamp) AS day, lifecycle_id
+                       |FROM AMH_FZ_FDR_DEV_SIT.event_store
+                       |WHERE lifecycle_id IN (SELECT DISTINCT id.identifier
+                       |FROM AMH_FZ_FDR_DEV_SIT.cm_event_arrival
+                       |WHERE LOWER(id.payload.schema.event_type) IN ('transfer_initiation', 'credentials_update') AND updatedTimestamp >= '2025-05-01 16:00:00+00' AND timestamp_millis(id.timestamp) >= '2025-05-01 16:00:00+00' AND timestamp_millis(id.timestamp) < '2025-05-02 16:00:00+00'))))""".stripMargin())
+  }
+
 }

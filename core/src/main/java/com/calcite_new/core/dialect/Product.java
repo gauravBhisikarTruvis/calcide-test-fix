@@ -1,7 +1,8 @@
 package com.calcite_new.core.dialect;
 
 public enum Product {
-  BIG_QUERY("BIG_QUERY"),;
+  BIG_QUERY("BIG_QUERY"),
+  DATASTAGE("DATASTAGE"),;
 
   public final String name;
 

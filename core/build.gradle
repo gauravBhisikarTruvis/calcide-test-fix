@@ -1,5 +1,5 @@
 plugins {
-    id 'java'
+    id 'java-library'
     id 'groovy'
     id 'java-test-fixtures'
 }
@@ -12,7 +12,7 @@ repositories {
 }
 
 dependencies {
-    implementation group: 'org.apache.calcite', name: 'calcite-core', version: '1.38.0'
+    api group: 'org.apache.calcite', name: 'calcite-core', version: '1.38.0'
 
     testImplementation 'org.codehaus.groovy:groovy-all:3.0.19'
     testImplementation 'org.spockframework:spock-core:2.3-groovy-3.0'
@@ -20,11 +20,6 @@ dependencies {
     testImplementation 'org.junit.jupiter:junit-jupiter-engine:5.10.0'
     testFixturesImplementation group: 'org.apache.calcite', name: 'calcite-core', version: '1.38.0'
 }
-
-//java {
-//    sourceCompatibility = JavaVersion.VERSION_17
-//    targetCompatibility = JavaVersion.VERSION_17
-//}
 
 test {
     useJUnitPlatform()
