@@ -1,6 +1,7 @@
 package com.calcite_new.sql.analyzer.visitor;
 
 import com.calcite_new.sql.SqlUpdate;
+import com.calcite_new.sql.analyzer.model.context.clause.SelectClause;
 import com.calcite_new.sql.analyzer.relationextractor.EntityRelationship;
 import com.calcite_new.sql.analyzer.relationextractor.RelationshipExtractor;
 import com.calcite_new.sql.analyzer.utils.SqlConditionUtils;
@@ -81,7 +82,10 @@ public class SqlNodeVisitor extends SqlBasicVisitor<SqlNodeVisitor.Result> {
     private Result visitSelect(SqlSelect select) {
         Result result = new Result();
         result.setQueryType(QueryType.SELECT);
-
+        SelectClause selectClause = new SelectClause();
+        selectClause.setSelectAll(select.getSelectList().size() == 1 && select.getSelectList().getFirst().toString().equals("*"));
+        selectClause.setDistinct(select.isDistinct());
+        result.getContext().setSelectClause(selectClause);
         if (select.getFrom() != null) {
             Result fromResult = select.getFrom().accept(this);
             mergeResults(result, fromResult);
