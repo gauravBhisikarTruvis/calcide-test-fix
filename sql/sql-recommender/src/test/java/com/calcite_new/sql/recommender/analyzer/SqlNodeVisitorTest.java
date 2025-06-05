@@ -1,0 +1,82 @@
+package com.calcite_new.sql.recommender.analyzer;
+
+import com.calcite_new.sql.parser.BigQuerySqlParser;
+import com.calcite_new.sql.recommender.analyzer.querycontext.QueryType;
+import com.calcite_new.sql.recommender.analyzer.querycontext.SelectClause;
+import com.calcite_new.sql.recommender.visitor.SqlNodeVisitor;
+import org.apache.calcite.sql.SqlNode;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+public class SqlNodeVisitorTest {
+
+    private SqlNode parse(String sql) throws Exception {
+        return new BigQuerySqlParser().parse(sql);
+    }
+
+    private SqlNodeVisitor getVisitor() {
+        return new SqlNodeVisitor("stuti", "project1", "foodmart");
+    }
+
+    @Test
+    public void testSelectAllFromSalesFact() throws Exception {
+        String sql = "SELECT * FROM sales_fact_1997";
+        SqlNode node = parse(sql);
+
+        SqlNodeVisitor.Result result = node.accept(getVisitor());
+
+        assertEquals(QueryType.SELECT, result.getQueryType());
+        assertNotNull(result.getContext().getSelectClause());
+        assertTrue(result.getContext().getSelectClause().isSelectAll());
+        assertFalse(result.getContext().getSelectClause().isDistinct());
+    }
+
+    @Test
+    public void testInClauseSubqueryProduct() throws Exception {
+        String sql = "SELECT product_id FROM product WHERE product_id IN (SELECT product_id FROM sales_fact_1997)";
+        SqlNode node = parse(sql);
+
+        SqlNodeVisitor.Result result = node.accept(getVisitor());
+
+        assertEquals(QueryType.SELECT, result.getQueryType());
+        assertNotNull(result.getContext().getWhereClause());
+        assertFalse(result.getContext().getWhereClause().getInClauses().isEmpty());
+        assertTrue(result.getContext().getWhereClause().getInClauses().getFirst().isSubquery());
+    }
+
+    @Test
+    public void testDeleteCustomerWhereTrue() throws Exception {
+        String sql = "DELETE FROM customer WHERE TRUE";
+        SqlNode node = parse(sql);
+
+        SqlNodeVisitor.Result result = node.accept(getVisitor());
+
+        assertEquals(QueryType.DELETE, result.getQueryType());
+        assertTrue(result.getContext().getWhereClause().isTrueCondition());
+    }
+
+    @Test
+    public void testDeleteStoreById() throws Exception {
+        String sql = "DELETE FROM store WHERE store_id = 101";
+        SqlNode node = parse(sql);
+
+        SqlNodeVisitor.Result result = node.accept(getVisitor());
+
+        assertEquals(QueryType.DELETE, result.getQueryType());
+        assertFalse(result.getContext().getWhereClause().isTrueCondition());
+    }
+
+    @Test
+    public void testInsertIntoWithSelectStar() throws Exception {
+        String sql = "INSERT INTO sales_fact_copy SELECT * FROM sales_fact_1997";
+        SqlNode node = parse(sql);
+
+        SqlNodeVisitor.Result result = node.accept(getVisitor());
+
+        assertEquals(QueryType.INSERT, result.getQueryType());
+
+        SelectClause selectClause = result.getContext().getSelectClause();
+        assertTrue(selectClause.isSelectAll());
+    }
+}
