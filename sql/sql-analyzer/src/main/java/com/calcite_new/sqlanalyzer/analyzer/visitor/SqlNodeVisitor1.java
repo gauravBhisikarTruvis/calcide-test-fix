@@ -140,7 +140,7 @@ public class SqlNodeVisitor1 extends SqlBasicVisitor<SqlNodeVisitor1.Result> {
 
     private void processWhereClause(SqlNode whereNode, Result result) {
         WhereClause whereClause = new WhereClause();
-        whereClause.setHasSubqueryInsideInClause(hasInOrNotInClauseWithSubquery(whereNode));
+        whereClause.setHasInWithSubquery(hasInOrNotInClauseWithSubquery(whereNode));
         result.getContext().setWhereClause(whereClause);
 
         Result whereResult = whereNode.accept(this);

@@ -3,10 +3,10 @@ package com.calcite_new.sqlanalyzer.analyzer.visitor;
 import com.calcite_new.sqlanalyzer.model.entity.context.clause.SelectClause;
 import com.calcite_new.sqlanalyzer.model.entity.context.clause.WhereClause;
 import com.calcite_new.sqlanalyzer.model.enums.QueryType;
+import com.calcite_new.sqlanalyzer.utils.InClauseAnalyzer;
 import org.apache.calcite.sql.SqlCall;
+import org.apache.calcite.sql.SqlNode;
 import org.apache.calcite.sql.SqlSelect;
-
-import static com.calcite_new.sqlanalyzer.utils.SqlSubqueryUtils.hasInOrNotInClauseWithSubquery;
 
 public class SelectVisitor extends BaseStatementVisitor {
 
@@ -34,8 +34,12 @@ public class SelectVisitor extends BaseStatementVisitor {
         }
 
         if (select.getWhere() != null) {
+            SqlNode whereExpr = select.getWhere();
             WhereClause whereClause = new WhereClause();
-            whereClause.setHasSubqueryInsideInClause(hasInOrNotInClauseWithSubquery(select.getWhere()));
+            InClauseAnalyzer.InClauseInfo inInfo = InClauseAnalyzer.analyze(whereExpr);
+            whereClause.setHasInWithSubquery(inInfo.hasInWithSubquery());
+            whereClause.setHasInWithConstant(inInfo.hasInWithConstant());
+
             result.getContext().setWhereClause(whereClause);
 
             SqlNodeVisitor visitor = new SqlNodeVisitor(userName, defaultDatabase, defaultSchema);
