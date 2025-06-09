@@ -13,7 +13,7 @@ public class WhereClause {
     private boolean hasPartitionFilter;
     private boolean hasClusteringFilter;
     private boolean hasTrueCondition;
-    private boolean isExpensiveFunctionUsed;
+    private boolean hasCaseInsensitiveComparison;
     private boolean hasInWithSubquery;
     private boolean hasInWithConstant;
 }
