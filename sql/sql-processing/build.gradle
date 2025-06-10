@@ -10,9 +10,6 @@ repositories {
 }
 
 dependencies {
-    implementation 'xerces:xercesImpl:2.12.2'
-    testImplementation platform('org.junit:junit-bom:5.10.0')
-    testImplementation 'org.junit.jupiter:junit-jupiter'
 }
 
 test {

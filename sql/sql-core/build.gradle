@@ -2,6 +2,9 @@ plugins {
   id 'java'
   id 'groovy'
   id 'java-test-fixtures'
+  id 'io.freefair.lombok' version '8.6'
+  id 'org.springframework.boot' version '3.2.5'
+  id 'io.spring.dependency-management' version '1.1.4'
 }
 
 group = 'com.calcite-new'
@@ -14,7 +17,11 @@ repositories {
 dependencies {
   implementation(project(":core"))
   implementation(project(":sql:sql-parser"))
-
+  implementation 'org.projectlombok:lombok:1.18.32'
+  implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+  implementation 'jakarta.persistence:jakarta.persistence-api:3.1.0'
+  compileOnly 'org.projectlombok:lombok'
+  annotationProcessor 'org.projectlombok:lombok'
   testFixturesImplementation(testFixtures(project(":core")))
   testFixturesApi(testFixtures(project(":sql:sql-parser")))
   testFixturesImplementation 'org.junit.jupiter:junit-jupiter-api:5.10.0'

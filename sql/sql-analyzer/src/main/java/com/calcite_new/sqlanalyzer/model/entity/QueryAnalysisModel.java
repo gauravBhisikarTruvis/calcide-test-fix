@@ -2,11 +2,13 @@ package com.calcite_new.sqlanalyzer.model.entity;
 
 import com.calcite_new.sqlanalyzer.model.enums.QueryStatus;
 import com.calcite_new.sqlanalyzer.model.enums.QueryType;
+import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.util.List;
-
-import jakarta.persistence.*;
-import lombok.*;
 
 @Entity
 @Table(name = "query_analysis")

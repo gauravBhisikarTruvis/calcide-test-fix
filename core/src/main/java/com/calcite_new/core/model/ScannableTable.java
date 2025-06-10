@@ -30,13 +30,13 @@ public class ScannableTable extends AbstractTable implements org.apache.calcite.
     List<RelDataType> types = table.getColumns().stream()
         .map(c -> {
           DataType type = c.type();
-          if (type.name().allowsPrec() && type.name().allowsScale()) {
-            return typeFactory.createSqlType(type.name(), type.precision(), type.scale());
+          if (type.getName().allowsPrec() && type.getName().allowsScale()) {
+            return typeFactory.createSqlType(type.getName(), type.getPrecision(), type.getScale());
           }
-          if (type.name().allowsPrec()) {
-            return typeFactory.createSqlType(type.name(), type.precision());
+          if (type.getName().allowsPrec()) {
+            return typeFactory.createSqlType(type.getName(), type.getPrecision());
           }
-          return typeFactory.createSqlType(type.name());
+          return typeFactory.createSqlType(type.getName());
         }).toList();
     return typeFactory.createStructType(StructKind.FULLY_QUALIFIED, types, names);
   }

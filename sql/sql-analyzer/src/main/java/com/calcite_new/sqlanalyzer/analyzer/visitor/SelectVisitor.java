@@ -1,7 +1,7 @@
 package com.calcite_new.sqlanalyzer.analyzer.visitor;
 
-import com.calcite_new.sqlanalyzer.model.entity.context.clause.SelectClause;
-import com.calcite_new.sqlanalyzer.model.entity.context.clause.WhereClause;
+import com.calcite_new.sql.model.entity.context.clause.SelectClause;
+import com.calcite_new.sql.model.entity.context.clause.WhereClause;
 import com.calcite_new.sqlanalyzer.model.enums.QueryType;
 import com.calcite_new.sqlanalyzer.utils.InClauseAnalyzer;
 import org.apache.calcite.sql.SqlCall;

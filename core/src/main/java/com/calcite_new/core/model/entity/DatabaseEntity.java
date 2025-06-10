@@ -6,7 +6,7 @@ import java.util.List;
 
 /**
  * Abstract class representing a database entity.
- * This class serves as a base for different types of entities such as tables, views, etc.
+ * This class serves as a base for different types of entities such as tables, views, stored proc etc.
  */
 public abstract class DatabaseEntity implements Entity {
   private final List<Identifier> namespace;

@@ -4,7 +4,6 @@ import com.calcite_new.core.model.EntityCatalog;
 import com.calcite_new.core.model.EntityQualifier;
 import com.calcite_new.core.model.SchemaWrapper;
 import com.calcite_new.core.model.entity.DatabaseEntity;
-import com.calcite_new.core.model.entity.Table;
 
 /**
  * EntityResolver is responsible for resolving entities in the catalog.
@@ -18,11 +17,11 @@ public class EntityResolver {
   }
 
   public DatabaseEntity resolve(EntityQualifier qualifier) {
-    Table table = catalog.getTable(qualifier);
-    if (table == null) {
+    DatabaseEntity databaseEntity = catalog.getDatabaseEntity(qualifier);
+    if (databaseEntity == null) {
       throw new IllegalArgumentException("Entity not found: " + qualifier);
     }
-    return table;
+    return databaseEntity;
   }
 
   public SchemaWrapper getSchema() {

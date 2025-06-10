@@ -1,7 +1,9 @@
 package com.calcite_new.core.model;
 
 import com.calcite_new.core.model.entity.DatabaseEntity;
+import com.calcite_new.core.model.entity.EntityKind;
 import com.calcite_new.core.model.entity.Table;
+import com.calcite_new.core.model.entity.View;
 import org.apache.calcite.schema.Schema;
 import org.apache.calcite.schema.impl.AbstractSchema;
 
@@ -16,19 +18,27 @@ import java.util.stream.Collectors;
 public class EntityCatalog extends AbstractSchema {
   private Map<Identifier, Namespace> products = new ConcurrentHashMap<>();
 
-  public Table getTable(EntityQualifier qualifier) {
+  public DatabaseEntity getDatabaseEntity(EntityQualifier qualifier) {
     List<Identifier> qualifiedName = qualifier.getQualifiers();
     if (qualifiedName.size() < 2) {
       throw new IllegalArgumentException("Qualified name must have at least two parts");
     }
     Namespace namespace = getNamespace(qualifiedName.subList(0, qualifiedName.size() - 1));
+    if (namespace == null) {
+      return null;
+    }
     return namespace.getTable(qualifiedName.get(qualifiedName.size() - 1));
   }
 
   public void addEntity(DatabaseEntity entity) {
     List<Identifier> namespace = entity.getNamespace();
     Namespace ns = getOrAddNamespace(namespace);
-    ns.addTable((Table) entity);
+    if (entity.getKind() != EntityKind.TABLE) {
+      ns.addTable((Table) entity);
+    } else if (entity.getKind() == EntityKind.VIEW) {
+      ns.addView((View) entity);
+    }
+    throw new IllegalArgumentException("Unsupported entity kind: " + entity.getKind());
   }
 
   private Namespace getOrAddNamespace(List<Identifier> namespace) {
@@ -45,10 +55,13 @@ public class EntityCatalog extends AbstractSchema {
     }
     Namespace ns = products.get(identifiers.get(0));
     for (Identifier nsName : identifiers.subList(1, identifiers.size())) {
-      checkNamespace(ns, nsName, identifiers);
+//      checkNamespace(ns, nsName, identifiers);
+      if (ns == null) {
+        return ns;
+      }
       ns = ns.getNamespace(nsName);
     }
-    checkNamespace(ns, identifiers.get(identifiers.size() - 1), identifiers);
+//    checkNamespace(ns, identifiers.get(identifiers.size() - 1), identifiers);
     return ns;
   }
 

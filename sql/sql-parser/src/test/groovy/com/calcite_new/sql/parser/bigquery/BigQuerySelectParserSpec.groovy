@@ -287,6 +287,28 @@ class BigQuerySelectParserSpec extends BigQuerySqlParserSpec {
                      |ORDER BY product_family, product_category""".stripMargin())
   }
 
+  def "SELECT with GROUP BY and ORDER BY in subquery"() {
+    when:
+    String sql = """SELECT
+                  |  customer_id,
+                  |  COUNT(*) AS total_purchases
+                  |FROM (
+                  |  SELECT *
+                  |  FROM project.foodmart.sales_fact_1998
+                  |  WHERE store_id = 7
+                  |  ORDER BY store_sales DESC 
+                  |)
+                  |GROUP BY customer_id;""".stripMargin()
+
+    then:
+    parse(sql).check("""SELECT customer_id, COUNT(*) AS total_purchases
+                      |FROM (SELECT *
+                      |FROM project.foodmart.sales_fact_1998
+                      |WHERE store_id = 7
+                      |ORDER BY store_sales DESC)
+                      |GROUP BY customer_id""".stripMargin())
+  }
+
   def "SELECT with timestamp operations should parse"() {
     when:
     String sql = """SELECT store_id, 

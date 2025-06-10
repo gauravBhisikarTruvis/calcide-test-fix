@@ -2,6 +2,7 @@ package com.calcite_new.core.model;
 
 import com.calcite_new.core.model.entity.DatabaseEntity;
 import com.calcite_new.core.model.entity.Table;
+import com.calcite_new.core.model.entity.View;
 import org.apache.calcite.schema.Schema;
 import org.apache.calcite.schema.impl.AbstractSchema;
 
@@ -19,6 +20,7 @@ public class Namespace extends AbstractSchema {
   private final Identifier name;
   private final Map<Identifier, Namespace> children = new ConcurrentHashMap<>();
   private final EntityMap<Table> tables = new EntityMap<>();
+  private final EntityMap<View> views = new EntityMap<>();
 
   public Namespace(Identifier name) {
     this.name = name;
@@ -30,6 +32,10 @@ public class Namespace extends AbstractSchema {
 
   public void addTable(Table table) {
     tables.put(table);
+  }
+
+  public void addView(View view) {
+    views.put(view);
   }
 
   public Table getTable(Identifier name) {

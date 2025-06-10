@@ -3,14 +3,8 @@ package com.calcite_new.sqlanalyzer.repository;
 
 import com.calcite_new.sqlanalyzer.model.entity.QueryAnalysisModel;
 import com.calcite_new.sqlanalyzer.model.entity.QueryContext;
-import com.calcite_new.sqlanalyzer.model.entity.context.clause.WhereClause;
-import com.calcite_new.sqlanalyzer.model.enums.QueryStatus;
-import com.calcite_new.sqlanalyzer.model.enums.QueryType;
-import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.calcite_new.sql.model.entity.context.clause.WhereClause;
 import org.springframework.boot.test.context.SpringBootTest;
-
-import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 

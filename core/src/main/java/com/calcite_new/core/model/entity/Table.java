@@ -4,7 +4,10 @@ import com.calcite_new.core.model.Identifier;
 
 import java.util.List;
 
-public class Table extends DatabaseEntity {
+/**
+ * Class representing a database table.
+ */
+public class Table extends DatabaseEntity implements RelationalEntity {
   private final List<Column> columns;
 
   public Table(List<Identifier> namespace, Identifier name, List<Column> columns, long createdTimestamp) {

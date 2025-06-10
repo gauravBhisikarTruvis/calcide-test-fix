@@ -75,23 +75,23 @@ public class BigQueryFoodmartCatalogBuilder {
 
     columns.add(new Column(Identifier.of("product_class_id", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.INTEGER, 0, 0),
+        DataType.create(SqlTypeName.INTEGER, 0, 0),
         false));
     columns.add(new Column(Identifier.of("product_subcategory", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.VARCHAR, 30, 0),
+        DataType.create(SqlTypeName.VARCHAR, 30, 0),
         true));
     columns.add(new Column(Identifier.of("product_category", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.VARCHAR, 30, 0),
+        DataType.create(SqlTypeName.VARCHAR, 30, 0),
         true));
     columns.add(new Column(Identifier.of("product_department", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.VARCHAR, 30, 0),
+        DataType.create(SqlTypeName.VARCHAR, 30, 0),
         true));
     columns.add(new Column(Identifier.of("product_family", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.VARCHAR, 30, 0),
+        DataType.create(SqlTypeName.VARCHAR, 30, 0),
         true));
 
     List<Identifier> namespace = List.of(dialect, projectName, datasetName);
@@ -109,99 +109,99 @@ public class BigQueryFoodmartCatalogBuilder {
 
     columns.add(new Column(Identifier.of("store_id", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.INTEGER, 0, 0),
+        DataType.create(SqlTypeName.INTEGER, 0, 0),
         false));
     columns.add(new Column(Identifier.of("store_type", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.VARCHAR, 30, 0),
+        DataType.create(SqlTypeName.VARCHAR, 30, 0),
         true));
     columns.add(new Column(Identifier.of("region_id", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.INTEGER, 0, 0),
+        DataType.create(SqlTypeName.INTEGER, 0, 0),
         true));
     columns.add(new Column(Identifier.of("store_name", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.VARCHAR, 30, 0),
+        DataType.create(SqlTypeName.VARCHAR, 30, 0),
         true));
     columns.add(new Column(Identifier.of("store_number", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.INTEGER, 0, 0),
+        DataType.create(SqlTypeName.INTEGER, 0, 0),
         true));
     columns.add(new Column(Identifier.of("store_street_address", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.VARCHAR, 30, 0),
+        DataType.create(SqlTypeName.VARCHAR, 30, 0),
         true));
     columns.add(new Column(Identifier.of("store_city", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.VARCHAR, 30, 0),
+        DataType.create(SqlTypeName.VARCHAR, 30, 0),
         true));
     columns.add(new Column(Identifier.of("store_state", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.VARCHAR, 30, 0),
+        DataType.create(SqlTypeName.VARCHAR, 30, 0),
         true));
     columns.add(new Column(Identifier.of("store_postal_code", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.VARCHAR, 30, 0),
+        DataType.create(SqlTypeName.VARCHAR, 30, 0),
         true));
     columns.add(new Column(Identifier.of("store_country", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.VARCHAR, 30, 0),
+        DataType.create(SqlTypeName.VARCHAR, 30, 0),
         true));
     columns.add(new Column(Identifier.of("store_manager", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.VARCHAR, 30, 0),
+        DataType.create(SqlTypeName.VARCHAR, 30, 0),
         true));
     columns.add(new Column(Identifier.of("store_phone", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.VARCHAR, 30, 0),
+        DataType.create(SqlTypeName.VARCHAR, 30, 0),
         true));
     columns.add(new Column(Identifier.of("store_fax", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.VARCHAR, 30, 0),
+        DataType.create(SqlTypeName.VARCHAR, 30, 0),
         true));
     columns.add(new Column(Identifier.of("first_opened_date", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.TIMESTAMP, 0, 0),
+        DataType.create(SqlTypeName.TIMESTAMP, 0, 0),
         true));
     columns.add(new Column(Identifier.of("last_remodel_date", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.TIMESTAMP, 0, 0),
+        DataType.create(SqlTypeName.TIMESTAMP, 0, 0),
         true));
     columns.add(new Column(Identifier.of("store_sqft", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.INTEGER, 0, 0),
+        DataType.create(SqlTypeName.INTEGER, 0, 0),
         true));
     columns.add(new Column(Identifier.of("grocery_sqft", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.INTEGER, 0, 0),
+        DataType.create(SqlTypeName.INTEGER, 0, 0),
         true));
     columns.add(new Column(Identifier.of("frozen_sqft", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.INTEGER, 0, 0),
+        DataType.create(SqlTypeName.INTEGER, 0, 0),
         true));
     columns.add(new Column(Identifier.of("meat_sqft", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.INTEGER, 0, 0),
+        DataType.create(SqlTypeName.INTEGER, 0, 0),
         true));
     columns.add(new Column(Identifier.of("coffee_bar", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.BOOLEAN, 0, 0),
+        DataType.create(SqlTypeName.BOOLEAN, 0, 0),
         true));
     columns.add(new Column(Identifier.of("video_store", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.BOOLEAN, 0, 0),
+        DataType.create(SqlTypeName.BOOLEAN, 0, 0),
         true));
     columns.add(new Column(Identifier.of("salad_bar", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.BOOLEAN, 0, 0),
+        DataType.create(SqlTypeName.BOOLEAN, 0, 0),
         true));
     columns.add(new Column(Identifier.of("prepared_food", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.BOOLEAN, 0, 0),
+        DataType.create(SqlTypeName.BOOLEAN, 0, 0),
         true));
     columns.add(new Column(Identifier.of("florist", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.BOOLEAN, 0, 0),
+        DataType.create(SqlTypeName.BOOLEAN, 0, 0),
         true));
 
     List<Identifier> namespace = List.of(dialect, projectName, datasetName);
@@ -219,43 +219,43 @@ public class BigQueryFoodmartCatalogBuilder {
 
     columns.add(new Column(Identifier.of("time_id", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.INTEGER, 0, 0),
+        DataType.create(SqlTypeName.INTEGER, 0, 0),
         false));
     columns.add(new Column(Identifier.of("the_date", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.TIMESTAMP, 0, 0),
+        DataType.create(SqlTypeName.TIMESTAMP, 0, 0),
         true));
     columns.add(new Column(Identifier.of("the_day", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.VARCHAR, 30, 0),
+        DataType.create(SqlTypeName.VARCHAR, 30, 0),
         true));
     columns.add(new Column(Identifier.of("the_month", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.VARCHAR, 30, 0),
+        DataType.create(SqlTypeName.VARCHAR, 30, 0),
         true));
     columns.add(new Column(Identifier.of("the_year", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.SMALLINT, 0, 0),
+        DataType.create(SqlTypeName.SMALLINT, 0, 0),
         true));
     columns.add(new Column(Identifier.of("day_of_month", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.SMALLINT, 0, 0),
+        DataType.create(SqlTypeName.SMALLINT, 0, 0),
         true));
     columns.add(new Column(Identifier.of("week_of_year", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.INTEGER, 0, 0),
+        DataType.create(SqlTypeName.INTEGER, 0, 0),
         true));
     columns.add(new Column(Identifier.of("month_of_year", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.SMALLINT, 0, 0),
+        DataType.create(SqlTypeName.SMALLINT, 0, 0),
         true));
     columns.add(new Column(Identifier.of("quarter", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.VARCHAR, 30, 0),
+        DataType.create(SqlTypeName.VARCHAR, 30, 0),
         true));
     columns.add(new Column(Identifier.of("fiscal_period", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.VARCHAR, 30, 0),
+        DataType.create(SqlTypeName.VARCHAR, 30, 0),
         true));
 
     List<Identifier> namespace = List.of(dialect, projectName, datasetName);
@@ -273,31 +273,31 @@ public class BigQueryFoodmartCatalogBuilder {
 
     columns.add(new Column(Identifier.of("promotion_id", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.INTEGER, 0, 0),
+        DataType.create(SqlTypeName.INTEGER, 0, 0),
         false));
     columns.add(new Column(Identifier.of("promotion_district_id", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.INTEGER, 0, 0),
+        DataType.create(SqlTypeName.INTEGER, 0, 0),
         true));
     columns.add(new Column(Identifier.of("promotion_name", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.VARCHAR, 30, 0),
+        DataType.create(SqlTypeName.VARCHAR, 30, 0),
         true));
     columns.add(new Column(Identifier.of("media_type", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.VARCHAR, 30, 0),
+        DataType.create(SqlTypeName.VARCHAR, 30, 0),
         true));
     columns.add(new Column(Identifier.of("cost", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.DECIMAL, 10, 4),
+        DataType.create(SqlTypeName.DECIMAL, 10, 4),
         true));
     columns.add(new Column(Identifier.of("start_date", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.TIMESTAMP, 0, 0),
+        DataType.create(SqlTypeName.TIMESTAMP, 0, 0),
         true));
     columns.add(new Column(Identifier.of("end_date", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.TIMESTAMP, 0, 0),
+        DataType.create(SqlTypeName.TIMESTAMP, 0, 0),
         true));
 
     List<Identifier> namespace = List.of(dialect, projectName, datasetName);
@@ -315,35 +315,35 @@ public class BigQueryFoodmartCatalogBuilder {
 
     columns.add(new Column(Identifier.of("product_id", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.INTEGER, 0, 0),
+        DataType.create(SqlTypeName.INTEGER, 0, 0),
         false));
     columns.add(new Column(Identifier.of("time_id", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.INTEGER, 0, 0),
+        DataType.create(SqlTypeName.INTEGER, 0, 0),
         false));
     columns.add(new Column(Identifier.of("customer_id", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.INTEGER, 0, 0),
+        DataType.create(SqlTypeName.INTEGER, 0, 0),
         false));
     columns.add(new Column(Identifier.of("promotion_id", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.INTEGER, 0, 0),
+        DataType.create(SqlTypeName.INTEGER, 0, 0),
         false));
     columns.add(new Column(Identifier.of("store_id", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.INTEGER, 0, 0),
+        DataType.create(SqlTypeName.INTEGER, 0, 0),
         false));
     columns.add(new Column(Identifier.of("store_sales", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.FLOAT, 10, 2),
+        DataType.create(SqlTypeName.FLOAT, 10, 2),
         false));
     columns.add(new Column(Identifier.of("store_cost", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.FLOAT, 10, 2),
+        DataType.create(SqlTypeName.FLOAT, 10, 2),
         false));
     columns.add(new Column(Identifier.of("unit_sales", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.FLOAT, 10, 2),
+        DataType.create(SqlTypeName.FLOAT, 10, 2),
         false));
     return columns;
   }
@@ -377,43 +377,43 @@ public class BigQueryFoodmartCatalogBuilder {
 
     columns.add(new Column(Identifier.of("product_id", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.INTEGER, 0, 0),
+        DataType.create(SqlTypeName.INTEGER, 0, 0),
         false));
     columns.add(new Column(Identifier.of("time_id", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.INTEGER, 0, 0),
+        DataType.create(SqlTypeName.INTEGER, 0, 0),
         false));
     columns.add(new Column(Identifier.of("warehouse_id", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.INTEGER, 0, 0),
+        DataType.create(SqlTypeName.INTEGER, 0, 0),
         false));
     columns.add(new Column(Identifier.of("store_id", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.INTEGER, 0, 0),
+        DataType.create(SqlTypeName.INTEGER, 0, 0),
         false));
     columns.add(new Column(Identifier.of("units_ordered", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.INTEGER, 0, 0),
+        DataType.create(SqlTypeName.INTEGER, 0, 0),
         false));
     columns.add(new Column(Identifier.of("units_shipped", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.INTEGER, 0, 0),
+        DataType.create(SqlTypeName.INTEGER, 0, 0),
         false));
     columns.add(new Column(Identifier.of("warehouse_sales", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.FLOAT, 10, 2),
+        DataType.create(SqlTypeName.FLOAT, 10, 2),
         false));
     columns.add(new Column(Identifier.of("warehouse_cost", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.FLOAT, 10, 2),
+        DataType.create(SqlTypeName.FLOAT, 10, 2),
         false));
     columns.add(new Column(Identifier.of("supply_time", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.SMALLINT, 0, 0),
+        DataType.create(SqlTypeName.SMALLINT, 0, 0),
         false));
     columns.add(new Column(Identifier.of("store_invoice", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.FLOAT, 10, 2),
+        DataType.create(SqlTypeName.FLOAT, 10, 2),
         false));
 
     return columns;
@@ -450,71 +450,71 @@ public class BigQueryFoodmartCatalogBuilder {
 
     columns.add(new Column(Identifier.of("employee_id", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.INTEGER, 0, 0),
+        DataType.create(SqlTypeName.INTEGER, 0, 0),
         false));
     columns.add(new Column(Identifier.of("full_name", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.VARCHAR, 20, 0),
+        DataType.create(SqlTypeName.VARCHAR, 20, 0),
         false));
     columns.add(new Column(Identifier.of("first_name", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.VARCHAR, 20, 0),
+        DataType.create(SqlTypeName.VARCHAR, 20, 0),
         false));
     columns.add(new Column(Identifier.of("last_name", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.VARCHAR, 20, 0),
+        DataType.create(SqlTypeName.VARCHAR, 20, 0),
         false));
     columns.add(new Column(Identifier.of("position_id", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.INTEGER, 0, 0),
+        DataType.create(SqlTypeName.INTEGER, 0, 0),
         true));
     columns.add(new Column(Identifier.of("position_title", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.VARCHAR, 20, 0),
+        DataType.create(SqlTypeName.VARCHAR, 20, 0),
         true));
     columns.add(new Column(Identifier.of("store_id", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.INTEGER, 0, 0),
+        DataType.create(SqlTypeName.INTEGER, 0, 0),
         false));
     columns.add(new Column(Identifier.of("department_id", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.INTEGER, 0, 0),
+        DataType.create(SqlTypeName.INTEGER, 0, 0),
         false));
     columns.add(new Column(Identifier.of("birth_date", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.DATE, 0, 0),
+        DataType.create(SqlTypeName.DATE, 0, 0),
         false));
     columns.add(new Column(Identifier.of("hire_date", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.TIMESTAMP, 0, 0),
+        DataType.create(SqlTypeName.TIMESTAMP, 0, 0),
         false));
     columns.add(new Column(Identifier.of("end_date", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.VARCHAR, 20, 0),
+        DataType.create(SqlTypeName.VARCHAR, 20, 0),
         true));
     columns.add(new Column(Identifier.of("salary", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.FLOAT, 10, 2),
+        DataType.create(SqlTypeName.FLOAT, 10, 2),
         false));
     columns.add(new Column(Identifier.of("supervisor_id", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.INTEGER, 0, 0),
+        DataType.create(SqlTypeName.INTEGER, 0, 0),
         true));
     columns.add(new Column(Identifier.of("education_level", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.VARCHAR, 20, 0),
+        DataType.create(SqlTypeName.VARCHAR, 20, 0),
         false));
     columns.add(new Column(Identifier.of("marital_status", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.VARCHAR, 20, 0),
+        DataType.create(SqlTypeName.VARCHAR, 20, 0),
         false));
     columns.add(new Column(Identifier.of("gender", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.VARCHAR, 20, 0),
+        DataType.create(SqlTypeName.VARCHAR, 20, 0),
         false));
     columns.add(new Column(Identifier.of("management_role", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.VARCHAR, 20, 0),
+        DataType.create(SqlTypeName.VARCHAR, 20, 0),
         true));
 
     List<Identifier> namespace = List.of(dialect, projectName, datasetName);
@@ -532,119 +532,119 @@ public class BigQueryFoodmartCatalogBuilder {
 
     columns.add(new Column(Identifier.of("customer_id", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.INTEGER, 0, 0),
+        DataType.create(SqlTypeName.INTEGER, 0, 0),
         false));
     columns.add(new Column(Identifier.of("account_num", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.INTEGER, 0, 0),
+        DataType.create(SqlTypeName.INTEGER, 0, 0),
         false));
     columns.add(new Column(Identifier.of("lname", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.VARCHAR, 20, 0),
+        DataType.create(SqlTypeName.VARCHAR, 20, 0),
         false));
     columns.add(new Column(Identifier.of("fname", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.VARCHAR, 20, 0),
+        DataType.create(SqlTypeName.VARCHAR, 20, 0),
         false));
     columns.add(new Column(Identifier.of("mi", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.VARCHAR, 20, 0),
+        DataType.create(SqlTypeName.VARCHAR, 20, 0),
         true));
     columns.add(new Column(Identifier.of("address1", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.VARCHAR, 20, 0),
+        DataType.create(SqlTypeName.VARCHAR, 20, 0),
         true));
     columns.add(new Column(Identifier.of("address2", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.VARCHAR, 20, 0),
+        DataType.create(SqlTypeName.VARCHAR, 20, 0),
         true));
     columns.add(new Column(Identifier.of("address3", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.VARCHAR, 20, 0),
+        DataType.create(SqlTypeName.VARCHAR, 20, 0),
         true));
     columns.add(new Column(Identifier.of("address4", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.VARCHAR, 20, 0),
+        DataType.create(SqlTypeName.VARCHAR, 20, 0),
         true));
     columns.add(new Column(Identifier.of("city", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.VARCHAR, 20, 0),
+        DataType.create(SqlTypeName.VARCHAR, 20, 0),
         true));
     columns.add(new Column(Identifier.of("state_province", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.VARCHAR, 20, 0),
+        DataType.create(SqlTypeName.VARCHAR, 20, 0),
         true));
     columns.add(new Column(Identifier.of("postal_code", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.INTEGER, 0, 0),
+        DataType.create(SqlTypeName.INTEGER, 0, 0),
         true));
     columns.add(new Column(Identifier.of("country", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.VARCHAR, 20, 0),
+        DataType.create(SqlTypeName.VARCHAR, 20, 0),
         true));
     columns.add(new Column(Identifier.of("customer_region_id", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.INTEGER, 0, 0),
+        DataType.create(SqlTypeName.INTEGER, 0, 0),
         true));
     columns.add(new Column(Identifier.of("phone1", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.VARCHAR, 20, 0),
+        DataType.create(SqlTypeName.VARCHAR, 20, 0),
         true));
     columns.add(new Column(Identifier.of("phone2", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.VARCHAR, 20, 0),
+        DataType.create(SqlTypeName.VARCHAR, 20, 0),
         true));
     columns.add(new Column(Identifier.of("birthdate", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.DATE, 0, 0),
+        DataType.create(SqlTypeName.DATE, 0, 0),
         true));
     columns.add(new Column(Identifier.of("marital_status", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.VARCHAR, 20, 0),
+        DataType.create(SqlTypeName.VARCHAR, 20, 0),
         true));
     columns.add(new Column(Identifier.of("yearly_income", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.VARCHAR, 20, 0),
+        DataType.create(SqlTypeName.VARCHAR, 20, 0),
         true));
     columns.add(new Column(Identifier.of("gender", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.VARCHAR, 20, 0),
+        DataType.create(SqlTypeName.VARCHAR, 20, 0),
         true));
     columns.add(new Column(Identifier.of("total_children", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.SMALLINT, 0, 0),
+        DataType.create(SqlTypeName.SMALLINT, 0, 0),
         true));
     columns.add(new Column(Identifier.of("num_children_at_home", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.SMALLINT, 0, 0),
+        DataType.create(SqlTypeName.SMALLINT, 0, 0),
         true));
     columns.add(new Column(Identifier.of("education", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.VARCHAR, 20, 0),
+        DataType.create(SqlTypeName.VARCHAR, 20, 0),
         true));
     columns.add(new Column(Identifier.of("date_accnt_opened", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.DATE, 0, 0),
+        DataType.create(SqlTypeName.DATE, 0, 0),
         true));
     columns.add(new Column(Identifier.of("member_card", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.VARCHAR, 20, 0),
+        DataType.create(SqlTypeName.VARCHAR, 20, 0),
         true));
     columns.add(new Column(Identifier.of("occupation", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.VARCHAR, 20, 0),
+        DataType.create(SqlTypeName.VARCHAR, 20, 0),
         true));
     columns.add(new Column(Identifier.of("houseowner", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.BOOLEAN, 0, 0),
+        DataType.create(SqlTypeName.BOOLEAN, 0, 0),
         true));
     columns.add(new Column(Identifier.of("num_cars_owned", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.INTEGER, 0, 0),
+        DataType.create(SqlTypeName.INTEGER, 0, 0),
         true));
     columns.add(new Column(Identifier.of("fullname", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.VARCHAR, 20, 0),
+        DataType.create(SqlTypeName.VARCHAR, 20, 0),
         true));
 
     List<Identifier> namespace = List.of(dialect, projectName, datasetName);
@@ -663,63 +663,63 @@ public class BigQueryFoodmartCatalogBuilder {
 
     columns.add(new Column(Identifier.of("product_class_id", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.INTEGER, 0, 0),
+        DataType.create(SqlTypeName.INTEGER, 0, 0),
         false));
     columns.add(new Column(Identifier.of("product_id", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.INTEGER, 0, 0),
+        DataType.create(SqlTypeName.INTEGER, 0, 0),
         false));
     columns.add(new Column(Identifier.of("brand_name", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.VARCHAR, 20, 0),
+        DataType.create(SqlTypeName.VARCHAR, 20, 0),
         true));
     columns.add(new Column(Identifier.of("product_name", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.VARCHAR, 20, 0),
+        DataType.create(SqlTypeName.VARCHAR, 20, 0),
         false));
     columns.add(new Column(Identifier.of("SKU", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.INTEGER, 0, 0),
+        DataType.create(SqlTypeName.INTEGER, 0, 0),
         false));
     columns.add(new Column(Identifier.of("SRP", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.FLOAT, 10, 2),
+        DataType.create(SqlTypeName.FLOAT, 10, 2),
         true));
     columns.add(new Column(Identifier.of("gross_weight", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.FLOAT, 10, 2),
+        DataType.create(SqlTypeName.FLOAT, 10, 2),
         true));
     columns.add(new Column(Identifier.of("net_weight", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.FLOAT, 10, 2),
+        DataType.create(SqlTypeName.FLOAT, 10, 2),
         true));
     columns.add(new Column(Identifier.of("recyclable_package", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.BOOLEAN, 0, 0),
+        DataType.create(SqlTypeName.BOOLEAN, 0, 0),
         true));
     columns.add(new Column(Identifier.of("low_fat", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.BOOLEAN, 0, 0),
+        DataType.create(SqlTypeName.BOOLEAN, 0, 0),
         true));
     columns.add(new Column(Identifier.of("units_per_case", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.SMALLINT, 0, 0),
+        DataType.create(SqlTypeName.SMALLINT, 0, 0),
         true));
     columns.add(new Column(Identifier.of("cases_per_pallet", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.SMALLINT, 0, 0),
+        DataType.create(SqlTypeName.SMALLINT, 0, 0),
         true));
     columns.add(new Column(Identifier.of("shelf_width", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.FLOAT, 10, 2),
+        DataType.create(SqlTypeName.FLOAT, 10, 2),
         true));
     columns.add(new Column(Identifier.of("shelf_height", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.FLOAT, 10, 2),
+        DataType.create(SqlTypeName.FLOAT, 10, 2),
         true));
     columns.add(new Column(Identifier.of("shelf_depth", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.FLOAT, 10, 2),
+        DataType.create(SqlTypeName.FLOAT, 10, 2),
         true));
 
     List<Identifier> namespace = List.of(dialect, projectName, datasetName);
@@ -791,31 +791,31 @@ public class BigQueryFoodmartCatalogBuilder {
 
     columns.add(new Column(Identifier.of("product_id", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.INTEGER, 0, 0),
+        DataType.create(SqlTypeName.INTEGER, 0, 0),
         false));
     columns.add(new Column(Identifier.of("time_id", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.INTEGER, 0, 0),
+        DataType.create(SqlTypeName.INTEGER, 0, 0),
         false));
     columns.add(new Column(Identifier.of("customer_id", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.INTEGER, 0, 0),
+        DataType.create(SqlTypeName.INTEGER, 0, 0),
         false));
     columns.add(new Column(Identifier.of("store_sales_sum", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.FLOAT, 10, 2),
+        DataType.create(SqlTypeName.FLOAT, 10, 2),
         false));
     columns.add(new Column(Identifier.of("store_cost_sum", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.FLOAT, 10, 2),
+        DataType.create(SqlTypeName.FLOAT, 10, 2),
         false));
     columns.add(new Column(Identifier.of("unit_sales_sum", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.FLOAT, 10, 2),
+        DataType.create(SqlTypeName.FLOAT, 10, 2),
         false));
     columns.add(new Column(Identifier.of("fact_count", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.INTEGER, 0, 0),
+        DataType.create(SqlTypeName.INTEGER, 0, 0),
         false));
 
     return columns;
@@ -827,31 +827,31 @@ public class BigQueryFoodmartCatalogBuilder {
 
     columns.add(new Column(Identifier.of("product_id", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.INTEGER, 0, 0),
+        DataType.create(SqlTypeName.INTEGER, 0, 0),
         false));
     columns.add(new Column(Identifier.of("time_id", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.INTEGER, 0, 0),
+        DataType.create(SqlTypeName.INTEGER, 0, 0),
         false));
     columns.add(new Column(Identifier.of("customer_id", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.INTEGER, 0, 0),
+        DataType.create(SqlTypeName.INTEGER, 0, 0),
         false));
     columns.add(new Column(Identifier.of("store_sales", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.FLOAT, 10, 2),
+        DataType.create(SqlTypeName.FLOAT, 10, 2),
         false));
     columns.add(new Column(Identifier.of("store_cost", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.FLOAT, 10, 2),
+        DataType.create(SqlTypeName.FLOAT, 10, 2),
         false));
     columns.add(new Column(Identifier.of("unit_sales", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.FLOAT, 10, 2),
+        DataType.create(SqlTypeName.FLOAT, 10, 2),
         false));
     columns.add(new Column(Identifier.of("fact_count", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.INTEGER, 0, 0),
+        DataType.create(SqlTypeName.INTEGER, 0, 0),
         false));
 
     return columns;
@@ -863,27 +863,27 @@ public class BigQueryFoodmartCatalogBuilder {
 
     columns.add(new Column(Identifier.of("time_id", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.INTEGER, 0, 0),
+        DataType.create(SqlTypeName.INTEGER, 0, 0),
         false));
     columns.add(new Column(Identifier.of("customer_id", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.INTEGER, 0, 0),
+        DataType.create(SqlTypeName.INTEGER, 0, 0),
         false));
     columns.add(new Column(Identifier.of("store_sales", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.FLOAT, 10, 2),
+        DataType.create(SqlTypeName.FLOAT, 10, 2),
         false));
     columns.add(new Column(Identifier.of("store_cost", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.FLOAT, 10, 2),
+        DataType.create(SqlTypeName.FLOAT, 10, 2),
         false));
     columns.add(new Column(Identifier.of("unit_sales", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.FLOAT, 10, 2),
+        DataType.create(SqlTypeName.FLOAT, 10, 2),
         false));
     columns.add(new Column(Identifier.of("fact_count", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.INTEGER, 0, 0),
+        DataType.create(SqlTypeName.INTEGER, 0, 0),
         false));
 
     return columns;
@@ -895,27 +895,27 @@ public class BigQueryFoodmartCatalogBuilder {
 
     columns.add(new Column(Identifier.of("time_id", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.INTEGER, 0, 0),
+        DataType.create(SqlTypeName.INTEGER, 0, 0),
         false));
     columns.add(new Column(Identifier.of("store_sales", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.FLOAT, 10, 2),
+        DataType.create(SqlTypeName.FLOAT, 10, 2),
         false));
     columns.add(new Column(Identifier.of("store_cost", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.FLOAT, 10, 2),
+        DataType.create(SqlTypeName.FLOAT, 10, 2),
         false));
     columns.add(new Column(Identifier.of("unit_sales", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.FLOAT, 10, 2),
+        DataType.create(SqlTypeName.FLOAT, 10, 2),
         false));
     columns.add(new Column(Identifier.of("customer_count", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.INTEGER, 0, 0),
+        DataType.create(SqlTypeName.INTEGER, 0, 0),
         false));
     columns.add(new Column(Identifier.of("fact_count", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.INTEGER, 0, 0),
+        DataType.create(SqlTypeName.INTEGER, 0, 0),
         false));
 
     return columns;
@@ -927,35 +927,35 @@ public class BigQueryFoodmartCatalogBuilder {
 
     columns.add(new Column(Identifier.of("product_id", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.INTEGER, 0, 0),
+        DataType.create(SqlTypeName.INTEGER, 0, 0),
         false));
     columns.add(new Column(Identifier.of("customer_id", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.INTEGER, 0, 0),
+        DataType.create(SqlTypeName.INTEGER, 0, 0),
         false));
     columns.add(new Column(Identifier.of("promotion_id", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.INTEGER, 0, 0),
+        DataType.create(SqlTypeName.INTEGER, 0, 0),
         false));
     columns.add(new Column(Identifier.of("store_id", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.INTEGER, 0, 0),
+        DataType.create(SqlTypeName.INTEGER, 0, 0),
         false));
     columns.add(new Column(Identifier.of("store_sales", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.FLOAT, 10, 2),
+        DataType.create(SqlTypeName.FLOAT, 10, 2),
         false));
     columns.add(new Column(Identifier.of("store_cost", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.FLOAT, 10, 2),
+        DataType.create(SqlTypeName.FLOAT, 10, 2),
         false));
     columns.add(new Column(Identifier.of("unit_sales", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.FLOAT, 10, 2),
+        DataType.create(SqlTypeName.FLOAT, 10, 2),
         false));
     columns.add(new Column(Identifier.of("fact_count", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.INTEGER, 0, 0),
+        DataType.create(SqlTypeName.INTEGER, 0, 0),
         false));
 
     return columns;
@@ -967,35 +967,35 @@ public class BigQueryFoodmartCatalogBuilder {
 
     columns.add(new Column(Identifier.of("month_of_year", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.SMALLINT, 0, 0),
+        DataType.create(SqlTypeName.SMALLINT, 0, 0),
         false));
     columns.add(new Column(Identifier.of("quarter", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.VARCHAR, 20, 0),
+        DataType.create(SqlTypeName.VARCHAR, 20, 0),
         false));
     columns.add(new Column(Identifier.of("the_year", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.SMALLINT, 0, 0),
+        DataType.create(SqlTypeName.SMALLINT, 0, 0),
         false));
     columns.add(new Column(Identifier.of("store_sales", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.FLOAT, 10, 2),
+        DataType.create(SqlTypeName.FLOAT, 10, 2),
         false));
     columns.add(new Column(Identifier.of("store_cost", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.FLOAT, 10, 2),
+        DataType.create(SqlTypeName.FLOAT, 10, 2),
         false));
     columns.add(new Column(Identifier.of("unit_sales", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.FLOAT, 10, 2),
+        DataType.create(SqlTypeName.FLOAT, 10, 2),
         false));
     columns.add(new Column(Identifier.of("customer_count", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.INTEGER, 0, 0),
+        DataType.create(SqlTypeName.INTEGER, 0, 0),
         false));
     columns.add(new Column(Identifier.of("fact_count", new BigQuerySqlDialect()),
         position++,
-        new DataType(SqlTypeName.INTEGER, 0, 0),
+        DataType.create(SqlTypeName.INTEGER, 0, 0),
         false));
 
     return columns;

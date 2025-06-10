@@ -2,7 +2,9 @@ package com.calcite_new.sqlanalyzer.model.entity;
 
 import com.calcite_new.sqlanalyzer.relationextractor.RelationshipType;
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.NoArgsConstructor;
 
 @Entity
 @Table(name = "entity_relationship")

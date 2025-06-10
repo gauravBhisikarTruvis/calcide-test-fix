@@ -1,12 +1,8 @@
 package com.calcite_new.sqlanalyzer.model.entity;
 
 import com.calcite_new.sqlanalyzer.model.entity.context.clause.*;
-import com.calcite_new.sqlanalyzer.model.entity.context.function.FunctionInfo;
-import com.calcite_new.sqlanalyzer.model.entity.context.function.WindowFunctionInfo;
 import jakarta.persistence.*;
 import lombok.*;
-
-import java.util.List;
 
 @Entity
 @Table(name = "query_context")
