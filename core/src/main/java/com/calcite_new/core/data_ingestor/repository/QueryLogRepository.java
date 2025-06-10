@@ -1,0 +1,71 @@
+package com.calcite_new.core.data_ingestor.repository;
+
+
+import com.calcite_new.core.data_ingestor.config.HibernateUtil;
+import com.calcite_new.core.data_ingestor.entity.QueryLog;
+import org.hibernate.Session;
+import org.hibernate.Transaction;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.List;
+
+/**
+ * Repository for handling query_log_e table
+ */
+public class QueryLogRepository {
+    private static final Logger logger = LoggerFactory.getLogger(QueryLogRepository.class);
+
+    public List<QueryLog> fetchAllLogs() {
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            logger.info("Fetching all records from query_log_e");
+            return session.createQuery("from QueryLog", QueryLog.class).getResultList();
+        } catch (Exception e) {
+            logger.error("Error fetching query logs", e);
+            throw e;
+        }
+    }
+
+    /**
+     * Find query logs containing specific text
+     *
+     * @param queryText text to search for
+     * @return List of matching QueryLog objects
+     */
+    public List<QueryLog> findByQueryText(String queryText) {
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            logger.info("Searching for query logs containing text: {}", queryText);
+            return session.createQuery(
+                    "from QueryLog where sql_text like :queryText", 
+                    QueryLog.class)
+                .setParameter("queryText", "%" + queryText + "%")
+                .getResultList();
+        } catch (Exception e) {
+            logger.error("Error searching query logs by text: {}", queryText, e);
+            throw e;
+        }
+    }
+
+    /**
+     * Save a new query log entry
+     *
+     * @param queryLog the entity to save
+     * @return the saved entity with generated ID
+     */
+    public QueryLog save(QueryLog queryLog) {
+        Transaction transaction = null;
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            transaction = session.beginTransaction();
+            session.persist(queryLog);
+            transaction.commit();
+            logger.info("Successfully saved query log with ID: {}", queryLog.getLogId());
+            return queryLog;
+        } catch (Exception e) {
+            if (transaction != null && transaction.isActive()) {
+                transaction.rollback();
+            }
+            logger.error("Error saving query log", e);
+            throw e;
+        }
+    }
+}
