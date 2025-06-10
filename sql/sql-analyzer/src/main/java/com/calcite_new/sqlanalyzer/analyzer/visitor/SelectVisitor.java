@@ -21,8 +21,8 @@ public class SelectVisitor extends BaseStatementVisitor {
         result.setQueryType(QueryType.SELECT);
 
         SelectClause selectClause = new SelectClause();
-        selectClause.setSelectAll(isSelectAll(select));
-        selectClause.setDistinct(select.isDistinct());
+        selectClause.setHasSelectAll(isSelectAll(select));
+        selectClause.setHasDistinct(select.isDistinct());
         result.getContext().setSelectClause(selectClause);
 
         if (select.getFrom() != null) {

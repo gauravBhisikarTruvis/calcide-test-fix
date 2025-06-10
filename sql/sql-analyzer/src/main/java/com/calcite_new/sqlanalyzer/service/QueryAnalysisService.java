@@ -24,10 +24,6 @@ public class QueryAnalysisService {
         return queryAnalysisRepository.save(model);
     }
 
-/*    public List<QueryAnalysisModel> findDeleteWithTrueCondition() {
-        return queryAnalysisRepository.findByQueryTypeAndQueryContext_WhereClause_HasTrueCondition(QueryType.DELETE, true);
-    }*/
-
     public QueryAnalysisModel save(QueryAnalysisModel model) {
         return queryAnalysisRepository.save(model);
     }

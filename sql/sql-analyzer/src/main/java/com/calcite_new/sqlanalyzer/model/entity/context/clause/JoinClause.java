@@ -11,7 +11,7 @@ public class JoinClause {
     private Entity leftTable;
     private Entity rightTable;
     private JoinType joinType;
-    private boolean isEquiJoin;
+    private Boolean isEquiJoin;
     private String joinCondition;
-    private boolean isJoinOnStringColumn;
+    private Boolean isJoinOnStringColumn;
 }

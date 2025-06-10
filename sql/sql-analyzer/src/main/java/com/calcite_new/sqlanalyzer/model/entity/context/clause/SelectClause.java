@@ -13,8 +13,8 @@ import java.util.List;
 @Builder
 public class SelectClause {
 
-    private boolean isSelectAll;
-    private boolean isDistinct;
+    private Boolean hasSelectAll;
+    private Boolean hasDistinct;
     private List<String> unusedColumns;
 
 }

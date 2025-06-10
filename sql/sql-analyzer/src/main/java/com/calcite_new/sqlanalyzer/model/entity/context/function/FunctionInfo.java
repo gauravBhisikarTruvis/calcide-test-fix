@@ -7,5 +7,5 @@ import lombok.Setter;
 @Setter
 public class FunctionInfo {
     private String function;
-    private boolean isDeterministic;
+    private Boolean isDeterministic;
 }

@@ -34,8 +34,8 @@ public class SqlNodeVisitorTest {
 
         assertEquals(QueryType.SELECT, result.getQueryType());
         assertNotNull(result.getContext().getSelectClause());
-        assertTrue(result.getContext().getSelectClause().isSelectAll());
-        assertFalse(result.getContext().getSelectClause().isDistinct());
+        assertTrue(result.getContext().getSelectClause().getHasSelectAll());
+        assertFalse(result.getContext().getSelectClause().getHasDistinct());
     }
 
     @Test
@@ -59,7 +59,7 @@ public class SqlNodeVisitorTest {
         SqlNodeVisitor.Result result = node.accept(getVisitor());
 
         assertEquals(QueryType.DELETE, result.getQueryType());
-        assertTrue(result.getContext().getWhereClause().isHasTrueCondition());
+        assertTrue(result.getContext().getWhereClause().getHasTrueCondition());
     }
 
     @Test
@@ -70,7 +70,7 @@ public class SqlNodeVisitorTest {
         SqlNodeVisitor.Result result = node.accept(getVisitor());
 
         assertEquals(QueryType.DELETE, result.getQueryType());
-        assertFalse(result.getContext().getWhereClause().isHasTrueCondition());
+        assertFalse(result.getContext().getWhereClause().getHasTrueCondition());
     }
 
     @Test
@@ -83,6 +83,6 @@ public class SqlNodeVisitorTest {
         assertEquals(QueryType.INSERT, result.getQueryType());
 
         SelectClause selectClause = result.getContext().getSelectClause();
-        assertTrue(selectClause.isSelectAll());
+        assertTrue(selectClause.getHasSelectAll());
     }
 }

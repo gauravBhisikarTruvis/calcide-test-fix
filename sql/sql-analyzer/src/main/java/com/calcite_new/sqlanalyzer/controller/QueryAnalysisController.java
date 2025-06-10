@@ -26,9 +26,4 @@ public class QueryAnalysisController {
     public QueryAnalysisModel save(@RequestBody QueryAnalysisModel model) {
         return queryAnalysisService.save(model);
     }
-
-/*    @GetMapping("/delete-true-condition")
-    public List<QueryAnalysisModel> getDeleteQueriesWithTrueCondition() {
-        return queryAnalysisService.findDeleteWithTrueCondition();
-    }*/
 }
