@@ -28,12 +28,32 @@ public class HibernateUtil {
                 configuration.setProperties(props);
                 
                 // Add entity mappings
+                configuration.addAnnotatedClass(com.calcite_new.core.data_ingestor.entity.TableEntity.class);
+                configuration.addAnnotatedClass(com.calcite_new.core.data_ingestor.entity.ColumnEntity.class);
+                configuration.addAnnotatedClass(com.calcite_new.core.data_ingestor.entity.ViewEntity.class);
+                configuration.addAnnotatedClass(com.calcite_new.core.data_ingestor.entity.FunctionEntity.class);
+                configuration.addAnnotatedClass(com.calcite_new.core.data_ingestor.entity.ProcedureEntity.class);
+                configuration.addAnnotatedClass(com.calcite_new.core.data_ingestor.entity.MacroEntity.class);
+                configuration.addAnnotatedClass(com.calcite_new.core.data_ingestor.entity.ExternalTableEntity.class);
+                configuration.addAnnotatedClass(com.calcite_new.core.data_ingestor.entity.IndicesEntity.class);
+                configuration.addAnnotatedClass(com.calcite_new.core.data_ingestor.entity.PartitionEntity.class);
+                configuration.addAnnotatedClass(com.calcite_new.core.data_ingestor.entity.QueryLog.class);
+
+
+
+
+
+
+
+                // Optional: Keep the dynamic loading from properties as fallback
                 String mappingClasses = props.getProperty("hibernate.mapping.classes", "");
                 if (!mappingClasses.isEmpty()) {
                     for (String className : mappingClasses.split(",")) {
                         try {
-                            Class<?> entityClass = Class.forName(className.trim());
-                            configuration.addAnnotatedClass(entityClass);
+                            if (!className.trim().isEmpty()) {
+                                Class<?> entityClass = Class.forName(className.trim());
+                                configuration.addAnnotatedClass(entityClass);
+                            }
                         } catch (ClassNotFoundException e) {
                             logger.error("Could not load entity class: {}", className, e);
                             throw new RuntimeException("Failed to load entity class: " + className, e);

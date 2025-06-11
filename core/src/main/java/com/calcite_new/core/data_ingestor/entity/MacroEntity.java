@@ -24,7 +24,7 @@ public class MacroEntity {
     @Column(name = "user_name")
     private String userName;
     
-    @Column(name = "executed_sql_query", columnDefinition = "TEXT")
+    @Column(name = "sql_query", columnDefinition = "TEXT")
     private String executedSqlQuery;
     
     @Column(name = "create_at")

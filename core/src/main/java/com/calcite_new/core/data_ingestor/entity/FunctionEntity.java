@@ -25,7 +25,7 @@ public class FunctionEntity {
     @Column(name = "schema")
     private String schema;
     
-    @Column(name = "executed_sql_query", columnDefinition = "TEXT")
+    @Column(name = "sql_query", columnDefinition = "TEXT")
     private String ExecutedSqlQuery;
     
     @Column(name = "user_name")

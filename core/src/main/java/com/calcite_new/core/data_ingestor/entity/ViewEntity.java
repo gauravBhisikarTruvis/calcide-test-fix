@@ -30,7 +30,7 @@ public class ViewEntity {
     @Column(name = "view_name")
     private String viewName;
     
-    @Column(name = "executed_sql_query")
+    @Column(name = "sql_query")
     private String executedSqlQuery;
     
     @Column(name = "view_type")
