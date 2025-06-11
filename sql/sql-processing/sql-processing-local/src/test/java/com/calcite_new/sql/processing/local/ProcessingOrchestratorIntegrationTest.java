@@ -4,20 +4,20 @@ import com.calcite_new.sql.core.processor.QueryRecordProcessor;
 import com.calcite_new.sql.model.QueryRecord;
 import com.calcite_new.sql.model.entity.SqlStatementInfo;
 import com.calcite_new.sql.model.enums.QueryStatus;
-import com.calcite_new.sql.model.enums.QueryType;
 import com.calcite_new.sql.processing.local.repository.SqlStatementInfoRepository;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestInstance;
+import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.stream.IntStream;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @SpringBootTest(
@@ -25,7 +25,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 )
 @ActiveProfiles("test")
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-public class ProcessingOrchestratorIntegrationTest {
+class ProcessingOrchestratorIntegrationTest {
 
     @Autowired
     private QueryRecordProcessor processor;
@@ -37,16 +37,14 @@ public class ProcessingOrchestratorIntegrationTest {
     private SqlStatementInfoRepository repository;
 
     private ProcessingOrchestrator orchestrator;
+    private ExecutorService persistenceExecutor;
 
     @BeforeAll
     void setup() {
-        ExecutorService persistenceExecutor = Executors.newSingleThreadExecutor();
-
-        persister.configure(1, persistenceExecutor);
-
+        persistenceExecutor = Executors.newSingleThreadExecutor();
+        persister.configure(5, persistenceExecutor);
         orchestrator = new ProcessingOrchestrator(processor, persister);
         orchestrator.init();
-
     }
 
     @BeforeEach
@@ -54,29 +52,109 @@ public class ProcessingOrchestratorIntegrationTest {
         repository.deleteAll();
     }
 
+    @AfterAll
+    void cleanup() {
+        persistenceExecutor.shutdown();
+    }
+
     @Test
-    void testRecordsAreStoredInDb() {
+    @DisplayName("Should process and store a single DELETE query")
+    void testSingleDeleteQuery() {
         // given
-        QueryRecord record = QueryRecord.builder()
-                .logId("query123")
-                .sessionId("session123")
-                .userName("stuti")
-                .database("project1")
-                .schema("foodmart")
-                .sqlText("DELETE FROM foodmart.employee WHERE TRUE;")
-                .startTime(System.currentTimeMillis())
-                .executionTime(500L)
-                .build();
+        QueryRecord record = createQueryRecord(
+                "DELETE FROM foodmart.employee WHERE TRUE;",
+                "query123"
+        );
 
         // when
         orchestrator.process(List.of(record));
 
         // then
         List<SqlStatementInfo> persisted = repository.findAll();
-        assertEquals(1, persisted.size());
+        assertThat(persisted).hasSize(1);
 
         SqlStatementInfo info = persisted.get(0);
-        assertEquals("stuti", info.getUserName());
-        assertEquals("DELETE", info.getQueryType().name());
+        assertAll(
+                () -> assertEquals("stuti", info.getUserName()),
+                () -> assertEquals("DELETE", info.getQueryType().name()),
+                () -> assertEquals(QueryStatus.SUCCESS, info.getQueryStatus()),
+                () -> assertEquals("query123", info.getLogId())
+        );
+    }
+
+    @Test
+    @DisplayName("Should handle batch processing of multiple queries")
+    void testBatchProcessing() {
+        // given
+        List<QueryRecord> records = Arrays.asList(
+                createQueryRecord("SELECT * FROM table1;", "query1"),
+                createQueryRecord("INSERT INTO table2 VALUES (1);", "query2"),
+                createQueryRecord("UPDATE table3 SET col = 1;", "query3")
+        );
+
+        // when
+        orchestrator.process(records);
+
+        // then
+        List<SqlStatementInfo> persisted = repository.findAll();
+        assertThat(persisted).hasSize(3);
+        assertThat(persisted)
+                .extracting(SqlStatementInfo::getQueryStatus)
+                .containsOnly(QueryStatus.SUCCESS);
+    }
+
+    @Test
+    @DisplayName("Should handle invalid SQL queries")
+    void testInvalidSqlProcessing() {
+        // given
+        QueryRecord record = createQueryRecord(
+                "INVALID SQL QUERY;;;",
+                "queryInvalid"
+        );
+
+        // when
+        orchestrator.process(List.of(record));
+
+        // then
+        List<SqlStatementInfo> persisted = repository.findAll();
+        assertThat(persisted).hasSize(1);
+
+        SqlStatementInfo info = persisted.get(0);
+        assertEquals(QueryStatus.PARSE_ERROR, info.getQueryStatus());
+    }
+
+    @Test
+    @DisplayName("Should handle large batch of queries")
+    void testLargeBatchProcessing() {
+        // given
+        List<QueryRecord> records = IntStream.range(0, 100)
+                .mapToObj(i -> createQueryRecord(
+                        "SELECT * FROM table" + i + ";",
+                        "query" + i
+                ))
+                .toList();
+
+        // when
+        orchestrator.process(records);
+
+        // then
+        List<SqlStatementInfo> persisted = repository.findAll();
+        assertThat(persisted).hasSize(100);
+        assertThat(persisted)
+                .extracting(SqlStatementInfo::getQueryStatus)
+                .containsOnly(QueryStatus.SUCCESS);
+    }
+
+    private QueryRecord createQueryRecord(String sql, String logId) {
+        return QueryRecord.builder()
+                .logId(logId)
+                .sessionId("session123")
+                .userName("stuti")
+                .database("project1")
+                .schema("foodmart")
+                .sqlText(sql)
+                .startTime(System.currentTimeMillis())
+                .executionTime(500L)
+                .build();
     }
 }

@@ -41,19 +41,25 @@ public class ProcessingOrchestrator {
 
     List<CompletableFuture<Void>> futures = records.stream()
             .map(record -> CompletableFuture
+                    // Stage 1: Process the record on the processing pool
                     .supplyAsync(() -> processor.process(record), processingExecutor)
+                    // Stage 2: Pass the result to the batcher. The batcher itself will use
+                    // its own executor to run the actual persistence task.
                     .thenAccept(persister::addAll)
                     .exceptionally(ex -> {
                       log.error("Failed to process record: {}", ex.getMessage(), ex);
-                      return null;
+                      return null; // Mark future as complete despite error
                     }))
             .toList();
 
+    // Wait for all processing tasks to be submitted to the persister
     CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
 
+    // Flush any remaining records in the final, partial batch
     log.info("All records processed. Flushing remaining records.");
     persister.flush();
 
+    // Wait for all persistence tasks to complete
     log.info("Waiting for all persistence tasks to complete.");
     persister.waitForCompletion();
 
@@ -63,21 +69,23 @@ public class ProcessingOrchestrator {
   @PreDestroy
   public void shutdown() {
     log.info("Shutting down ProcessingOrchestrator executors.");
+    shutdownExecutor(processingExecutor, "Processing");
+    shutdownExecutor(persistenceExecutor, "Persistence");
+  }
 
-    processingExecutor.shutdown();
-    persistenceExecutor.shutdown();
-
+  private void shutdownExecutor(ExecutorService executor, String name) {
     try {
-      if (!processingExecutor.awaitTermination(60, TimeUnit.SECONDS)) {
-        processingExecutor.shutdownNow();
-      }
-      if (!persistenceExecutor.awaitTermination(60, TimeUnit.SECONDS)) {
-        persistenceExecutor.shutdownNow();
+      executor.shutdown();
+      if (!executor.awaitTermination(60, TimeUnit.SECONDS)) {
+        executor.shutdownNow();
+        if (!executor.awaitTermination(60, TimeUnit.SECONDS)) {
+          log.error("{} executor did not terminate", name);
+        }
       }
     } catch (InterruptedException e) {
-      processingExecutor.shutdownNow();
-      persistenceExecutor.shutdownNow();
+      executor.shutdownNow();
       Thread.currentThread().interrupt();
     }
   }
+
 }
