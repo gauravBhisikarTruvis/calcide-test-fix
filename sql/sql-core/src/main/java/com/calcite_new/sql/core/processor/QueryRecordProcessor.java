@@ -4,7 +4,7 @@ import com.calcite_new.sql.core.processor.utils.SqlStatementUtils;
 import com.calcite_new.sql.core.processor.visitor.SqlNodeVisitor;
 import com.calcite_new.sql.model.QueryRecord;
 import com.calcite_new.sql.model.entity.SqlStatementInfo;
-import com.calcite_new.sql.model.enums.QueryStatus;
+import com.calcite_new.sql.model.enums.StatementStatus;
 import com.calcite_new.sql.parser.BigQuerySqlParser;
 import org.apache.calcite.sql.SqlNode;
 import org.springframework.stereotype.Component;
@@ -32,7 +32,7 @@ public class QueryRecordProcessor {
       SqlNode sqlNode = sqlParser.parse(queryRecord.getSqlText());
 
       if (SqlStatementUtils.isIgnored(sqlNode.getKind().name())) {
-        model.setQueryStatus(QueryStatus.IGNORED);
+        model.setStatementStatus(StatementStatus.IGNORED);
         return Collections.singletonList(model);
       }
 
@@ -42,7 +42,7 @@ public class QueryRecordProcessor {
     } /*catch (SqlParserException e) {
             model.setQueryStatus(QueryStatus.PARSE_ERROR);
         }*/ catch (Exception e) {
-      model.setQueryStatus(QueryStatus.PARSE_ERROR);
+      model.setStatementStatus(StatementStatus.PARSE_ERROR);
     }
     return Collections.singletonList(model);
   }
@@ -59,9 +59,9 @@ public class QueryRecordProcessor {
   }
 
   private void populateModel(SqlStatementInfo model, SqlNodeVisitor.Result result) {
-    model.setQueryStatus(QueryStatus.SUCCESS);
-    model.setQueryType(result.getQueryType());
-    model.setQueryContext(result.getContext());
+    model.setStatementStatus(StatementStatus.SUCCESS);
+    model.setStatementType(result.getStatementType());
+    model.setStatementContext(result.getContext());
     model.setEntityRelationships(result.getEntityRelationships());
   }
 

@@ -1,9 +1,10 @@
 package com.calcite_new.sql.model.entity;
 
+import java.util.ArrayList;
 import java.util.List;
 
-import com.calcite_new.sql.model.enums.QueryStatus;
-import com.calcite_new.sql.model.enums.QueryType;
+import com.calcite_new.sql.model.enums.StatementType;
+import com.calcite_new.sql.model.enums.StatementStatus;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -24,10 +25,10 @@ public class SqlStatementInfo {
     private String userName;
 
     @Enumerated(EnumType.STRING)
-    private QueryStatus queryStatus;
+    private StatementStatus statementStatus;
 
     @Enumerated(EnumType.STRING)
-    private QueryType queryType;
+    private StatementType statementType;
 
     private Long queryExecutionTime;
 
@@ -36,6 +37,20 @@ public class SqlStatementInfo {
 
 
     @OneToOne(mappedBy = "sqlStatementInfo", cascade = CascadeType.ALL, orphanRemoval = true)
-    private QueryContext queryContext;
+    private StatementContext statementContext;
+
+    public void setEntityRelationships(List<EntityRelationship> entityRelationships) {
+        this.entityRelationships = entityRelationships != null ? entityRelationships : new ArrayList<>();
+        for (EntityRelationship er : this.entityRelationships) {
+            er.setSqlStatementInfo(this);
+        }
+    }
+
+    public void setStatementContext(StatementContext context) {
+        this.statementContext = context;
+        if (context != null) {
+            context.setSqlStatementInfo(this);
+        }
+    }
 }
 

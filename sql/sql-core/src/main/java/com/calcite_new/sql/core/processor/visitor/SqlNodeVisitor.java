@@ -1,8 +1,8 @@
 package com.calcite_new.sql.core.processor.visitor;
 
+import com.calcite_new.sql.model.enums.StatementType;
 import com.calcite_new.sql.model.entity.EntityRelationship;
-import com.calcite_new.sql.model.entity.QueryContext;
-import com.calcite_new.sql.model.enums.QueryType;
+import com.calcite_new.sql.model.entity.StatementContext;
 import lombok.Getter;
 import lombok.Setter;
 import org.apache.calcite.sql.*;
@@ -17,9 +17,9 @@ public class SqlNodeVisitor extends SqlBasicVisitor<SqlNodeVisitor.Result> {
     @Getter
     @Setter
     public static class Result {
-        private QueryType queryType;
+        private StatementType statementType;
         private final List<EntityRelationship> entityRelationships = new ArrayList<>();
-        private final QueryContext context = new QueryContext();
+        private final StatementContext context = new StatementContext();
         private final List<SqlIdentifier> sourceTables = new ArrayList<>();
     }
 

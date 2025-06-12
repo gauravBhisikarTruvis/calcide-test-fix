@@ -8,6 +8,8 @@ import lombok.*;
 @Table(name = "entity_relationship")
 @NoArgsConstructor
 @AllArgsConstructor
+@Setter
+@Getter
 @Builder
 public class EntityRelationship {
 

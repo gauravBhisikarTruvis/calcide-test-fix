@@ -5,13 +5,13 @@ import jakarta.persistence.*;
 import lombok.*;
 
 @Entity
-@Table(name = "query_context")
+@Table(name = "statement_context")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class QueryContext {
+public class StatementContext {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -58,7 +58,7 @@ public class QueryContext {
     @JoinColumn(name = "query_context_id")
     private List<FunctionInfo> functionList;*/
 
-    public void merge(QueryContext other) {
+    public void merge(StatementContext other) {
         if (other == null) return;
 
         if (other.selectClause != null) this.selectClause = other.selectClause;

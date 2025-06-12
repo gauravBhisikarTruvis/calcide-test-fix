@@ -1,4 +1,4 @@
-package com.calcite_new.sql.model;
+package com.calcite_new.sql.model.enums;
 
 /**
  * Enum representing different families of SQL statement types.

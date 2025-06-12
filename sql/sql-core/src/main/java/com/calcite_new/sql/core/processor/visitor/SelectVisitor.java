@@ -1,9 +1,9 @@
 package com.calcite_new.sql.core.processor.visitor;
 
 import com.calcite_new.sql.core.processor.utils.InClauseAnalyzer;
+import com.calcite_new.sql.model.enums.StatementType;
 import com.calcite_new.sql.model.entity.context.clause.SelectClause;
 import com.calcite_new.sql.model.entity.context.clause.WhereClause;
-import com.calcite_new.sql.model.enums.QueryType;
 import org.apache.calcite.sql.SqlCall;
 import org.apache.calcite.sql.SqlNode;
 import org.apache.calcite.sql.SqlSelect;
@@ -18,7 +18,7 @@ public class SelectVisitor extends BaseStatementVisitor {
     public SqlNodeVisitor.Result visit(SqlCall call) {
         SqlSelect select = (SqlSelect) call;
         SqlNodeVisitor.Result result = new SqlNodeVisitor.Result();
-        result.setQueryType(QueryType.SELECT);
+        result.setStatementType(StatementType.SELECT);
 
         SelectClause selectClause = new SelectClause();
         selectClause.setHasSelectAll(isSelectAll(select));

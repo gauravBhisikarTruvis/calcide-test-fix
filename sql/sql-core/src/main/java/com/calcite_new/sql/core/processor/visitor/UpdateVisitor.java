@@ -1,7 +1,7 @@
 package com.calcite_new.sql.core.processor.visitor;
 
 import com.calcite_new.sql.SqlUpdate;
-import com.calcite_new.sql.model.enums.QueryType;
+import com.calcite_new.sql.model.enums.StatementType;
 import org.apache.calcite.sql.SqlCall;
 
 public class UpdateVisitor extends BaseStatementVisitor {
@@ -14,7 +14,7 @@ public class UpdateVisitor extends BaseStatementVisitor {
     public SqlNodeVisitor.Result visit(SqlCall call) {
         SqlUpdate update = (SqlUpdate) call;
         SqlNodeVisitor.Result result = new SqlNodeVisitor.Result();
-        result.setQueryType(QueryType.UPDATE);
+        result.setStatementType(StatementType.UPDATE);
 
         addAccess(update.getTargetTable(), result);
 

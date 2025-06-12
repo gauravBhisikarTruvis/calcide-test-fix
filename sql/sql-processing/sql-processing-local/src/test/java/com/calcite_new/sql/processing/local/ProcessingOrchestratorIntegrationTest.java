@@ -3,7 +3,7 @@ package com.calcite_new.sql.processing.local;
 import com.calcite_new.sql.core.processor.QueryRecordProcessor;
 import com.calcite_new.sql.model.QueryRecord;
 import com.calcite_new.sql.model.entity.SqlStatementInfo;
-import com.calcite_new.sql.model.enums.QueryStatus;
+import com.calcite_new.sql.model.enums.StatementStatus;
 import com.calcite_new.sql.processing.local.repository.SqlStatementInfoRepository;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -76,8 +76,8 @@ class ProcessingOrchestratorIntegrationTest {
         SqlStatementInfo info = persisted.get(0);
         assertAll(
                 () -> assertEquals("stuti", info.getUserName()),
-                () -> assertEquals("DELETE", info.getQueryType().name()),
-                () -> assertEquals(QueryStatus.SUCCESS, info.getQueryStatus()),
+                () -> assertEquals("DELETE", info.getStatementType().name()),
+                () -> assertEquals(StatementStatus.SUCCESS, info.getStatementStatus()),
                 () -> assertEquals("query123", info.getLogId())
         );
     }
@@ -99,8 +99,8 @@ class ProcessingOrchestratorIntegrationTest {
         List<SqlStatementInfo> persisted = repository.findAll();
         assertThat(persisted).hasSize(3);
         assertThat(persisted)
-                .extracting(SqlStatementInfo::getQueryStatus)
-                .containsOnly(QueryStatus.SUCCESS);
+                .extracting(SqlStatementInfo::getStatementStatus)
+                .containsOnly(StatementStatus.SUCCESS);
     }
 
     @Test
@@ -120,7 +120,7 @@ class ProcessingOrchestratorIntegrationTest {
         assertThat(persisted).hasSize(1);
 
         SqlStatementInfo info = persisted.get(0);
-        assertEquals(QueryStatus.PARSE_ERROR, info.getQueryStatus());
+        assertEquals(StatementStatus.PARSE_ERROR, info.getStatementStatus());
     }
 
     @Test
@@ -141,8 +141,8 @@ class ProcessingOrchestratorIntegrationTest {
         List<SqlStatementInfo> persisted = repository.findAll();
         assertThat(persisted).hasSize(100);
         assertThat(persisted)
-                .extracting(SqlStatementInfo::getQueryStatus)
-                .containsOnly(QueryStatus.SUCCESS);
+                .extracting(SqlStatementInfo::getStatementStatus)
+                .containsOnly(StatementStatus.SUCCESS);
     }
 
     private QueryRecord createQueryRecord(String sql, String logId) {
