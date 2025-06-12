@@ -1,7 +1,7 @@
 package com.calcite_new.sql.processing.local;
 
 import com.calcite_new.sql.core.processor.QueryRecordProcessor;
-import com.calcite_new.sql.model.QueryRecord;
+import com.calcite_new.sql.model.QueryLog;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -36,7 +36,7 @@ public class ProcessingOrchestrator {
             processingThreads, DEFAULT_BATCH_SIZE);
   }
 
-  public void process(List<QueryRecord> records) {
+  public void process(List<QueryLog> records) {
     log.info("Starting processing of {} records...", records.size());
 
     List<CompletableFuture<Void>> futures = records.stream()

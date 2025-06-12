@@ -5,7 +5,7 @@ import lombok.Getter;
 
 @Getter
 @Builder
-public class QueryRecord {
+public class QueryLog {
     private String logId;
     private String product;
     private String database;

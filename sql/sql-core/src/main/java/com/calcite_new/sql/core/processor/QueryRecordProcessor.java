@@ -2,7 +2,7 @@ package com.calcite_new.sql.core.processor;
 
 import com.calcite_new.sql.core.processor.utils.SqlStatementUtils;
 import com.calcite_new.sql.core.processor.visitor.SqlNodeVisitor;
-import com.calcite_new.sql.model.QueryRecord;
+import com.calcite_new.sql.model.QueryLog;
 import com.calcite_new.sql.model.entity.SqlStatementInfo;
 import com.calcite_new.sql.model.enums.StatementStatus;
 import com.calcite_new.sql.parser.BigQuerySqlParser;
@@ -13,7 +13,7 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * QueryRecordProcessor is responsible for processing QueryRecord object
+ * QueryRecordProcessor is responsible for processing QueryLog object
  * and extracting SqlStatementInfo from them.
  */
 @Component
@@ -25,18 +25,18 @@ public class QueryRecordProcessor {
     this.sqlParser = new BigQuerySqlParser();
   }
 
-  public List<SqlStatementInfo> process(QueryRecord queryRecord) {
-    SqlStatementInfo model = initializeModel(queryRecord);
+  public List<SqlStatementInfo> process(QueryLog queryLog) {
+    SqlStatementInfo model = initializeModel(queryLog);
 
     try {
-      SqlNode sqlNode = sqlParser.parse(queryRecord.getSqlText());
+      SqlNode sqlNode = sqlParser.parse(queryLog.getSqlText());
 
       if (SqlStatementUtils.isIgnored(sqlNode.getKind().name())) {
         model.setStatementStatus(StatementStatus.IGNORED);
         return Collections.singletonList(model);
       }
 
-      SqlNodeVisitor visitor = new SqlNodeVisitor(queryRecord.getUserName(), queryRecord.getDatabase(), queryRecord.getSchema());
+      SqlNodeVisitor visitor = new SqlNodeVisitor(queryLog.getUserName(), queryLog.getDatabase(), queryLog.getSchema());
       SqlNodeVisitor.Result result = sqlNode.accept(visitor);
       populateModel(model, result);
     } /*catch (SqlParserException e) {
@@ -47,14 +47,14 @@ public class QueryRecordProcessor {
     return Collections.singletonList(model);
   }
 
-  private SqlStatementInfo initializeModel(QueryRecord queryRecord) {
+  private SqlStatementInfo initializeModel(QueryLog queryLog) {
     SqlStatementInfo model = new SqlStatementInfo();
-    model.setLogId(queryRecord.getLogId());
-    model.setQueryExecutionTime(queryRecord.getExecutionTime());
-    model.setDatabase(queryRecord.getDatabase());
-    model.setSchema(queryRecord.getSchema());
-    model.setSessionId(queryRecord.getSessionId());
-    model.setUserName(queryRecord.getUserName());
+    model.setLogId(queryLog.getLogId());
+    model.setQueryExecutionTime(queryLog.getExecutionTime());
+    model.setDatabase(queryLog.getDatabase());
+    model.setSchema(queryLog.getSchema());
+    model.setSessionId(queryLog.getSessionId());
+    model.setUserName(queryLog.getUserName());
     return model;
   }
 
