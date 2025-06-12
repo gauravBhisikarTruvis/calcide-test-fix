@@ -1,13 +1,15 @@
 package com.calcite_new.sql.processing.local;
 
+import com.calcite_new.core.data_ingestor.service.DataFetchService;
 import com.calcite_new.sql.core.processor.QueryRecordProcessor;
-import com.calcite_new.sql.model.QueryLog;
+import com.calcite_new.core.data_ingestor.entity.QueryLog;
 import com.calcite_new.sql.model.entity.SqlStatementInfo;
 import com.calcite_new.sql.model.enums.StatementStatus;
 import com.calcite_new.sql.processing.local.repository.SqlStatementInfoRepository;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.context.ActiveProfiles;
 
 import java.util.Arrays;
@@ -26,6 +28,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 @ActiveProfiles("test")
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class ProcessingOrchestratorIntegrationTest {
+
+    @MockBean
+    private DataFetchService dataFetchService;
 
     @Autowired
     private QueryRecordProcessor processor;
@@ -149,9 +154,9 @@ class ProcessingOrchestratorIntegrationTest {
                 .userName("stuti")
                 .database("project1")
                 .schema("foodmart")
-                .sqlText(sql)
+                .sqlQuery(sql)  // changed from sqlText to sqlQuery
                 .startTime(System.currentTimeMillis())
-                .executionTime(500L)
+                .totalExecutionTimeMs(500L)  // changed from executionTime to totalExecutionTimeMs
                 .build();
     }
 }

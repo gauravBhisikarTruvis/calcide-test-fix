@@ -1,4 +1,3 @@
-/*
 package com.calcite_new.sql.processing.local.controller;
 
 import com.calcite_new.sql.processing.local.service.QueryLogProcessingService;
@@ -17,8 +16,7 @@ public class QueryProcessingController {
 
     @PostMapping("/process")
     public ResponseEntity<String> triggerProcessing() {
-        queryLogProcessingService.processBatchedQueryLogs();
+        queryLogProcessingService.processQueryLogs();
         return ResponseEntity.ok("Query log processing initiated");
     }
 }
-*/

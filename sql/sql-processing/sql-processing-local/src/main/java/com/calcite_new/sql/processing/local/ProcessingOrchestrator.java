@@ -1,7 +1,7 @@
 package com.calcite_new.sql.processing.local;
 
+import com.calcite_new.core.data_ingestor.entity.QueryLog;
 import com.calcite_new.sql.core.processor.QueryRecordProcessor;
-import com.calcite_new.sql.model.QueryLog;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -22,7 +22,7 @@ public class ProcessingOrchestrator {
   private ExecutorService processingExecutor;
   private ExecutorService persistenceExecutor;
 
-  private static final int DEFAULT_BATCH_SIZE = 10;
+  private static final int DEFAULT_BATCH_SIZE = 100;
 
   @PostConstruct
   public void init() {
@@ -56,19 +56,19 @@ public class ProcessingOrchestrator {
     CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
 
     // Flush any remaining records in the final, partial batch
-    log.info("All records processed. Flushing remaining records.");
+    log.info("--- All records processed. Flushing remaining records. ---");
     persister.flush();
 
     // Wait for all persistence tasks to complete
-    log.info("Waiting for all persistence tasks to complete.");
+    log.info("--- Waiting for all persistence tasks to complete. ---");
     persister.waitForCompletion();
 
-    log.info("All processing and persistence complete.");
+    log.info("--- All processing and persistence complete. ---");
   }
 
   @PreDestroy
   public void shutdown() {
-    log.info("Shutting down ProcessingOrchestrator executors.");
+    log.info("--- Shutting down ProcessingOrchestrator executors. ---");
     shutdownExecutor(processingExecutor, "Processing");
     shutdownExecutor(persistenceExecutor, "Persistence");
   }
@@ -79,7 +79,7 @@ public class ProcessingOrchestrator {
       if (!executor.awaitTermination(60, TimeUnit.SECONDS)) {
         executor.shutdownNow();
         if (!executor.awaitTermination(60, TimeUnit.SECONDS)) {
-          log.error("{} executor did not terminate", name);
+          log.error("--- {} executor did not terminate ---", name);
         }
       }
     } catch (InterruptedException e) {
