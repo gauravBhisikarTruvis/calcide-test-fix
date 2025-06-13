@@ -13,15 +13,15 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * QueryRecordProcessor is responsible for processing QueryLog object
+ * QueryLogProcessor is responsible for processing QueryLog object
  * and extracting SqlStatementInfo from them.
  */
 @Component
-public class QueryRecordProcessor {
+public class QueryLogProcessor {
 
   private final BigQuerySqlParser sqlParser;
 
-  public QueryRecordProcessor() {
+  public QueryLogProcessor() {
     this.sqlParser = new BigQuerySqlParser();
   }
 

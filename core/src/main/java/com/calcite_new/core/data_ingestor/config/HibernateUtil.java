@@ -20,7 +20,7 @@ public class HibernateUtil {
             
             // Load application.properties
             Properties props = new Properties();
-            try (FileInputStream fis = new FileInputStream("C:/Users/Lenovo/Downloads/GitLab Repo/Calcide-new-PgToPojo/calcite-new/core/src/main/resources/application.properties")) {
+            try (FileInputStream fis = new FileInputStream("C:\\Users\\Lenovo\\IdeaProjects\\calcite-new\\core\\src\\main\\resources\\application.properties")) {
                 props.load(fis);
                 logger.debug("Loaded application.properties successfully");
                 

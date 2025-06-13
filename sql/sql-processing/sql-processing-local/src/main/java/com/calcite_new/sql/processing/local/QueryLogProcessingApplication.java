@@ -7,6 +7,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
+import org.springframework.transaction.annotation.EnableTransactionManagement;
 
 @SpringBootApplication(scanBasePackages = {
         "com.calcite_new.sql.core.processor",
@@ -22,20 +23,19 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
         "com.calcite_new.sql.processing.local.repository",
         "com.calcite_new.core.data_ingestor.repository"
 })
+
+@EnableTransactionManagement
 @Slf4j
 public class QueryLogProcessingApplication {
-
     public static void main(String[] args) {
-        log.info("Starting Query Log Processing Application");
-        ConfigurableApplicationContext context = SpringApplication.run(QueryLogProcessingApplication.class, args);
-        try {
+        log.info("--- Starting Query Log Processing Application ---");
+        try (ConfigurableApplicationContext context = SpringApplication.run(QueryLogProcessingApplication.class, args)) {
             QueryLogProcessingService processingService = context.getBean(QueryLogProcessingService.class);
             processingService.processQueryLogs();
-            log.info("Query log processing completed successfully");
+            log.info("--- Query log processing completed successfully ---");
         } catch (Exception e) {
-            log.error("Error during query log processing: {}", e.getMessage(), e);
-        } finally {
-            context.close();
+            log.error("--- Error during query log processing: {} ----", e.getMessage(), e);
+            System.exit(1);
         }
     }
 }

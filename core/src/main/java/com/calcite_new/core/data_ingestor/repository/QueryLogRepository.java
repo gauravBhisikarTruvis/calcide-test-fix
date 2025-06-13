@@ -7,18 +7,20 @@ import org.hibernate.Session;
 import org.hibernate.Transaction;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Repository;
 
 import java.util.List;
 
 /**
  * Repository for handling query_log_e table
  */
+@Repository
 public class QueryLogRepository {
     private static final Logger logger = LoggerFactory.getLogger(QueryLogRepository.class);
 
     public List<QueryLog> fetchAllLogs() {
         try (Session session = HibernateUtil.getSessionFactory().openSession()) {
-            logger.info("Fetching all records from query_log_e");
+            logger.info("Fetching all records from QueryLog");
             return session.createQuery("from QueryLog", QueryLog.class).getResultList();
         } catch (Exception e) {
             logger.error("Error fetching query logs", e);

@@ -28,6 +28,9 @@ public class DeleteVisitor extends BaseStatementVisitor {
             SqlNodeVisitor visitor = new SqlNodeVisitor(userName, defaultDatabase, defaultSchema);
             SqlNodeVisitor.Result conditionResult = deleteCondition.accept(visitor);
 
+            if (conditionResult == null) {
+                conditionResult = new SqlNodeVisitor.Result();
+            }
             SqlNodeVisitor.mergeResults(result, conditionResult);
             addDependsOn(delete.getTargetTable(), conditionResult, result);
 

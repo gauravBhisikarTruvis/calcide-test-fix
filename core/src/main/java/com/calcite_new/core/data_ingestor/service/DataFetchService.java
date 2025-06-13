@@ -5,9 +5,11 @@ import com.calcite_new.core.data_ingestor.entity.*;
 import com.calcite_new.core.data_ingestor.repository.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
 
 import java.util.List;
 
+@Service
 public final class DataFetchService {
     private static final Logger logger = LoggerFactory.getLogger(DataFetchService.class);
     

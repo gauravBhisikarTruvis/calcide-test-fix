@@ -1,7 +1,7 @@
 package com.calcite_new.sql.processing.local;
 
 import com.calcite_new.core.data_ingestor.service.DataFetchService;
-import com.calcite_new.sql.core.processor.QueryRecordProcessor;
+import com.calcite_new.sql.core.processor.QueryLogProcessor;
 import com.calcite_new.core.data_ingestor.entity.QueryLog;
 import com.calcite_new.sql.model.entity.SqlStatementInfo;
 import com.calcite_new.sql.model.enums.StatementStatus;
@@ -33,7 +33,7 @@ class ProcessingOrchestratorIntegrationTest {
     private DataFetchService dataFetchService;
 
     @Autowired
-    private QueryRecordProcessor processor;
+    private QueryLogProcessor processor;
 
     @Autowired
     private BatchPersister persister;

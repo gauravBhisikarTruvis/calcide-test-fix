@@ -1,7 +1,7 @@
 package com.calcite_new.sql.processing.local;
 
 import com.calcite_new.core.data_ingestor.entity.QueryLog;
-import com.calcite_new.sql.core.processor.QueryRecordProcessor;
+import com.calcite_new.sql.core.processor.QueryLogProcessor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -16,7 +16,7 @@ import java.util.concurrent.*;
 @Slf4j
 public class ProcessingOrchestrator {
 
-  private final QueryRecordProcessor processor;
+  private final QueryLogProcessor processor;
   private final BatchPersister persister;
 
   private ExecutorService processingExecutor;

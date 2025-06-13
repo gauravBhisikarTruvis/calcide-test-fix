@@ -17,6 +17,9 @@ import lombok.*;
 public class SqlStatementInfo {
 
     @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
     private String logId;
     private String statementId;
     private String database;

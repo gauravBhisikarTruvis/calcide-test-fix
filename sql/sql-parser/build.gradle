@@ -38,3 +38,7 @@ generateGrammarSource {
 test {
   useJUnitPlatform()
 }
+
+jar {
+  enabled = true
+}
