@@ -154,9 +154,9 @@ class ProcessingOrchestratorIntegrationTest {
                 .userName("stuti")
                 .database("project1")
                 .schema("foodmart")
-                .sqlQuery(sql)  // changed from sqlText to sqlQuery
+                .sqlQuery(sql)
                 .startTime(System.currentTimeMillis())
-                .totalExecutionTimeMs(500L)  // changed from executionTime to totalExecutionTimeMs
+                .totalExecutionTimeMs(500L)  
                 .build();
     }
 }
