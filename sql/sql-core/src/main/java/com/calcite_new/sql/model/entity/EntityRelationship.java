@@ -6,11 +6,16 @@ import lombok.*;
 
 @Entity
 @Table(name = "entity_relationship")
+@NoArgsConstructor
 @AllArgsConstructor
 @Setter
 @Getter
 @Builder
 public class EntityRelationship {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
     @Embedded
     @AttributeOverrides({

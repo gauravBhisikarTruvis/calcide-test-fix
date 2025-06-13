@@ -6,6 +6,12 @@ plugins {
     id 'io.spring.dependency-management' version '1.1.4'
 }
 
+bootJar {
+    archiveBaseName = 'query-log-processor'
+    archiveVersion = '1.0.0'
+    mainClass = 'com.calcite_new.sql.processing.local.QueryLogProcessingApplication'
+}
+
 group = 'com.calcite-new'
 version = '1.0-SNAPSHOT'
 
@@ -36,6 +42,5 @@ dependencies {
 }
 
 test {
-
     useJUnitPlatform()
 }
