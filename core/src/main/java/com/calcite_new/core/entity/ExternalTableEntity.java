@@ -1,4 +1,4 @@
-package com.calcite_new.core.data_ingestor.entity;
+package com.calcite_new.core.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

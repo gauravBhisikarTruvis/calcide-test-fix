@@ -1,7 +1,7 @@
 package com.calcite_new.sql.processing.local.service;
 
-import com.calcite_new.core.data_ingestor.entity.QueryLog;
-import com.calcite_new.core.data_ingestor.service.DataFetchService;
+import com.calcite_new.core.entity.QueryLog;
+import com.calcite_new.core.service.DataFetchService;
 import com.calcite_new.sql.processing.local.ProcessingOrchestrator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

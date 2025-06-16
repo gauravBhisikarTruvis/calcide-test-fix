@@ -1,15 +1,25 @@
-package com.calcite_new.core.data_ingestor.entity;
+package com.calcite_new.core.entity;
+
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.math.BigDecimal;
+
 @Entity
-@Table(name = "macro_metadata")
+@Table(name = "table_metadata")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class MacroEntity {
+public class TableEntity {
+    
+    @Id
+    @Column(name = "table_name")
+    private String tableName;
+    
+    @Column(name = "source_product")
+    private String sourceProduct;
     
     @Column(name = "database")
     private String database;
@@ -17,22 +27,15 @@ public class MacroEntity {
     @Column(name = "schema")
     private String schema;
     
-    @Id
-    @Column(name = "macro_name")
-    private String macroName;
-    
-    @Column(name = "user_name")
+    @Column(name = "username")
     private String userName;
     
-    @Column(name = "sql_query", columnDefinition = "TEXT")
-    private String executedSqlQuery;
+    @Column(name = "size_mb")
+    private BigDecimal sizeMb;
     
     @Column(name = "create_at")
     private Long createAt;
     
     @Column(name = "update_at")
     private Long updateAt;
-    
-    @Column(name = "instance")
-    private String instance;
 }

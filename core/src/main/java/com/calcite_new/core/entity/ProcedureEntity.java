@@ -1,22 +1,16 @@
-package com.calcite_new.core.data_ingestor.entity;
+package com.calcite_new.core.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
 
-import java.math.BigDecimal;
-
 @Entity
-@Table(name = "table_metadata")
+@Table(name = "procedure_metadata")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class TableEntity {
-    
-    @Id
-    @Column(name = "table_name")
-    private String tableName;
+public class ProcedureEntity {
     
     @Column(name = "source_product")
     private String sourceProduct;
@@ -27,15 +21,22 @@ public class TableEntity {
     @Column(name = "schema")
     private String schema;
     
-    @Column(name = "username")
+    @Id
+    @Column(name = "procedure_name")
+    private String procedureName;
+    
+    @Column(name = "user_name")
     private String userName;
     
-    @Column(name = "size_mb")
-    private BigDecimal sizeMb;
+    @Column(name = "sql_query", columnDefinition = "TEXT")
+    private String executedSqlQuery;
     
     @Column(name = "create_at")
     private Long createAt;
     
     @Column(name = "update_at")
     private Long updateAt;
+    
+    @Column(name = "instance")
+    private String instance;
 }

@@ -4,7 +4,3 @@
 .gradle/
 build/
 antlr/
-
-# Ignore specific source files
-core/src/main/java/com/calcite_new/core/data_ingestor/service/DataDisplayService.java
-core/src/main/java/com/calcite_new/core/data_ingestor/App.java

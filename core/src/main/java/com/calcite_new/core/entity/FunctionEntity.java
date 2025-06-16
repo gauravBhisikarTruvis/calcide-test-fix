@@ -1,16 +1,20 @@
-package com.calcite_new.core.data_ingestor.entity;
+package com.calcite_new.core.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
 
 @Entity
-@Table(name = "procedure_metadata")
+@Table(name = "function_metadata")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class ProcedureEntity {
+public class FunctionEntity {
+    
+    @Id
+    @Column(name = "function_name")
+    private String functionName;
     
     @Column(name = "source_product")
     private String sourceProduct;
@@ -21,15 +25,11 @@ public class ProcedureEntity {
     @Column(name = "schema")
     private String schema;
     
-    @Id
-    @Column(name = "procedure_name")
-    private String procedureName;
+    @Column(name = "sql_query", columnDefinition = "TEXT")
+    private String ExecutedSqlQuery;
     
     @Column(name = "user_name")
     private String userName;
-    
-    @Column(name = "sql_query", columnDefinition = "TEXT")
-    private String executedSqlQuery;
     
     @Column(name = "create_at")
     private Long createAt;
