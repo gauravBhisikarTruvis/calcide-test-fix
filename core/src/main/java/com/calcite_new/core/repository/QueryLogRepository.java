@@ -1,8 +1,8 @@
-package com.calcite_new.core.data_ingestor.repository;
+package com.calcite_new.core.repository;
 
 
-import com.calcite_new.core.data_ingestor.config.HibernateUtil;
-import com.calcite_new.core.data_ingestor.entity.QueryLog;
+import com.calcite_new.core.config.HibernateUtil;
+import com.calcite_new.core.entity.QueryLog;
 import org.hibernate.Session;
 import org.hibernate.Transaction;
 import org.slf4j.Logger;

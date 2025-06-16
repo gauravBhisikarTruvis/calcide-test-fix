@@ -1,5 +1,6 @@
-package com.calcite_new.core.data_ingestor.config;
+package com.calcite_new.core.config;
 
+import com.calcite_new.core.entity.*;
 import org.hibernate.SessionFactory;
 import org.hibernate.cfg.Configuration;
 import org.slf4j.Logger;
@@ -18,26 +19,30 @@ public class HibernateUtil {
             logger.info("Initializing Hibernate SessionFactory");
             Configuration configuration = new Configuration();
             
-            // Load application.properties
+            // Load application.properties from classpath
             Properties props = new Properties();
-            try (FileInputStream fis = new FileInputStream("C:/Users/Lenovo/Downloads/GitLab Repo/Calcide-new-PgToPojo/calcite-new/core/src/main/resources/application.properties")) {
-                props.load(fis);
-                logger.debug("Loaded application.properties successfully");
+            try (java.io.InputStream is = HibernateUtil.class.getClassLoader()
+                    .getResourceAsStream("application.properties")) {
+                if (is == null) {
+                    throw new RuntimeException("Cannot find application.properties in classpath");
+                }
+                props.load(is);
+                logger.debug("Loaded application.properties from classpath successfully");
                 
                 // Set hibernate properties
                 configuration.setProperties(props);
                 
                 // Add entity mappings
-                configuration.addAnnotatedClass(com.calcite_new.core.data_ingestor.entity.TableEntity.class);
-                configuration.addAnnotatedClass(com.calcite_new.core.data_ingestor.entity.ColumnEntity.class);
-                configuration.addAnnotatedClass(com.calcite_new.core.data_ingestor.entity.ViewEntity.class);
-                configuration.addAnnotatedClass(com.calcite_new.core.data_ingestor.entity.FunctionEntity.class);
-                configuration.addAnnotatedClass(com.calcite_new.core.data_ingestor.entity.ProcedureEntity.class);
-                configuration.addAnnotatedClass(com.calcite_new.core.data_ingestor.entity.MacroEntity.class);
-                configuration.addAnnotatedClass(com.calcite_new.core.data_ingestor.entity.ExternalTableEntity.class);
-                configuration.addAnnotatedClass(com.calcite_new.core.data_ingestor.entity.IndicesEntity.class);
-                configuration.addAnnotatedClass(com.calcite_new.core.data_ingestor.entity.PartitionEntity.class);
-                configuration.addAnnotatedClass(com.calcite_new.core.data_ingestor.entity.QueryLog.class);
+                configuration.addAnnotatedClass(TableEntity.class);
+                configuration.addAnnotatedClass(ColumnEntity.class);
+                configuration.addAnnotatedClass(ViewEntity.class);
+                configuration.addAnnotatedClass(FunctionEntity.class);
+                configuration.addAnnotatedClass(ProcedureEntity.class);
+                configuration.addAnnotatedClass(MacroEntity.class);
+                configuration.addAnnotatedClass(ExternalTableEntity.class);
+                configuration.addAnnotatedClass(IndicesEntity.class);
+                configuration.addAnnotatedClass(PartitionEntity.class);
+                configuration.addAnnotatedClass(QueryLog.class);
 
 
 

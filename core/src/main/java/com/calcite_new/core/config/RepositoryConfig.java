@@ -1,6 +1,6 @@
-package com.calcite_new.core.data_ingestor.config;
+package com.calcite_new.core.config;
 
-import com.calcite_new.core.data_ingestor.repository.*;
+import com.calcite_new.core.repository.*;
 
 public class RepositoryConfig {
     private final QueryLogRepository queryLogRepo;

@@ -1,8 +1,8 @@
-package com.calcite_new.core.data_ingestor.service;
+package com.calcite_new.core.service;
 
 
-import com.calcite_new.core.data_ingestor.entity.*;
-import com.calcite_new.core.data_ingestor.repository.*;
+import com.calcite_new.core.entity.*;
+import com.calcite_new.core.repository.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
