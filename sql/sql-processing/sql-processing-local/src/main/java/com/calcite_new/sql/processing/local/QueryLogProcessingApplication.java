@@ -9,6 +9,8 @@ import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
 
+import java.util.Collections;
+
 @SpringBootApplication(scanBasePackages = {
         "com.calcite_new.sql.core.processor",
         "com.calcite_new.sql.processing.local",
@@ -26,13 +28,20 @@ import org.springframework.transaction.annotation.EnableTransactionManagement;
 
 @EnableTransactionManagement
 @Slf4j
+//java -jar query-log-processor-1.0.0.jar --spring.config.location=file:/path/to/application.properties
 public class QueryLogProcessingApplication {
     public static void main(String[] args) {
         log.info("--- Starting Query Log Processing Application ---");
-        try (ConfigurableApplicationContext context = SpringApplication.run(QueryLogProcessingApplication.class, args)) {
-            QueryLogProcessingService processingService = context.getBean(QueryLogProcessingService.class);
-            processingService.processQueryLogs();
-            log.info("--- Query log processing completed successfully ---");
+        try {
+            SpringApplication app = new SpringApplication(QueryLogProcessingApplication.class);
+            app.setDefaultProperties(Collections.singletonMap("spring.config.location",
+                    "file:./application.properties,classpath:/application.properties"));
+
+            try (ConfigurableApplicationContext context = app.run(args)) {
+                QueryLogProcessingService processingService = context.getBean(QueryLogProcessingService.class);
+                processingService.processQueryLogs();
+                log.info("--- Query log processing completed successfully ---");
+            }
         } catch (Exception e) {
             log.error("--- Error during query log processing: {} ----", e.getMessage(), e);
             System.exit(1);
