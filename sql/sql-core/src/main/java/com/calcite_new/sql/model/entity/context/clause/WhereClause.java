@@ -10,8 +10,6 @@ import lombok.*;
 @AllArgsConstructor
 @Builder
 public class WhereClause {
-    private Boolean hasPartitionFilter;
-    private Boolean hasClusteringFilter;
     private Boolean hasTrueCondition;
     private Boolean hasCaseInsensitiveComparison;
     private Boolean hasInWithSubquery;

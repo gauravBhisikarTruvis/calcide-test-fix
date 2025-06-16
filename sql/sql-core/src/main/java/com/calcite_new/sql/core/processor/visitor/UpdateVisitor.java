@@ -1,8 +1,8 @@
 package com.calcite_new.sql.core.processor.visitor;
 
-import com.calcite_new.sql.SqlUpdate;
 import com.calcite_new.sql.model.enums.StatementType;
 import org.apache.calcite.sql.SqlCall;
+import org.apache.calcite.sql.SqlUpdate;
 
 public class UpdateVisitor extends BaseStatementVisitor {
 
