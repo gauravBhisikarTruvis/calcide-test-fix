@@ -25,7 +25,7 @@ public class ColumnEntity {
     @Column(name = "schema")
     private String schema;
     
-    @Column(name = "table")
+    @Column(name = "\"table\"")
     private String table;
     
     @Column(name = "username")

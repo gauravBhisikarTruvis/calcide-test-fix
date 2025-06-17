@@ -1,8 +1,8 @@
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5432/sqlanalyzer
+    url: jdbc:postgresql://192.168.1.10:5432/postgres
     username: postgres
-    password: DemoSVB@2025
+    password: PGTruvis@2025
   jpa:
     hibernate:
       ddl-auto: update

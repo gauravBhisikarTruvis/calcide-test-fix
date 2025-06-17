@@ -27,14 +27,20 @@ import java.util.Collections;
 
 @EnableTransactionManagement
 @Slf4j
-//java -jar query-log-processor-1.0.0.jar --spring.config.location=file:/path/to/application.properties
+//java -Dspring.config.location=file:C:\config\application.properties -jar query-log-processor.v.jar
 public class QueryLogProcessingApplication {
     public static void main(String[] args) {
         log.info("--- Starting Query Log Processing Application ---");
         try {
+/*            String configPath = System.getProperty("spring.config.location");
+            if (configPath == null || configPath.isEmpty()) {
+                throw new IllegalArgumentException(
+                        "External application.properties must be provided using " +
+                                "-Dspring.config.location=file:/path/to/application.properties"
+                );
+            }*/
             SpringApplication app = new SpringApplication(QueryLogProcessingApplication.class);
-            app.setDefaultProperties(Collections.singletonMap("spring.config.location",
-                    "file:./application.properties,classpath:/application.properties"));
+            app.setDefaultProperties(Collections.emptyMap());
 
             try (ConfigurableApplicationContext context = app.run(args)) {
                 QueryLogProcessingService processingService = context.getBean(QueryLogProcessingService.class);
