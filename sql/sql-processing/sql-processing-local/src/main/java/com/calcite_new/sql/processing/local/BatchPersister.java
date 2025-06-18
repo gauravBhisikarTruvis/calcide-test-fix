@@ -35,10 +35,32 @@ public class BatchPersister {
    * This method MUST be synchronized to ensure thread-safe access to the batch list.
    */
   public synchronized void addAll(List<SqlStatementInfo> records) {
+    // If records size is greater than batch size, split and persist directly
+    if (records.size() >= batchSize) {
+      for (int i = 0; i < records.size(); i += batchSize) {
+        int end = Math.min(i + batchSize, records.size());
+        List<SqlStatementInfo> batchToPersist = new ArrayList<>(records.subList(i, end));
+        submitDirectPersistenceTask(batchToPersist);
+      }
+      return;
+    }
+
+    // Otherwise, add to current batch
     currentBatch.addAll(records);
     if (currentBatch.size() >= batchSize) {
       submitPersistenceTask();
     }
+  }
+
+  private void submitDirectPersistenceTask(List<SqlStatementInfo> batchToPersist) {
+    CompletableFuture<Void> persistenceFuture = CompletableFuture.runAsync(() -> {
+      try {
+        persistBatch(batchToPersist);
+      } catch (Exception e) {
+        log.error("Error persisting batch: {}", e.getMessage(), e);
+      }
+    }, persistenceExecutor);
+    persistenceFutures.add(persistenceFuture);
   }
 
   /**
@@ -81,7 +103,7 @@ public class BatchPersister {
 
     try {
       repository.saveAll(batch);
-      log.info("Persisted batch of {} records. Sample ID: {}", batch.size(), batch.get(0).getLogId());
+      log.debug("Persisted batch of {} records. Sample ID: {}", batch.size(), batch.get(0).getLogId());
     } catch (Exception e) {
       log.error("Failed to persist batch of {} records: {}", batch.size(), e.getMessage(), e);
     }

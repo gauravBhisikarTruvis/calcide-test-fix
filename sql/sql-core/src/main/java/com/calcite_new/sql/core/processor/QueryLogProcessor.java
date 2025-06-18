@@ -9,7 +9,7 @@ import com.calcite_new.sql.parser.BigQuerySqlParser;
 import org.apache.calcite.sql.SqlNode;
 import org.springframework.stereotype.Component;
 
-import java.util.Collections;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -25,26 +25,34 @@ public class QueryLogProcessor {
     this.sqlParser = new BigQuerySqlParser();
   }
 
-  public List<SqlStatementInfo> process(QueryLog queryLog) {
-    SqlStatementInfo model = initializeModel(queryLog);
+  public List<SqlStatementInfo> process(List<QueryLog> records) {
+    List<SqlStatementInfo> results = new ArrayList<>(records.size());
 
-    try {
-      SqlNode sqlNode = sqlParser.parse(queryLog.getSqlQuery());
+    for (QueryLog queryLog : records) {
+      SqlStatementInfo model = initializeModel(queryLog);
 
-      if (SqlStatementUtils.isIgnored(sqlNode.getKind().name())) {
-        model.setStatementStatus(StatementStatus.IGNORED);
-        return Collections.singletonList(model);
+      try {
+        SqlNode sqlNode = sqlParser.parse(queryLog.getSqlQuery());
+
+        if (SqlStatementUtils.isIgnored(sqlNode.getKind().name())) {
+          model.setStatementStatus(StatementStatus.IGNORED);
+        } else {
+          SqlNodeVisitor visitor = new SqlNodeVisitor(
+                  queryLog.getUserName(),
+                  queryLog.getDatabase(),
+                  queryLog.getSchema()
+          );
+          SqlNodeVisitor.Result result = sqlNode.accept(visitor);
+          populateModel(model, result);
+        }
+      } catch (Exception e) {
+        model.setStatementStatus(StatementStatus.PARSE_ERROR);
       }
 
-      SqlNodeVisitor visitor = new SqlNodeVisitor(queryLog.getUserName(), queryLog.getDatabase(), queryLog.getSchema());
-      SqlNodeVisitor.Result result = sqlNode.accept(visitor);
-      populateModel(model, result);
-    } /*catch (SqlParserException e) {
-            model.setQueryStatus(QueryStatus.PARSE_ERROR);
-        }*/ catch (Exception e) {
-      model.setStatementStatus(StatementStatus.PARSE_ERROR);
+      results.add(model);
     }
-    return Collections.singletonList(model);
+
+    return results;
   }
 
   private SqlStatementInfo initializeModel(QueryLog queryLog) {

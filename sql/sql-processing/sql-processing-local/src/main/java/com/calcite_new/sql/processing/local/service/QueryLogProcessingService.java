@@ -18,6 +18,7 @@ public class QueryLogProcessingService {
 
     private final DataFetchService dataFetchService;
     private final ProcessingOrchestrator processingOrchestrator;
+    private static final int CHUNK_SIZE = 300;
 
     @Transactional(readOnly = true)
     public void processQueryLogs() {
@@ -27,19 +28,29 @@ public class QueryLogProcessingService {
             return;
         }
 
-        AtomicInteger processedCount = new AtomicInteger(0);
         int totalLogs = queryLogs.size();
+        AtomicInteger totalProcessed = new AtomicInteger(0);
+        log.info("--- Starting to process {} query logs ---", totalLogs);
 
-        queryLogs.forEach(queryLog -> {
+        for (int i = 0; i < queryLogs.size(); i += CHUNK_SIZE) {
+            int end = Math.min(i + CHUNK_SIZE, queryLogs.size());
+            List<QueryLog> chunk = queryLogs.subList(i, end);
+
             try {
-                processingOrchestrator.process(List.of(queryLog));
-                log.info("--- Processed log {}. Total processed: {}/{} ---",
-                        queryLog.getLogId(), processedCount.incrementAndGet(), totalLogs);
+                processingOrchestrator.process(chunk);
+                int currentProcessed = totalProcessed.addAndGet(chunk.size());
+                log.info("--- Overall Progress: {}/{} logs processed ({}%) ---",
+                        currentProcessed,
+                        totalLogs,
+                        String.format("%.2f", (currentProcessed * 100.0) / totalLogs));
             } catch (Exception e) {
-                log.error("--- Error processing log {}: {} ---", queryLog.getLogId(), e.getMessage(), e);
+                log.error("--- Error processing chunk {}-{}: {} ---",
+                        i, end, e.getMessage(), e);
             }
-        });
+        }
 
-        log.info("--- Completed processing {} out of {} query logs ---", processedCount.get(), totalLogs);
+        log.info("=== Complete Processing Summary ===");
+        log.info("Total logs processed: {}/{}", totalProcessed.get(), totalLogs);
+        log.info("================================");
     }
 }
