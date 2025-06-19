@@ -27,12 +27,7 @@ public class SelectVisitor extends BaseStatementVisitor {
             SqlNodeVisitor visitor = new SqlNodeVisitor(userName, defaultDatabase, defaultSchema);
             SqlNodeVisitor.Result fromResult = select.getFrom().accept(visitor);
             SqlNodeVisitor.mergeResults(result, fromResult);
-
-            if (select.getFrom() instanceof SqlJoin) {
-                handleJoin((SqlJoin) select.getFrom(), result);
-            } else {
-                addAccess(select.getFrom(), result);
-            }
+            addAccess(select.getFrom(), result);
         }
 
         if (select.getWhere() != null) {
@@ -52,21 +47,6 @@ public class SelectVisitor extends BaseStatementVisitor {
         return result;
     }
 
-    protected void handleJoin(SqlJoin join, SqlNodeVisitor.Result result) {
-        SqlNodeVisitor leftVisitor = new SqlNodeVisitor(userName, defaultDatabase, defaultSchema);
-        SqlNodeVisitor.Result leftResult = join.getLeft().accept(leftVisitor);
-        result.getSourceTables().addAll(leftResult.getSourceTables());
-
-        SqlNodeVisitor rightVisitor = new SqlNodeVisitor(userName, defaultDatabase, defaultSchema);
-        SqlNodeVisitor.Result rightResult = join.getRight().accept(rightVisitor);
-        result.getSourceTables().addAll(rightResult.getSourceTables());
-
-        addAccess(join.getLeft(), result);
-        addAccess(join.getRight(), result);
-
-        SqlNodeVisitor.mergeResults(result, leftResult);
-        SqlNodeVisitor.mergeResults(result, rightResult);
-    }
 
     private static boolean isSelectAll(SqlSelect select) {
         return select.getSelectList().size() == 1 && "*".equals(select.getSelectList().getFirst().toString());
