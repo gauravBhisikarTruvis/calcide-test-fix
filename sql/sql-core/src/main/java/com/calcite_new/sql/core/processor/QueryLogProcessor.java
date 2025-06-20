@@ -19,6 +19,8 @@ import java.util.List;
 @Component
 public class QueryLogProcessor {
 
+  private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(QueryLogProcessor.class);
+
   private final BigQuerySqlParser sqlParser;
 
   public QueryLogProcessor() {
@@ -36,23 +38,42 @@ public class QueryLogProcessor {
 
         if (SqlStatementUtils.isIgnored(sqlNode.getKind().name())) {
           model.setStatementStatus(StatementStatus.IGNORED);
+          model.setErrorDescription((String) null); // Explicitly clear error description for ignored statements
         } else {
           SqlNodeVisitor visitor = new SqlNodeVisitor(
                   queryLog.getUserName(),
                   queryLog.getDatabase(),
                   queryLog.getSchema()
           );
-          SqlNodeVisitor.Result result = sqlNode.accept(visitor);
-          populateModel(model, result);
+
+          try {
+            SqlNodeVisitor.Result result = sqlNode.accept(visitor);
+            populateModel(model, result);
+            model.setErrorDescription((String) null); // Explicitly clear error description for successful statements
+          } catch (Exception visitorException) {
+            handleVisitorError(model, visitorException, queryLog.getLogId());
+          }
         }
       } catch (Exception e) {
-        model.setStatementStatus(StatementStatus.PARSE_ERROR);
+        handleParseError(model, e, queryLog.getLogId());
       }
 
       results.add(model);
     }
 
     return results;
+  }
+
+  private void handleParseError(SqlStatementInfo model, Exception e, String logId) {
+    model.setStatementStatus(StatementStatus.PARSE_ERROR);
+    model.setErrorDescription(e); // Store full stack trace
+    log.error("Parsing error for logId: {}", logId, e);
+  }
+
+  private void handleVisitorError(SqlStatementInfo model, Exception e, String logId) {
+    model.setStatementStatus(StatementStatus.ERROR);
+    model.setErrorDescription(e); // Store full stack trace
+    log.error("Error during SQL processing for logId: {}", logId, e);
   }
 
   private SqlStatementInfo initializeModel(QueryLog queryLog) {

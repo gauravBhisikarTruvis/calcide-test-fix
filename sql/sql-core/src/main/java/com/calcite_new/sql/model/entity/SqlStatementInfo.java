@@ -5,6 +5,7 @@ import java.util.List;
 
 import com.calcite_new.sql.model.enums.StatementType;
 import com.calcite_new.sql.model.enums.StatementStatus;
+import com.calcite_new.sql.model.enums.ErrorDescription;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -30,6 +31,9 @@ public class SqlStatementInfo {
     @Enumerated(EnumType.STRING)
     private StatementStatus statementStatus;
 
+    @Embedded
+    private ErrorDescription errorDescription;
+
     @Enumerated(EnumType.STRING)
     private StatementType statementType;
 
@@ -37,7 +41,6 @@ public class SqlStatementInfo {
 
     @OneToMany(mappedBy = "sqlStatementInfo", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<EntityRelationship> entityRelationships;
-
 
     @OneToOne(mappedBy = "sqlStatementInfo", cascade = CascadeType.ALL, orphanRemoval = true)
     private StatementContext statementContext;
@@ -55,5 +58,30 @@ public class SqlStatementInfo {
             context.setSqlStatementInfo(this);
         }
     }
-}
 
+    public void setErrorDescription(ErrorDescription errorDescription) {
+        if (this.statementStatus == StatementStatus.ERROR || this.statementStatus == StatementStatus.PARSE_ERROR) {
+            this.errorDescription = errorDescription;
+        } else {
+            this.errorDescription = null;
+        }
+    }
+
+    // Convenience method to set error description from exception
+    public void setErrorDescription(Exception exception) {
+        if (this.statementStatus == StatementStatus.ERROR || this.statementStatus == StatementStatus.PARSE_ERROR) {
+            this.errorDescription = ErrorDescription.of(exception);
+        } else {
+            this.errorDescription = null;
+        }
+    }
+
+    // Convenience method to set error description from string
+    public void setErrorDescription(String errorMessage) {
+        if (this.statementStatus == StatementStatus.ERROR || this.statementStatus == StatementStatus.PARSE_ERROR) {
+            this.errorDescription = ErrorDescription.of(errorMessage);
+        } else {
+            this.errorDescription = null;
+        }
+    }
+}
