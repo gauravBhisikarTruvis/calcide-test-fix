@@ -1,0 +1,244 @@
+package com.calcite_new.core.service;
+
+import com.calcite_new.core.config.RepositoryConfig;
+import com.calcite_new.core.entity.ColumnEntity;
+import com.calcite_new.core.entity.TableEntity;
+import com.calcite_new.core.entity.ViewEntity;
+import com.calcite_new.core.dialect.Product;
+import com.calcite_new.core.dialect.sql.BigQuerySqlDialect;
+import com.calcite_new.core.model.EntityCatalog;
+import com.calcite_new.core.model.Identifier;
+import com.calcite_new.core.model.entity.Column;
+import com.calcite_new.core.model.entity.DataType;
+import com.calcite_new.core.model.entity.Table;
+import com.calcite_new.core.model.entity.View;
+import com.calcite_new.core.repository.JpaTableRepository;
+import org.apache.calcite.sql.type.SqlTypeName;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.*;
+import java.util.stream.Collectors;
+
+public class EntityCatalogBuilder {
+    private static final Logger logger = LoggerFactory.getLogger(EntityCatalogBuilder.class);
+
+    private final JpaTableRepository tableRepository;
+    private final ColumnRepository columnRepository;
+    private final ViewRepository viewRepository;
+    private EntityCatalog catalog = new EntityCatalog();
+    private final BigQuerySqlDialect dialect = new BigQuerySqlDialect();
+    private final Identifier dialectId = Identifier.of(Product.BIG_QUERY.name, dialect);
+
+    public EntityCatalogBuilder(RepositoryConfig repositoryConfig) {
+        this.tableRepository = repositoryConfig.getTableRepo();
+        this.columnRepository = repositoryConfig.getColumnRepo();
+        this.viewRepository = repositoryConfig.getViewRepo();
+    }
+
+    public EntityCatalog build() {
+        buildTables();
+        buildViews();
+        return catalog;
+    }
+
+    private void buildTables() {
+        List<TableEntity> tables = tableRepository.findAll();
+        Map<TableKey, List<ColumnEntity>> columnsByTable = getColumnsByTable(tables);
+
+        for (TableEntity tableEntity : tables) {
+            TableKey key = new TableKey(
+                    tableEntity.getDatabase(),
+                    tableEntity.getSchema(),
+                    tableEntity.getTableName()
+            );
+
+            List<ColumnEntity> columnEntities = columnsByTable.getOrDefault(key, new ArrayList<>());
+
+            List<Column> columns = columnEntities.stream()
+                    .map(this::convertToColumn)
+                    .collect(Collectors.toList());
+
+            List<Identifier> namespace = List.of(
+                    Identifier.of(tableEntity.getDatabase(), dialect),
+                    Identifier.of(tableEntity.getSchema(), dialect)
+            );
+
+            Identifier tableId = Identifier.of(tableEntity.getTableName(), dialect);
+            long timestamp = tableEntity.getCreateAt();
+
+            Table table = new Table(namespace, tableId, columns, timestamp);
+            catalog.addEntity(table);
+        }
+    }
+
+    private void buildViews() {
+        List<ViewEntity> views = viewRepository.findAll();
+        Map<TableKey, List<ColumnEntity>> columnsByView = getColumnsByView(views);
+
+        for (ViewEntity viewEntity : views) {
+            TableKey key = new TableKey(
+                    viewEntity.getDatabase(),
+                    viewEntity.getSchema(),
+                    viewEntity.getViewName()
+            );
+
+            List<ColumnEntity> columnEntities = columnsByView.getOrDefault(key, new ArrayList<>());
+
+            List<Column> columns = columnEntities.stream()
+                    .map(this::convertToColumn)
+                    .collect(Collectors.toList());
+
+            List<Identifier> namespace = List.of(
+                    Identifier.of(viewEntity.getDatabase(), dialect),
+                    Identifier.of(viewEntity.getSchema(), dialect)
+            );
+
+            Identifier viewId = Identifier.of(viewEntity.getViewName(), dialect);
+            long timestamp = viewEntity.getCreateAt();
+            String sqlQuery = viewEntity.getExecutedSqlQuery();
+
+            View view = new View(namespace, viewId, columns, sqlQuery, timestamp);
+            catalog.addEntity(view);
+        }
+    }
+
+    private Map<TableKey, List<ColumnEntity>> getColumnsByTable(List<TableEntity> tables) {
+        Map<TableKey, List<ColumnEntity>> columnsByTable = new HashMap<>();
+        List<ColumnEntity> allColumns = columnRepository.findAll();
+
+        Map<TableKey, TableEntity> tableMap = new HashMap<>();
+        for (TableEntity table : tables) {
+            TableKey key = new TableKey(
+                normalize(table.getDatabase(), dialect),
+                normalize(table.getSchema(), dialect),
+                normalize(table.getTableName(), dialect)
+            );
+            if (!tableMap.containsKey(key)) {
+                tableMap.put(key, table);
+            }
+        }
+
+        for (ColumnEntity column : allColumns) {
+            if (column.getTable() != null && column.getDatabase() != null && column.getSchema() != null) {
+                TableKey key = new TableKey(
+                    normalize(column.getDatabase(), dialect),
+                    normalize(column.getSchema(), dialect),
+                    normalize(column.getTable(), dialect)
+                );
+
+                if (tableMap.containsKey(key)) {
+                    columnsByTable
+                        .computeIfAbsent(key, k -> new ArrayList<>())
+                        .add(column);
+                }
+            }
+        }
+        return columnsByTable;
+    }
+
+    private Map<TableKey, List<ColumnEntity>> getColumnsByView(List<ViewEntity> views) {
+        Map<TableKey, List<ColumnEntity>> columnsByView = new HashMap<>();
+        List<ColumnEntity> allColumns = columnRepository.findAll();
+
+        Map<TableKey, ViewEntity> viewMap = views.stream()
+            .collect(Collectors.toMap(
+                view -> new TableKey(
+                    normalize(view.getDatabase(), dialect),
+                    normalize(view.getSchema(), dialect),
+                    normalize(view.getViewName(), dialect)
+                ),
+                view -> view,
+                (v1, v2) -> v1
+            ));
+
+        for (ColumnEntity column : allColumns) {
+            if (column.getTable() != null && column.getDatabase() != null && column.getSchema() != null) {
+                TableKey key = new TableKey(
+                    normalize(column.getDatabase(), dialect),
+                    normalize(column.getSchema(), dialect),
+                    normalize(column.getTable(), dialect)
+                );
+
+                if (viewMap.containsKey(key)) {
+                    columnsByView
+                        .computeIfAbsent(key, k -> new ArrayList<>())
+                        .add(column);
+                }
+            }
+        }
+        return columnsByView;
+    }
+
+    private Column convertToColumn(ColumnEntity columnEntity) {
+        return new Column(
+                Identifier.of(columnEntity.getColumnName(), dialect),
+                columnEntity.getColumnPosition().intValue(),
+                mapDataType(columnEntity),
+                columnEntity.getNullable()
+        );
+    }
+
+    private DataType mapDataType(ColumnEntity column) {
+        String typeName = column.getDataType() != null ? column.getDataType().toUpperCase() : "ANY";
+        Long precision = column.getColumnPrecision();
+        Long scale = column.getColumnScale();
+
+        try {
+            SqlTypeName sqlType = SqlTypeName.valueOf(typeName);
+            boolean hasPrec = sqlType.allowsPrec();
+            boolean hasScale = sqlType.allowsScale();
+            int prec = precision != null ? precision.intValue() : -1;
+            int sc = scale != null ? scale.intValue() : -1;
+
+            if (hasPrec && hasScale) {
+                return DataType.create(sqlType, prec, sc);
+            } else if (hasPrec) {
+                return DataType.create(sqlType, prec);
+            } else if (hasScale) {
+                return DataType.create(sqlType, column.getNullable() != null ? column.getNullable() : true);
+            } else {
+                return DataType.create(sqlType);
+            }
+        } catch (IllegalArgumentException e) {
+            logger.warn("Unknown SQL type: {}", typeName);
+            return DataType.ANY;
+        }
+    }
+
+    public EntityCatalogBuilder withCatalog(EntityCatalog catalog) {
+        this.catalog = catalog;
+        return this;
+    }
+
+    private String normalize(String s, BigQuerySqlDialect dialect) {
+        return s != null ? s.toUpperCase() : null;
+    }
+
+    private static class TableKey {
+        private final String database;
+        private final String schema;
+        private final String name;
+
+        public TableKey(String database, String schema, String name) {
+            this.database = database;
+            this.schema = schema;
+            this.name = name;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            TableKey tableKey = (TableKey) o;
+            return Objects.equals(database, tableKey.database) &&
+                   Objects.equals(schema, tableKey.schema) &&
+                   Objects.equals(name, tableKey.name);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(database, schema, name);
+        }
+    }
+}
