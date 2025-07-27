@@ -8,7 +8,7 @@ import java.util.List;
 public class RelationshipExtractor {
 
     public static Entity createEntity(SqlIdentifier identifier, String defaultDb, String defaultSchema) {
-        String db = identifier.names.size() == 3 ? identifier.names.getFirst() : defaultDb;
+        String db = identifier.names.size() == 3 ? identifier.names.get(0) : defaultDb;
         String schema = identifier.names.size() >= 2 ? identifier.names.get(identifier.names.size() - 2) : defaultSchema;
         String table = identifier.names.get(identifier.names.size() - 1);
 

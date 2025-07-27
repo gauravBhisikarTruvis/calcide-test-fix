@@ -1,7 +1,9 @@
 plugins {
+  // Apply plugins to the root project. SonarQube is applied here but not configured.
   id 'java'
   id 'groovy'
   id 'org.sonarqube' version '6.0.0.5145' apply false
+  id 'jacoco'
 }
 
 group = 'com.calcite-new'
@@ -11,20 +13,27 @@ repositories {
   mavenCentral()
 }
 
+// Configure all subprojects from the root
 subprojects {
   apply plugin: 'java'
-//  apply plugin: 'jacoco'
+  apply plugin: 'groovy'
+  apply plugin: 'jacoco'
   apply plugin: 'org.sonarqube'
+
+  java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+  }
 
   sonarqube {
     properties {
-      property "sonar.projectKey", "calcite-new"
+      property "sonar.projectKey", "calcite-new_${project.name}" // Unique key per subproject
       property "sonar.host.url", "http://localhost:9000"
       property "sonar.login", "sqa_e79d6567a6b4bd38612b9b4de76c40f3b2954082"
-      property "sonar.sources", "src/main/java"
-      property "sonar.tests", "src/test/java"
-      property "sonar.java.binaries", "${layout.buildDirectory.get()}/classes/java/main"
-      property "sonar.coverage.jacoco.xmlReportPaths", "${layout.buildDirectory.get()}/reports/jacoco/test/jacocoTestReport.xml"
+      property "sonar.sources", "src/main"
+      property "sonar.tests", "src/test"
+      property "sonar.java.binaries", layout.buildDirectory.get().dir("classes/java/main")
+      property "sonar.coverage.jacoco.xmlReportPaths", layout.buildDirectory.get().file("reports/jacoco/test/jacocoTestReport.xml")
     }
   }
 
@@ -34,8 +43,6 @@ subprojects {
     implementation 'org.hibernate.orm:hibernate-core:6.4.4.Final'
     implementation 'org.postgresql:postgresql:42.7.3'
     implementation 'com.zaxxer:HikariCP:5.1.0'
-    implementation 'org.slf4j:slf4j-api:2.0.9'
-    implementation 'org.slf4j:slf4j-simple:2.0.9'
 
     compileOnly 'org.projectlombok:lombok:1.18.30'
     annotationProcessor 'org.projectlombok:lombok:1.18.30'
@@ -44,16 +51,50 @@ subprojects {
     testImplementation 'org.mockito:mockito-core:5.2.0'
     testImplementation 'org.mockito:mockito-junit-jupiter:5.2.0'
   }
+
+  test {
+    useJUnitPlatform()
+    finalizedBy jacocoTestReport // report is always generated after tests run
+  }
+
+  jacocoTestReport {
+    dependsOn test // tests are required to run before generating the report
+    reports {
+      xml.required = true
+      csv.required = false
+      html.required = true
+    }
+  }
 }
 
-dependencies {
-}
+// This task is now at the root level, where it belongs.
+task jacocoRootReport(type: JacocoReport) {
+  description = 'Generates an aggregate JaCoCo test coverage report for the entire project.'
+  group = 'verification'
 
-java {
-  sourceCompatibility = JavaVersion.VERSION_17
-  targetCompatibility = JavaVersion.VERSION_17
-}
+  // Make sure all subproject tests run before this task
+  dependsOn(subprojects.test)
 
-tasks.test {
-  useJUnitPlatform()
+  // Gather execution data from all subprojects
+  executionData.from(fileTree(project.rootDir).include('**/build/jacoco/test.exec'))
+
+  // Correctly gather and configure source and class directories from all subprojects
+  subprojects.each { subproject ->
+    sourceSets subproject.sourceSets.main
+  }
+
+  reports {
+    xml.required = true
+    csv.required = false
+    html.outputLocation = file("${buildDir}/reports/jacoco/html")
+  }
+
+  allprojects {
+    group = 'com.calcite-new'
+    version = '1.0-SNAPSHOT'
+
+    repositories {
+      mavenCentral()
+    }
+  }
 }

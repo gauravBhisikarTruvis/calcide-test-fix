@@ -309,42 +309,85 @@ public class BigQueryFoodmartCatalogBuilder {
     ));
   }
 
+//  private static List<Column> createSalesFactColumns() {
+//    List<Column> columns = new ArrayList<>();
+//    int position = 0;
+//
+//    columns.add(new Column(Identifier.of("product_id", new BigQuerySqlDialect()),
+//        position++,
+//        DataType.create(SqlTypeName.INTEGER, 0, 0),
+//        false));
+//    columns.add(new Column(Identifier.of("time_id", new BigQuerySqlDialect()),
+//        position++,
+//        DataType.create(SqlTypeName.INTEGER, 0, 0),
+//        false));
+//    columns.add(new Column(Identifier.of("customer_id", new BigQuerySqlDialect()),
+//        position++,
+//        DataType.create(SqlTypeName.INTEGER, 0, 0),
+//        false));
+//    columns.add(new Column(Identifier.of("promotion_id", new BigQuerySqlDialect()),
+//        position++,
+//        DataType.create(SqlTypeName.INTEGER, 0, 0),
+//        false));
+//    columns.add(new Column(Identifier.of("store_id", new BigQuerySqlDialect()),
+//        position++,
+//        DataType.create(SqlTypeName.INTEGER, 0, 0),
+//        false));
+//    columns.add(new Column(Identifier.of("store_sales", new BigQuerySqlDialect()),
+//        position++,
+//        DataType.create(SqlTypeName.FLOAT, 10, 2),
+//        false));
+//    columns.add(new Column(Identifier.of("store_cost", new BigQuerySqlDialect()),
+//        position++,
+//        DataType.create(SqlTypeName.FLOAT, 10, 2),
+//        false));
+//    columns.add(new Column(Identifier.of("unit_sales", new BigQuerySqlDialect()),
+//        position++,
+//        DataType.create(SqlTypeName.FLOAT, 10, 2),
+//        false));
+//    return columns;
+//  }
+
+
   private static List<Column> createSalesFactColumns() {
     List<Column> columns = new ArrayList<>();
     int position = 0;
 
     columns.add(new Column(Identifier.of("product_id", new BigQuerySqlDialect()),
-        position++,
-        DataType.create(SqlTypeName.INTEGER, 0, 0),
-        false));
+            position++,
+            DataType.create(SqlTypeName.INTEGER, false),
+            false));
     columns.add(new Column(Identifier.of("time_id", new BigQuerySqlDialect()),
-        position++,
-        DataType.create(SqlTypeName.INTEGER, 0, 0),
-        false));
+            position++,
+            DataType.create(SqlTypeName.INTEGER, false),
+            false));
     columns.add(new Column(Identifier.of("customer_id", new BigQuerySqlDialect()),
-        position++,
-        DataType.create(SqlTypeName.INTEGER, 0, 0),
-        false));
+            position++,
+            DataType.create(SqlTypeName.INTEGER, false),
+            false));
     columns.add(new Column(Identifier.of("promotion_id", new BigQuerySqlDialect()),
-        position++,
-        DataType.create(SqlTypeName.INTEGER, 0, 0),
-        false));
+            position++,
+            DataType.create(SqlTypeName.INTEGER, false),
+            false));
     columns.add(new Column(Identifier.of("store_id", new BigQuerySqlDialect()),
-        position++,
-        DataType.create(SqlTypeName.INTEGER, 0, 0),
-        false));
+            position++,
+            DataType.create(SqlTypeName.INTEGER, false),
+            false));
     columns.add(new Column(Identifier.of("store_sales", new BigQuerySqlDialect()),
-        position++,
-        DataType.create(SqlTypeName.FLOAT, 10, 2),
-        false));
+            position++,
+            // Ensure precision (10) and scale (2) are provided
+            DataType.create(SqlTypeName.DECIMAL, 10, 2),
+            false));
     columns.add(new Column(Identifier.of("store_cost", new BigQuerySqlDialect()),
-        position++,
-        DataType.create(SqlTypeName.FLOAT, 10, 2),
-        false));
+            position++,
+            // Ensure precision (10) and scale (2) are provided
+            DataType.create(SqlTypeName.DECIMAL, 10, 2),
+            false));
     columns.add(new Column(Identifier.of("unit_sales", new BigQuerySqlDialect()),
-        position++,
-        DataType.create(SqlTypeName.FLOAT, 10, 2),
-        false));
+            position++,
+            // Ensure precision (10) and scale (2) are provided
+            DataType.create(SqlTypeName.DECIMAL, 10, 2),
+            false));
     return columns;
   }
 

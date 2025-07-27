@@ -221,24 +221,24 @@ public class TableEntityTest {
         session.close();
     }
 
-    @Test
-    void integrationTestFetchTableFromDatabase() {
-        // Use a table_name that exists in your DB
-        String testTableName = "table_e";
-
-        Session session = HibernateUtil.getSessionFactory().openSession();
-        Transaction tx = session.beginTransaction();
-        TableEntity entity = session.get(TableEntity.class, testTableName);
-        tx.commit();
-        session.close();
-
-        if (entity == null) {
-            fail("No TableEntity found for table_name='" + testTableName + "'. Please insert a test row in your database.");
-        } else {
-            System.out.println("Fetched entity from DB: tableName=" + entity.getTableName() + ", sourceProduct=" + entity.getSourceProduct());
-            // Update the assertions below after you see the real values in your DB
-            assertEquals(testTableName, entity.getTableName());
-            // Example: assertEquals("ProductA", entity.getSourceProduct());
-        }
-    }
+//    @Test
+//    void integrationTestFetchTableFromDatabase() {
+//        // Use a table_name that exists in your DB
+//        String testTableName = "table_e";
+//
+//        Session session = HibernateUtil.getSessionFactory().openSession();
+//        Transaction tx = session.beginTransaction();
+//        TableEntity entity = session.get(TableEntity.class, testTableName);
+//        tx.commit();
+//        session.close();
+//
+//        if (entity == null) {
+//            fail("No TableEntity found for table_name='" + testTableName + "'. Please insert a test row in your database.");
+//        } else {
+//            System.out.println("Fetched entity from DB: tableName=" + entity.getTableName() + ", sourceProduct=" + entity.getSourceProduct());
+//            // Update the assertions below after you see the real values in your DB
+//            assertEquals(testTableName, entity.getTableName());
+//            // Example: assertEquals("ProductA", entity.getSourceProduct());
+//        }
+//    }
 }

@@ -37,10 +37,10 @@ dependencies {
     testImplementation 'org.junit.jupiter:junit-jupiter'
 }
 
-configurations.configureEach {
-    exclude group: 'ch.qos.logback', module: 'logback-classic'
-    exclude group: 'ch.qos.logback', module: 'logback-core'
-}
+//configurations.configureEach {
+//    exclude group: 'ch.qos.logback', module: 'logback-classic'
+//    exclude group: 'ch.qos.logback', module: 'logback-core'
+//}
 
 test {
     useJUnitPlatform()

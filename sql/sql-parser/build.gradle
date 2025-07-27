@@ -3,6 +3,7 @@ plugins {
   id 'groovy'
   id 'antlr'
   id 'java-test-fixtures'
+  id 'jacoco'
 }
 
 group = 'com.calcite-new'
@@ -16,11 +17,12 @@ dependencies {
   antlr group: 'org.antlr', name: 'antlr4', version: '4.13.2'
   implementation group: 'org.antlr', name: 'antlr4-runtime', version: '4.13.2'
   api group: 'org.apache.calcite', name: 'calcite-core', version: '1.38.0'
-
+  implementation 'ch.qos.logback:logback-classic:1.5.13'
   testImplementation 'org.codehaus.groovy:groovy-all:3.0.19'
   testImplementation 'org.spockframework:spock-core:2.3-groovy-3.0'
   testImplementation 'org.junit.jupiter:junit-jupiter-api:5.10.0'
   testImplementation 'org.junit.jupiter:junit-jupiter-engine:5.10.0'
+  testImplementation 'ch.qos.logback:logback-classic:1.5.13'
 
   testFixturesImplementation 'org.junit.jupiter:junit-jupiter-api:5.10.0'
 }
@@ -41,4 +43,8 @@ test {
 
 jar {
   enabled = true
+}
+subprojects {
+  apply plugin: 'jacoco'
+  // ... other jacoco configurations
 }

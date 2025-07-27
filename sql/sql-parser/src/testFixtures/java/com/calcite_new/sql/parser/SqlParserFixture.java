@@ -29,10 +29,22 @@ public abstract class SqlParserFixture {
     return this;
   }
 
+//  public void check(String expectedSql) {
+//    Objects.requireNonNull(sql, "SQL string is null");
+//    SqlNode node = parse();
+//    assertEquals(expectedSql, node.toSqlString(CALCITE_DIALECT).toString());
+//  }
+
   public void check(String expectedSql) {
     Objects.requireNonNull(sql, "SQL string is null");
     SqlNode node = parse();
-    assertEquals(expectedSql, node.toSqlString(CALCITE_DIALECT).toString());
+    String actualSql = node.toSqlString(CALCITE_DIALECT).toString();
+
+    // Normalize both strings to prevent issues with whitespace and line endings
+    String normalizedExpected = expectedSql.trim().replace("\r\n", "\n");
+    String normalizedActual = actualSql.trim().replace("\r\n", "\n");
+
+    assertEquals(normalizedExpected, normalizedActual);
   }
 
   public SqlNode parse() {

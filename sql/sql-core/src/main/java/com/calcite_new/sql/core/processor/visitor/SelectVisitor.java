@@ -49,6 +49,6 @@ public class SelectVisitor extends BaseStatementVisitor {
 
 
     private static boolean isSelectAll(SqlSelect select) {
-        return select.getSelectList().size() == 1 && "*".equals(select.getSelectList().getFirst().toString());
+        return select.getSelectList().size() == 1 && "*".equals(select.getSelectList().get(0).toString());
     }
 }
