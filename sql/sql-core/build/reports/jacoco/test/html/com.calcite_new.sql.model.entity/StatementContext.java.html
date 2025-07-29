@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>StatementContext.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">sql-core</a> &gt; <a href="index.source.html" class="el_package">com.calcite_new.sql.model.entity</a> &gt; <span class="el_source">StatementContext.java</span></div><h1>StatementContext.java</h1><pre class="source lang-java linenums">package com.calcite_new.sql.model.entity;
+
+import com.calcite_new.sql.model.entity.context.clause.*;
+import jakarta.persistence.*;
+import lombok.*;
+
+@Entity
+@Table(name = &quot;statement_context&quot;)
+@Getter
+<span class="nc" id="L10">@Setter</span>
+<span class="nc" id="L11">@NoArgsConstructor</span>
+<span class="nc" id="L12">@AllArgsConstructor</span>
+<span class="nc" id="L13">@Builder</span>
+public class StatementContext {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+<span class="nc" id="L18">    private Long id;</span>
+
+    @OneToOne
+    @JoinColumn(name = &quot;sql_statement_info_id&quot;)
+<span class="nc" id="L22">    private SqlStatementInfo sqlStatementInfo;</span>
+
+    @Embedded
+<span class="nc" id="L25">    private SelectClause selectClause;</span>
+
+    @Embedded
+<span class="nc" id="L28">    private WhereClause whereClause;</span>
+
+    @Embedded
+<span class="nc" id="L31">    private FromClause fromClause;</span>
+
+    @Embedded
+<span class="nc" id="L34">    private GroupByClause groupByClause;</span>
+
+    @Embedded
+<span class="nc" id="L37">    private HavingClause havingClause;</span>
+
+    @Embedded
+<span class="nc" id="L40">    private OrderByClause orderByClause;</span>
+
+    @Embedded
+<span class="nc" id="L43">    private LimitClause limitClause;</span>
+
+/*    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
+    @JoinColumn(name = &quot;query_context_id&quot;)
+    private List&lt;WithClause&gt; cteDefinitions;
+
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
+    @JoinColumn(name = &quot;query_context_id&quot;)
+    private List&lt;JoinClause&gt; joins;
+
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
+    @JoinColumn(name = &quot;query_context_id&quot;)
+    private List&lt;WindowFunctionInfo&gt; windowFunctions;
+
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
+    @JoinColumn(name = &quot;query_context_id&quot;)
+    private List&lt;FunctionInfo&gt; functionList;*/
+
+    public void merge(StatementContext other) {
+<span class="nc bnc" id="L62" title="All 2 branches missed.">        if (other == null) return;</span>
+
+<span class="nc bnc" id="L64" title="All 2 branches missed.">        if (other.selectClause != null) this.selectClause = other.selectClause;</span>
+<span class="nc bnc" id="L65" title="All 2 branches missed.">        if (other.whereClause != null) this.whereClause = other.whereClause;</span>
+<span class="nc bnc" id="L66" title="All 2 branches missed.">        if (other.groupByClause != null) this.groupByClause = other.groupByClause;</span>
+<span class="nc bnc" id="L67" title="All 2 branches missed.">        if (other.havingClause != null) this.havingClause = other.havingClause;</span>
+<span class="nc bnc" id="L68" title="All 2 branches missed.">        if (other.orderByClause != null) this.orderByClause = other.orderByClause;</span>
+<span class="nc bnc" id="L69" title="All 2 branches missed.">        if (other.limitClause != null) this.limitClause = other.limitClause;</span>
+<span class="nc bnc" id="L70" title="All 2 branches missed.">        if (other.fromClause != null) this.fromClause = other.fromClause;</span>
+
+/*        if (other.cteDefinitions != null) this.cteDefinitions = other.cteDefinitions;
+        if (other.joins != null) this.joins = other.joins;
+        if (other.windowFunctions != null) this.windowFunctions = other.windowFunctions;
+        if (other.functionList != null) this.functionList = other.functionList;*/
+<span class="nc" id="L76">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

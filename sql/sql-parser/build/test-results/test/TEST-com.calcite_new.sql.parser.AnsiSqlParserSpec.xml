@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.calcite_new.sql.parser.AnsiSqlParserSpec" tests="25" skipped="0" failures="0" errors="0" timestamp="2025-07-28T06:14:43" hostname="LAPTOP-A36VV8FB" time="0.092">
+  <properties/>
+  <testcase name="Simple SELECT should parses" classname="com.calcite_new.sql.parser.AnsiSqlParserSpec" time="0.037"/>
+  <testcase name="Simple SELECT should parse" classname="com.calcite_new.sql.parser.AnsiSqlParserSpec" time="0.001"/>
+  <testcase name="SELECT with column list should parse" classname="com.calcite_new.sql.parser.AnsiSqlParserSpec" time="0.002"/>
+  <testcase name="SELECT with WHERE clause should parse" classname="com.calcite_new.sql.parser.AnsiSqlParserSpec" time="0.003"/>
+  <testcase name="SELECT with JOIN should parse" classname="com.calcite_new.sql.parser.AnsiSqlParserSpec" time="0.004"/>
+  <testcase name="SELECT with GROUP BY should parse" classname="com.calcite_new.sql.parser.AnsiSqlParserSpec" time="0.005"/>
+  <testcase name="SELECT with ORDER BY should parse" classname="com.calcite_new.sql.parser.AnsiSqlParserSpec" time="0.003"/>
+  <testcase name="SELECT with HAVING clause should parse" classname="com.calcite_new.sql.parser.AnsiSqlParserSpec" time="0.002"/>
+  <testcase name="SELECT with subquery should parse" classname="com.calcite_new.sql.parser.AnsiSqlParserSpec" time="0.002"/>
+  <testcase name="SELECT with LIMIT clause should parse" classname="com.calcite_new.sql.parser.AnsiSqlParserSpec" time="0.008"/>
+  <testcase name="SELECT with CASE expression should parse" classname="com.calcite_new.sql.parser.AnsiSqlParserSpec" time="0.002"/>
+  <testcase name="SELECT with aggregate functions should parse" classname="com.calcite_new.sql.parser.AnsiSqlParserSpec" time="0.001"/>
+  <testcase name="SELECT with multiple joins should parse" classname="com.calcite_new.sql.parser.AnsiSqlParserSpec" time="0.002"/>
+  <testcase name="SELECT with complex WHERE conditions should parse" classname="com.calcite_new.sql.parser.AnsiSqlParserSpec" time="0.001"/>
+  <testcase name="SELECT with UNION should parse" classname="com.calcite_new.sql.parser.AnsiSqlParserSpec" time="0.0"/>
+  <testcase name="INSERT statement should parse" classname="com.calcite_new.sql.parser.AnsiSqlParserSpec" time="0.004"/>
+  <testcase name="UPDATE statement should parse" classname="com.calcite_new.sql.parser.AnsiSqlParserSpec" time="0.003"/>
+  <testcase name="DELETE statement should parse" classname="com.calcite_new.sql.parser.AnsiSqlParserSpec" time="0.001"/>
+  <testcase name="SELECT with date functions should parse" classname="com.calcite_new.sql.parser.AnsiSqlParserSpec" time="0.002"/>
+  <testcase name="SELECT with window functions should parse" classname="com.calcite_new.sql.parser.AnsiSqlParserSpec" time="0.001"/>
+  <testcase name="SELECT with complex join and conditions should parse" classname="com.calcite_new.sql.parser.AnsiSqlParserSpec" time="0.001"/>
+  <testcase name="SELECT with PROJECTION and FILTER parses" classname="com.calcite_new.sql.parser.AnsiSqlParserSpec" time="0.0"/>
+  <testcase name="SELECT with JOIN parses" classname="com.calcite_new.sql.parser.AnsiSqlParserSpec" time="0.001"/>
+  <testcase name="SELECT with GROUP BY parses" classname="com.calcite_new.sql.parser.AnsiSqlParserSpec" time="0.001"/>
+  <testcase name="SELECT with ORDER BY and LIMIT" classname="com.calcite_new.sql.parser.AnsiSqlParserSpec" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[line 1:20 mismatched input 'FROM' expecting {')', ','}
+]]></system-err>
+</testsuite>

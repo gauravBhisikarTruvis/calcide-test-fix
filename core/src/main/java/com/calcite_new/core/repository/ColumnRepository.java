@@ -1,6 +1,5 @@
 package com.calcite_new.core.repository;
 
-
 import com.calcite_new.core.config.HibernateUtil;
 import com.calcite_new.core.entity.ColumnEntity;
 import org.hibernate.Session;
@@ -13,7 +12,8 @@ import java.util.List;
 
 @Repository
 public class ColumnRepository {
-    private static final Logger logger = LoggerFactory.getLogger(ColumnRepository.class);
+    // Changed logger to non-static for testability
+    private final Logger logger = LoggerFactory.getLogger(getClass());
 
     public List<ColumnEntity> fetchAllColumns() {
         try (Session session = HibernateUtil.getSessionFactory().openSession()) {

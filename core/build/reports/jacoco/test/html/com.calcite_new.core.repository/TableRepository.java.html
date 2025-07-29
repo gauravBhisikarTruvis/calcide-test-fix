@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>TableRepository.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">core</a> &gt; <a href="index.source.html" class="el_package">com.calcite_new.core.repository</a> &gt; <span class="el_source">TableRepository.java</span></div><h1>TableRepository.java</h1><pre class="source lang-java linenums">package com.calcite_new.core.repository;
+
+import com.calcite_new.core.config.HibernateUtil;
+import com.calcite_new.core.entity.TableEntity;
+import org.hibernate.Session;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Repository;
+
+import java.util.List;
+
+@Repository
+<span class="nc" id="L13">public class TableRepository {</span>
+<span class="nc" id="L14">    private static final Logger logger = LoggerFactory.getLogger(TableRepository.class);</span>
+
+    public List&lt;TableEntity&gt; fetchAllTables() {
+<span class="nc" id="L17">        try (Session session = HibernateUtil.getSessionFactory().openSession()) {</span>
+<span class="nc" id="L18">            logger.info(&quot;Fetching all records from table_e&quot;);</span>
+<span class="nc" id="L19">            return session.createQuery(&quot;from TableEntity&quot;, TableEntity.class).list();</span>
+<span class="nc" id="L20">        } catch (Exception e) {</span>
+<span class="nc" id="L21">            logger.error(&quot;Error fetching tables&quot;, e);</span>
+<span class="nc" id="L22">            throw e;</span>
+        }
+    }
+
+    public List&lt;TableEntity&gt; findBySchema(String schema) {
+<span class="nc" id="L27">        try (Session session = HibernateUtil.getSessionFactory().openSession()) {</span>
+<span class="nc" id="L28">            logger.info(&quot;Fetching tables for schema: {}&quot;, schema);</span>
+<span class="nc" id="L29">            return session.createQuery(</span>
+                    &quot;from TableEntity where schema = :schema&quot;,
+                    TableEntity.class)
+<span class="nc" id="L32">                    .setParameter(&quot;schema&quot;, schema)</span>
+<span class="nc" id="L33">                    .list();</span>
+<span class="nc" id="L34">        } catch (Exception e) {</span>
+<span class="nc" id="L35">            logger.error(&quot;Error fetching tables for schema: {}&quot;, schema, e);</span>
+<span class="nc" id="L36">            throw e;</span>
+        }
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

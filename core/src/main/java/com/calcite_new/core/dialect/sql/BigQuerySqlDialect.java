@@ -1,12 +1,11 @@
 package com.calcite_new.core.dialect.sql;
 
-
 import com.calcite_new.core.dialect.Product;
 
 public class BigQuerySqlDialect extends SqlDialect {
 
   public BigQuerySqlDialect() {
-    super(Product.BIG_QUERY);
+    super(Product.BIGQUERY);
   }
 
   @Override

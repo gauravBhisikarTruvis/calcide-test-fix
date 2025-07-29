@@ -1,0 +1,2696 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>CustomSqlToRelConverter.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">sql-core</a> &gt; <a href="index.source.html" class="el_package">com.calcite_new.sql.core.converter</a> &gt; <span class="el_source">CustomSqlToRelConverter.java</span></div><h1>CustomSqlToRelConverter.java</h1><pre class="source lang-java linenums">package com.calcite_new.sql.core.converter;
+
+import com.calcite_new.core.dialect.sql.SqlDialect;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
+import org.apache.calcite.plan.Convention;
+import org.apache.calcite.plan.RelOptCluster;
+import org.apache.calcite.plan.RelOptTable;
+import org.apache.calcite.plan.RelTraitSet;
+import org.apache.calcite.prepare.Prepare;
+import org.apache.calcite.rel.RelCollation;
+import org.apache.calcite.rel.RelCollations;
+import org.apache.calcite.rel.RelFieldCollation;
+import org.apache.calcite.rel.RelNode;
+import org.apache.calcite.rel.core.AggregateCall;
+import org.apache.calcite.rel.core.CorrelationId;
+import org.apache.calcite.rel.core.JoinRelType;
+import org.apache.calcite.rel.logical.*;
+import org.apache.calcite.rel.type.RelDataType;
+import org.apache.calcite.rel.type.RelDataTypeFactory;
+import org.apache.calcite.rel.type.RelDataTypeField;
+import org.apache.calcite.rex.*;
+import org.apache.calcite.sql.*;
+import org.apache.calcite.sql.fun.SqlCase;
+import org.apache.calcite.sql.fun.SqlStdOperatorTable;
+import org.apache.calcite.sql.parser.SqlParserPos;
+import org.apache.calcite.sql.type.SqlTypeName;
+import org.apache.calcite.sql.type.SqlTypeUtil;
+import org.apache.calcite.sql.util.SqlBasicVisitor;
+import org.apache.calcite.sql.validate.SqlValidatorUtil;
+import org.apache.calcite.util.*;
+import org.checkerframework.checker.nullness.qual.Nullable;
+
+import java.math.BigDecimal;
+import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
+
+/**
+ * Converts a validated {@link SqlNode} tree into a {@link RelNode} tree
+ * without using {@link org.apache.calcite.sql.validate.SqlValidator} or
+ * {@link org.apache.calcite.tools.RelBuilder}.
+ *
+ * &lt;p&gt;This converter assumes the input {@code SqlNode} is already validated.
+ * It relies on {@link Prepare.CatalogReader} to resolve schema objects and obtain
+ * type information. Type inference for expressions is performed locally or
+ * using {@link RexBuilder}. Relational nodes (like {@link LogicalFilter},
+ * {@link LogicalProject}) are constructed directly.
+ * &lt;/p&gt;
+ *
+ * &lt;p&gt;&lt;b&gt;Note:&lt;/b&gt; Avoiding {@code SqlValidator} and {@code RelBuilder}
+ * significantly increases complexity, especially regarding type inference,
+ * scope resolution, RexInputRef index management, and handling complex SQL features.
+ * This implementation makes simplifying assumptions and requires careful manual
+ * construction of RelNode properties (like row types and expression references).
+ * &lt;/p&gt;
+ *
+ * &lt;p&gt;&lt;b&gt;Refactoring Note:&lt;/b&gt; Core conversion methods now return {@link Scope}
+ * instead of {@link RelNode}. The {@code Scope} encapsulates the resulting
+ * {@code RelNode} and the context (fields, aliases) available from its output.
+ * &lt;/p&gt;
+ */
+<span class="nc" id="L63">public class CustomSqlToRelConverter {</span>
+
+  protected final RelOptCluster cluster;
+  protected final EntityCatalogReader catalogReader;
+  private final List&lt;String&gt; defaultQualifiers;
+  private final SqlDialect dialect;
+
+  protected final RexBuilder rexBuilder;
+  protected final RelDataTypeFactory typeFactory;
+  protected final RelTraitSet defaultTraits;
+
+  // Context for CTEs (Common Table Expressions) - Managed via Scope now.
+  // private final Map&lt;String, RelNode&gt; cteMap = new HashMap&lt;&gt;(); // Removed, handled by Scope
+
+  /**
+   * Creates a SqlToRelConverter.
+   *
+   * @param cluster       Relational expression cluster
+   * @param catalogReader Schema provider
+   */
+  public CustomSqlToRelConverter(
+      RelOptCluster cluster,
+      EntityCatalogReader catalogReader,
+      List&lt;String&gt; defaultQualifiers,
+<span class="nc" id="L87">      SqlDialect dialect) {</span>
+<span class="nc" id="L88">    this.cluster = Objects.requireNonNull(cluster, &quot;cluster&quot;);</span>
+<span class="nc" id="L89">    this.catalogReader = Objects.requireNonNull(catalogReader, &quot;catalogReader&quot;);</span>
+<span class="nc" id="L90">    this.rexBuilder = cluster.getRexBuilder();</span>
+<span class="nc" id="L91">    this.typeFactory = cluster.getTypeFactory();</span>
+<span class="nc bnc" id="L92" title="All 2 branches missed.">    this.defaultQualifiers = defaultQualifiers != null</span>
+<span class="nc" id="L93">        ? defaultQualifiers</span>
+<span class="nc" id="L94">        : ImmutableList.of(); // Default qualifiers for table names</span>
+<span class="nc" id="L95">    this.dialect = dialect;</span>
+    // Default traits for logical nodes (can be customized)
+<span class="nc" id="L97">    this.defaultTraits = cluster.traitSet().replace(Convention.NONE);</span>
+<span class="nc" id="L98">  }</span>
+
+  /**
+   * Converts the main query {@link SqlNode} to a {@link RelNode}.
+   * This remains the public entry point returning the final RelNode.
+   *
+   * @param sqlNode The root node of the validated SQL query.
+   * @return The equivalent {@link RelNode} tree.
+   */
+  public RelNode convert(SqlNode sqlNode) {
+    // Initial scope is empty
+<span class="nc" id="L109">    Scope initialScope = Scope.createRoot();</span>
+<span class="nc" id="L110">    Scope finalScope = convertQueryRecursive(sqlNode, true, initialScope);</span>
+    // The final RelNode is extracted from the final Scope
+<span class="nc" id="L112">    return finalScope.getRelNode();</span>
+  }
+
+  /**
+   * Recursively converts a {@link SqlNode} query node (SELECT, UNION, etc.)
+   * into a {@link Scope} containing the resulting {@link RelNode}.
+   *
+   * @param sqlNode    The query node.
+   * @param isTopLevel True if this is the outermost query being converted.
+   * @param parentScope The scope available from the parent query level.
+   * @return The {@link Scope} representing the output of the converted query node.
+   */
+  protected Scope convertQueryRecursive(SqlNode sqlNode, boolean isTopLevel, Scope parentScope) {
+<span class="nc" id="L125">    SqlKind kind = sqlNode.getKind();</span>
+<span class="nc bnc" id="L126" title="All 6 branches missed.">    switch (kind) {</span>
+      case SELECT:
+<span class="nc" id="L128">        return convertSelect((SqlSelect) sqlNode, parentScope);</span>
+      case ORDER_BY:
+        // ORDER BY modifies the result but doesn't change the scope structure significantly,
+        // though it adds collation.
+<span class="nc" id="L132">        return convertOrderBy((SqlOrderBy) sqlNode, parentScope);</span>
+      case UNION:
+      case INTERSECT:
+      case EXCEPT:
+<span class="nc" id="L136">        return convertSetOp((SqlCall) sqlNode, parentScope);</span>
+      case VALUES:
+        // Values clause doesn't depend on outer scope typically
+<span class="nc" id="L139">        return convertValues((SqlCall) sqlNode, parentScope); // Pass parent scope for consistency</span>
+      case WITH:
+<span class="nc" id="L141">        return convertWith((SqlWith) sqlNode, parentScope);</span>
+      // Add cases for other query types like INSERT source, EXPLAIN, etc. if needed
+      default:
+<span class="nc" id="L144">        throw new UnsupportedOperationException(&quot;Unsupported query node type: &quot; + kind);</span>
+    }
+  }
+
+  /**
+   * Converts a WITH clause by registering CTEs and converting the body.
+   * Returns the Scope resulting from the body conversion.
+   */
+  protected Scope convertWith(SqlWith sqlWith, Scope parentScope) {
+    // Create a new scope for CTE definitions, inheriting from the parent
+<span class="nc" id="L154">    Scope withScope = Scope.createWithScope(parentScope);</span>
+
+    // Convert and register each CTE definition
+<span class="nc bnc" id="L157" title="All 2 branches missed.">    for (SqlNode cteNode : sqlWith.withList) {</span>
+<span class="nc" id="L158">      SqlWithItem cte = (SqlWithItem) cteNode;</span>
+<span class="nc" id="L159">      String alias = cte.name.getSimple();</span>
+<span class="nc bnc" id="L160" title="All 2 branches missed.">      if (withScope.isCteDefined(alias)) {</span>
+<span class="nc" id="L161">        throw new IllegalArgumentException(&quot;Duplicate CTE name: &quot; + alias);</span>
+      }
+      // Convert CTE body recursively. Pass the current 'withScope'.
+<span class="nc" id="L164">      Scope cteScope = convertQueryRecursive(cte.query, false, withScope);</span>
+      // Register the RelNode from the resulting scope in the current scope's CTE map
+<span class="nc" id="L166">      withScope.addCte(alias, cteScope.getRelNode());</span>
+<span class="nc" id="L167">    }</span>
+
+    // Convert the main query body using the scope that now includes all CTE definitions.
+    // The body is top-level relative to WITH.
+<span class="nc" id="L171">    return convertQueryRecursive(sqlWith.body, true, withScope);</span>
+  }
+
+
+  /**
+   * Converts a SELECT statement.
+   * Returns the Scope representing the final output of the SELECT (likely after projection).
+   */
+  protected Scope convertSelect(SqlSelect select, Scope parentScope) {
+    // 1. FROM clause - Establishes the initial input scope for this SELECT
+<span class="nc" id="L181">    Scope currentScope = convertFrom(select.getFrom(), parentScope);</span>
+<span class="nc" id="L182">    RelNode currentRel = currentScope.getRelNode(); // Get the RelNode from the FROM scope</span>
+
+    // 2. WHERE clause - Filter
+<span class="nc bnc" id="L185" title="All 2 branches missed.">    if (select.getWhere() != null) {</span>
+      // Use the scope from the FROM clause to resolve expressions in WHERE
+<span class="nc" id="L187">      RexNode whereCondition = convertExpression(select.getWhere(), currentScope);</span>
+<span class="nc" id="L188">      RexNode flattenedRex = RexUtil.flatten(rexBuilder, whereCondition);</span>
+<span class="nc" id="L189">      currentRel = LogicalFilter.create(currentRel, flattenedRex);</span>
+      // Update scope to reflect the filter output (row type usually unchanged)
+<span class="nc" id="L191">      currentScope = Scope.createScopeForRelNode(parentScope, currentRel, currentScope.getAlias()); // Preserve alias if any</span>
+    }
+
+    // 3. GROUP BY / Aggregation / HAVING
+<span class="nc" id="L195">    boolean isAggregate = AggregateChecker.isAggregate(select); // Checks for GROUP BY or aggregate functions</span>
+<span class="nc" id="L196">    Scope aggregateInputScope = currentScope; // Scope before potential aggregation</span>
+
+<span class="nc bnc" id="L198" title="All 2 branches missed.">    if (isAggregate) {</span>
+      // Identify all the columns needed for Aggregate and apply projection if needed
+      // This is a complex step. We need to ensure that the input to the aggregate
+      // is correct and that the output is properly projected.
+<span class="nc" id="L202">      aggregateInputScope = applyProject(select, currentScope);</span>
+      // convertAggregate now returns the Scope after aggregation/having
+<span class="nc" id="L204">      currentScope = convertAggregate(select, aggregateInputScope);</span>
+<span class="nc" id="L205">      currentRel = currentScope.getRelNode(); // Update RelNode from the new scope</span>
+<span class="nc bnc" id="L206" title="All 2 branches missed.">    } else if (select.getHaving() != null) {</span>
+<span class="nc" id="L207">      throw new IllegalArgumentException(&quot;HAVING clause found without GROUP BY or aggregate functions&quot;);</span>
+    }
+
+    // 4. SELECT list - Projection
+    // This needs to happen *after* aggregation but *before* ORDER BY
+    // convertProject takes the current scope and returns the scope after projection
+<span class="nc" id="L213">    Scope finalScope = convertProject(select.getSelectList(), currentScope);</span>
+<span class="nc" id="L214">    currentRel = finalScope.getRelNode(); // Update RelNode</span>
+
+<span class="nc bnc" id="L216" title="All 2 branches missed.">    if (select.isDistinct()) {</span>
+<span class="nc" id="L217">      return convertDistinct(select, finalScope);</span>
+    }
+
+    // Window functions (OVER clauses) would typically be handled here,
+    // operating on the result of projection/aggregation. Requires LogicalWindow.
+    // Manual creation of LogicalWindow is very complex. If added, it would
+    // take finalScope and return a new scope wrapping the LogicalWindow.
+
+    // Note: ORDER BY, LIMIT/OFFSET are handled by convertOrderBy if present,
+    // which would take finalScope as input.
+
+<span class="nc" id="L228">    return finalScope; // Return the scope after the projection</span>
+  }
+
+  protected Scope convertDistinct(SqlSelect select, Scope finalScope) {
+    // Get the input relation from the input scope
+<span class="nc" id="L233">    RelNode inputRel = finalScope.getRelNode();</span>
+
+    // 1. Convert DISTINCT to LogicalAggregate with empty grouping set
+    // This approach groups by all columns, effectively removing duplicates
+
+    // Create a group key for each field in the input
+<span class="nc" id="L239">    RelDataType rowType = inputRel.getRowType();</span>
+<span class="nc" id="L240">    int fieldCount = rowType.getFieldCount();</span>
+
+    // Create a BitSet containing all input fields (for GROUP BY)
+<span class="nc" id="L243">    ImmutableBitSet.Builder groupSetBuilder = ImmutableBitSet.builder();</span>
+<span class="nc bnc" id="L244" title="All 2 branches missed.">    for (int i = 0; i &lt; fieldCount; i++) {</span>
+<span class="nc" id="L245">      groupSetBuilder.set(i);</span>
+    }
+
+    // Build a list of RexInputRefs for the grouping keys
+<span class="nc" id="L249">    List&lt;RexNode&gt; groupExps = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L250">    Map&lt;Integer, RexNode&gt; groupExprMap = new LinkedHashMap&lt;&gt;();</span>
+<span class="nc bnc" id="L251" title="All 2 branches missed.">    for (int i = 0; i &lt; fieldCount; i++) {</span>
+<span class="nc" id="L252">      RelDataTypeField field = rowType.getFieldList().get(i);</span>
+<span class="nc" id="L253">      RexNode expr = rexBuilder.makeInputRef(field.getType(), i);</span>
+<span class="nc" id="L254">      groupExps.add(expr);</span>
+<span class="nc" id="L255">      groupExprMap.put(i, expr);</span>
+    }
+
+    // No aggregate calls - we're just using GROUP BY to eliminate duplicates
+<span class="nc" id="L259">    List&lt;AggregateCall&gt; aggCalls = Collections.emptyList();</span>
+<span class="nc" id="L260">    ImmutableBitSet groupSet = groupSetBuilder.build();</span>
+
+    // Create LogicalAggregate
+<span class="nc" id="L263">    RelNode distinctRel = LogicalAggregate.create(</span>
+        inputRel,
+        groupSet,
+        null, // No groupSets (CUBE, ROLLUP, etc.)
+        aggCalls);
+
+    // 2. For ORDER BY after DISTINCT, the output row type of the aggregate matches the input
+    // We can use the same field names from the input for the output scope
+
+    // Create a mapping from aggregate call SqlNodes to their output positions (empty in this case)
+<span class="nc" id="L273">    Map&lt;AggregateCallInfo, Integer&gt; aggCallOutputMap = Collections.emptyMap();</span>
+
+    // Create the output scope with information allowing subsequent operations to reference these fields
+<span class="nc" id="L276">    return Scope.createAggregateOutputScope(</span>
+        finalScope,        // parent scope
+        distinctRel,       // the new LogicalAggregate node
+        groupSet,          // fields used in grouping
+        groupExprMap,      // mapping of grouping expressions to their positions
+        aggCalls,          // aggregate calls (empty)
+        aggCallOutputMap   // mapping to find aggregate calls (empty)
+    );
+  }
+
+  /**
+   * Identify all the columns needed for Aggregate and apply projection if needed
+   * This is a complex step. We need to ensure that the input to the aggregate
+   * is correct and that the output is properly projected.
+   */
+  protected Scope applyProject(SqlSelect select, Scope inputScope) {
+    // Get the current rel node
+<span class="nc" id="L293">    RelNode inputRel = inputScope.getRelNode();</span>
+
+    // Set to collect all column references needed for aggregation
+<span class="nc" id="L296">    Set&lt;SqlIdentifier&gt; neededColumns = new HashSet&lt;&gt;();</span>
+
+    // 1. Collect columns used in aggregate functions in SELECT list
+<span class="nc" id="L299">    AggregateFinder aggFinder = new AggregateFinder();</span>
+<span class="nc" id="L300">    neededColumns.addAll(IdentifierCollector.collect(select.getSelectList()));</span>
+<span class="nc bnc" id="L301" title="All 2 branches missed.">    for (AggregateCallInfo aggInfo : aggFinder.getAggCalls()) {</span>
+<span class="nc bnc" id="L302" title="All 2 branches missed.">      for (SqlNode operand : aggInfo.sqlOperands) {</span>
+//        if (operand instanceof SqlIdentifier) {
+//          neededColumns.add(((SqlIdentifier) operand).getSimple());
+//        } else if (operand instanceof SqlCall) {
+//          // For complex expressions in aggregates, need the whole row
+//          return inputScope;
+//        }
+<span class="nc" id="L309">        neededColumns.addAll(IdentifierCollector.collect(operand));</span>
+<span class="nc" id="L310">      }</span>
+
+      // Check for FILTER clause
+<span class="nc bnc" id="L313" title="All 2 branches missed.">      if (aggInfo.filter != null) {</span>
+        // If filter has complex expressions, need whole row
+<span class="nc" id="L315">        return inputScope;</span>
+      }
+<span class="nc" id="L317">    }</span>
+
+    // 2. Collect columns from GROUP BY clause
+<span class="nc bnc" id="L320" title="All 2 branches missed.">    if (select.getGroup() != null) {</span>
+<span class="nc" id="L321">      neededColumns.addAll(IdentifierCollector.collect(select.getGroup()));</span>
+<span class="nc bnc" id="L322" title="All 2 branches missed.">      for (SqlNode groupKey : select.getGroup().getList()) {</span>
+<span class="nc bnc" id="L323" title="All 2 branches missed.">        if (groupKey instanceof SqlIdentifier) {</span>
+<span class="nc" id="L324">          SqlIdentifier id = (SqlIdentifier) groupKey;</span>
+<span class="nc bnc" id="L325" title="All 2 branches missed.">          if (id.isSimple()) {</span>
+
+          }
+<span class="nc" id="L328">        }</span>
+        // For complex expressions in GROUP BY, we'll need the whole row
+        // as we can't easily project just parts of expressions
+        else {
+<span class="nc" id="L332">          return inputScope; // Return original scope if complex expressions found</span>
+        }
+<span class="nc" id="L334">      }</span>
+    }
+
+    // 3. Collect columns from HAVING clause
+<span class="nc bnc" id="L338" title="All 2 branches missed.">    if (select.getHaving() != null) {</span>
+      // Collect identifiers from HAVING
+//      IdentifierVisitor idVisitor = new IdentifierVisitor();
+<span class="nc" id="L341">      neededColumns.addAll(IdentifierCollector.collect(select.getHaving()));</span>
+
+//      // If HAVING has complex expressions beyond simple column refs
+//      // and aggregates, we need the whole row
+//      if (idVisitor.hasComplexExpressions()) {
+//        return inputScope;
+//      }
+    }
+
+    // If we've found that we need all columns or no specific ones needed,
+    // return the original scope
+<span class="nc bnc" id="L352" title="All 4 branches missed.">    if (neededColumns.isEmpty() || neededColumns.size() == inputRel.getRowType().getFieldCount()) {</span>
+<span class="nc" id="L353">      return inputScope;</span>
+    }
+
+    // 4. Apply projection if we need only a subset of columns
+<span class="nc" id="L357">    List&lt;RexNode&gt; projExprs = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L358">    List&lt;String&gt; fieldNames = new ArrayList&lt;&gt;();</span>
+
+    // Map to track positions for field lookup
+<span class="nc" id="L361">    Map&lt;String, Integer&gt; fieldMap = new HashMap&lt;&gt;();</span>
+
+    // Build map of field names to indexes
+<span class="nc" id="L364">    RelDataType rowType = inputRel.getRowType();</span>
+<span class="nc bnc" id="L365" title="All 2 branches missed.">    for (int i = 0; i &lt; rowType.getFieldCount(); i++) {</span>
+<span class="nc" id="L366">      String fieldName = rowType.getFieldNames().get(i);</span>
+<span class="nc" id="L367">      fieldMap.put(fieldName, i);</span>
+    }
+
+    // Add needed columns to projection
+//    for (String column : neededColumns) {
+//      Integer index = fieldMap.get(column);
+//      if (index != null) {
+//        projExprs.add(rexBuilder.makeInputRef(
+//            rowType.getFieldList().get(index).getType(), index));
+//        fieldNames.add(column);
+//      }
+//    }
+
+    // Create project rel
+<span class="nc" id="L381">    RelNode projectRel = LogicalProject.create(</span>
+        inputRel,
+<span class="nc" id="L383">        ImmutableList.of(), // no hints</span>
+        projExprs,
+        fieldNames,
+<span class="nc" id="L386">        ImmutableSet.of() // no variablesSet</span>
+    );
+
+    // Create and return new scope with projected relation
+<span class="nc" id="L390">    return Scope.createScopeForRelNode(inputScope, projectRel, inputScope.getAlias());</span>
+  }
+
+  // Helper visitor to collect column references
+<span class="nc" id="L394">  protected static class IdentifierVisitor extends SqlBasicVisitor&lt;Void&gt; {</span>
+<span class="nc" id="L395">    private final Set&lt;String&gt; identifiers = new HashSet&lt;&gt;();</span>
+<span class="nc" id="L396">    private boolean hasComplexExpressions = false;</span>
+<span class="nc" id="L397">    private final Set&lt;SqlNode&gt; visited = new HashSet&lt;&gt;();</span>
+
+    public Set&lt;String&gt; getIdentifiers() {
+<span class="nc" id="L400">      return identifiers;</span>
+    }
+
+    public boolean hasComplexExpressions() {
+<span class="nc" id="L404">      return hasComplexExpressions;</span>
+    }
+
+    @Override
+    public Void visit(SqlIdentifier id) {
+<span class="nc bnc" id="L409" title="All 2 branches missed.">      if (visited.add(id)) {</span>
+<span class="nc" id="L410">        identifiers.add(id.getSimple());</span>
+      }
+<span class="nc" id="L412">      return null;</span>
+    }
+
+    @Override
+    public Void visit(SqlCall call) {
+<span class="nc bnc" id="L417" title="All 2 branches missed.">      if (visited.add(call)) {</span>
+        // Skip aggregate functions - they're handled separately
+<span class="nc bnc" id="L419" title="All 2 branches missed.">        if (!(call.getOperator() instanceof SqlAggFunction)) {</span>
+<span class="nc" id="L420">          hasComplexExpressions = true;</span>
+<span class="nc bnc" id="L421" title="All 2 branches missed.">          for (SqlNode operand : call.getOperandList()) {</span>
+<span class="nc bnc" id="L422" title="All 2 branches missed.">            if (operand != null) {</span>
+<span class="nc" id="L423">              operand.accept(this);</span>
+            }
+<span class="nc" id="L425">          }</span>
+        }
+      }
+<span class="nc" id="L428">      return null;</span>
+    }
+
+    // Visit other node types
+<span class="nc" id="L432">    @Override public Void visit(SqlLiteral literal) { visited.add(literal); return null; }</span>
+    @Override public Void visit(SqlNodeList nodeList) {
+<span class="nc bnc" id="L434" title="All 2 branches missed.">      if (visited.add(nodeList)) {</span>
+<span class="nc" id="L435">        nodeList.forEach(node -&gt; node.accept(this));</span>
+      }
+<span class="nc" id="L437">      return null;</span>
+    }
+<span class="nc" id="L439">    @Override public Void visit(SqlDataTypeSpec type) { visited.add(type); return null; }</span>
+<span class="nc" id="L440">    @Override public Void visit(SqlDynamicParam param) { visited.add(param); return null; }</span>
+<span class="nc" id="L441">    @Override public Void visit(SqlIntervalQualifier interval) { visited.add(interval); return null; }</span>
+  }
+
+  /**
+   * Converts the FROM clause of a SELECT statement.
+   * Returns a Scope representing the output of the FROM clause (single table, join result, subquery result).
+   */
+  protected Scope convertFrom(@Nullable SqlNode fromNode, Scope parentScope) {
+<span class="nc bnc" id="L449" title="All 2 branches missed.">    if (fromNode == null) {</span>
+      // No FROM clause (e.g., SELECT 1)
+<span class="nc" id="L451">      RelNode values = LogicalValues.createOneRow(cluster);</span>
+      // Return a scope representing this single-row Values node
+<span class="nc" id="L453">      return Scope.createScopeForRelNode(parentScope, values, &quot;$VALUES&quot;); // Use a synthetic alias</span>
+    }
+
+<span class="nc" id="L456">    SqlKind kind = fromNode.getKind();</span>
+<span class="nc bnc" id="L457" title="All 6 branches missed.">    switch (kind) {</span>
+      case IDENTIFIER: {
+<span class="nc" id="L459">        SqlIdentifier id = (SqlIdentifier) fromNode;</span>
+<span class="nc" id="L460">        String aliasOrName = id.names.get(id.names.size() - 1);</span>
+
+        // Check if it's a CTE reference first
+<span class="nc" id="L463">        RelNode cteRel = parentScope.findCte(aliasOrName);</span>
+<span class="nc bnc" id="L464" title="All 2 branches missed.">        if (cteRel != null) {</span>
+          // Found CTE. Return a scope for this CTE's RelNode, using the CTE name as alias.
+<span class="nc" id="L466">          return Scope.createScopeForRelNode(parentScope, cteRel, aliasOrName);</span>
+        }
+
+        // Assume it's a table
+<span class="nc" id="L470">        RelOptTable table = catalogReader.getTable(id.names);</span>
+<span class="nc bnc" id="L471" title="All 2 branches missed.">        if (table == null) {</span>
+//          // Try resolving with default qualifiers if not found directly
+//          List&lt;String&gt; qualifiedName = SqlValidatorUtil.addImplicitQualifier(
+//              id.names, defaultQualifiers, catalogReader.nameMatcher());
+//          table = catalogReader.getTable(qualifiedName);
+//
+//          if (table == null) {
+<span class="nc" id="L478">            throw new RuntimeException(&quot;Table or CTE not found: &quot; + id.names + &quot; (also tried with default qualifiers: &quot; + defaultQualifiers + &quot;)&quot;);</span>
+//          }
+        }
+        // Create a scan. Traits can be customized.
+<span class="nc" id="L482">        RelNode scan = LogicalTableScan.create(cluster, table, ImmutableList.of()); // Empty hints</span>
+        // Return a scope for the table scan, using the table name (or last part) as alias.
+<span class="nc" id="L484">        return Scope.createScopeForRelNode(parentScope, scan, aliasOrName);</span>
+      }
+      case JOIN:
+        // convertJoin now returns the Scope representing the join result
+<span class="nc" id="L488">        return convertJoin((SqlJoin) fromNode, parentScope);</span>
+
+      case AS: {
+<span class="nc" id="L491">        SqlCall asCall = (SqlCall) fromNode;</span>
+<span class="nc" id="L492">        SqlNode operand = asCall.getOperandList().get(0);</span>
+<span class="nc" id="L493">        SqlIdentifier aliasId = (SqlIdentifier) asCall.getOperandList().get(1);</span>
+<span class="nc" id="L494">        String alias = aliasId.getSimple();</span>
+
+        // Convert the underlying operand, which returns its scope
+<span class="nc" id="L497">        Scope underlyingScope = convertFrom(operand, parentScope);</span>
+
+        // Create a new scope that is identical but applies the explicit alias
+<span class="nc" id="L500">        return Scope.createScopeWithAlias(parentScope, underlyingScope.getRelNode(), alias);</span>
+      }
+      case SELECT: // Subquery in FROM
+      case UNION:
+      case INTERSECT:
+      case EXCEPT:
+      case WITH:
+      case ORDER_BY: { // Subquery with ORDER BY (usually requires alias)
+        // Convert the subquery recursively. It executes in its own scope,
+        // potentially inheriting correlation variables from parentScope.
+        // The result is the scope representing the subquery's output.
+<span class="nc" id="L511">        Scope subQueryScope = convertQueryRecursive(fromNode, false, parentScope);</span>
+        // If the subquery isn't aliased via AS, it needs an implicit alias for resolution.
+        // Calcite often generates one like &quot;$SUBQUERY$1&quot;. Let's return the scope as is,
+        // assuming an alias will be provided by 'AS' or handled by the caller if needed.
+        // If no 'AS' is used, resolution might fail later if qualified names are needed.
+        // For simplicity, we return the direct scope. An explicit AS is recommended.
+<span class="nc bnc" id="L517" title="All 2 branches missed.">        if (subQueryScope.getAlias() == null) {</span>
+          // Maybe generate a synthetic alias if none exists?
+          // return Scope.createScopeWithAlias(parentScope, subQueryScope.getRelNode(), generateSubqueryAlias());
+          // For now, return as is. Caller (e.g. JOIN) might handle it.
+        }
+<span class="nc" id="L522">        return subQueryScope;</span>
+      }
+      case VALUES:
+        // convertValues now returns a Scope
+<span class="nc" id="L526">        return convertValues((SqlCall) fromNode, parentScope);</span>
+
+      default:
+<span class="nc" id="L529">        throw new UnsupportedOperationException(&quot;Unsupported FROM clause node type: &quot; + kind);</span>
+    }
+  }
+
+  /**
+   * Converts a JOIN clause.
+   * Returns a Scope representing the output of the LogicalJoin.
+   */
+  protected Scope convertJoin(SqlJoin join, Scope parentScope) {
+<span class="nc" id="L538">    Scope leftScope = convertFrom(join.getLeft(), parentScope);</span>
+<span class="nc" id="L539">    Scope rightScope = convertFrom(join.getRight(), parentScope);</span>
+
+<span class="nc" id="L541">    RelNode leftRel = leftScope.getRelNode();</span>
+<span class="nc" id="L542">    RelNode rightRel = rightScope.getRelNode();</span>
+
+<span class="nc" id="L544">    JoinRelType joinType = convertJoinType(join.getJoinType());</span>
+
+    // The scope for the join condition includes both left and right inputs.
+    // This scope is temporary, just for resolving the condition.
+<span class="nc" id="L548">    Scope joinConditionScope = Scope.createJoinInputScope(parentScope, leftScope, rightScope);</span>
+
+    RexNode condition;
+<span class="nc" id="L551">    Set&lt;CorrelationId&gt; correlationIds = ImmutableSet.of(); // TODO: Handle correlations if needed</span>
+
+<span class="nc" id="L553">    SqlNode conditionNode = join.getCondition();</span>
+<span class="nc" id="L554">    JoinConditionType conditionType = join.getConditionType();</span>
+
+<span class="nc bnc" id="L556" title="All 2 branches missed.">    if (conditionNode == null) {</span>
+<span class="nc bnc" id="L557" title="All 2 branches missed.">      if (join.isNatural()) {</span>
+<span class="nc" id="L558">        condition = convertNaturalJoinCondition(leftRel.getRowType(), rightRel.getRowType());</span>
+<span class="nc bnc" id="L559" title="All 2 branches missed.">      } else if (conditionType == JoinConditionType.USING) {</span>
+<span class="nc" id="L560">        throw new UnsupportedOperationException(&quot;USING not supported yet&quot;);</span>
+//        condition = convertUsingJoinCondition(join.getUsingList(), leftRel.getRowType(), rightRel.getRowType(), joinConditionScope);
+        // Natural/Using joins often imply a projection afterwards to merge/select columns.
+        // We create the LogicalJoin first; projection is handled later if needed (e.g. by RelBuilder).
+        // Doing it manually here adds complexity.
+      } else {
+        // No condition (cross join or error)
+<span class="nc bnc" id="L567" title="All 4 branches missed.">        if (joinType == JoinRelType.INNER || joinType == JoinRelType.FULL) { // Standard CROSS JOIN</span>
+<span class="nc" id="L568">          condition = rexBuilder.makeLiteral(true);</span>
+        } else {
+<span class="nc" id="L570">          throw new IllegalArgumentException(&quot;Outer join requires ON, USING, or NATURAL&quot;);</span>
+        }
+      }
+    } else { // ON condition
+<span class="nc bnc" id="L574" title="All 2 branches missed.">      if (conditionType != JoinConditionType.ON) {</span>
+<span class="nc" id="L575">        throw new IllegalArgumentException(&quot;Unexpected condition type for ON join: &quot; + conditionType);</span>
+      }
+      // Convert the ON condition using the combined input scope
+<span class="nc" id="L578">      condition = convertExpression(conditionNode, joinConditionScope);</span>
+    }
+
+    // Create the LogicalJoin node
+<span class="nc" id="L582">    RelNode joinRel = LogicalJoin.create(leftRel, rightRel, ImmutableList.of() /* hints */, condition, correlationIds, joinType);</span>
+
+    // Create and return the scope representing the output of the join.
+    // This scope needs to know about fields from both left and right.
+<span class="nc" id="L586">    return Scope.createJoinOutputScope(parentScope, joinRel, leftScope, rightScope);</span>
+  }
+
+  /**
+   * Converts SqlJoinOperator.JoinType to JoinRelType.
+   */
+  protected JoinRelType convertJoinType(JoinType joinType) {
+<span class="nc bnc" id="L593" title="All 6 branches missed.">    switch (joinType) {</span>
+      case CROSS:
+      case INNER:
+<span class="nc" id="L596">        return JoinRelType.INNER;</span>
+      case LEFT:
+<span class="nc" id="L598">        return JoinRelType.LEFT;</span>
+      case RIGHT:
+<span class="nc" id="L600">        return JoinRelType.RIGHT;</span>
+      case FULL:
+<span class="nc" id="L602">        return JoinRelType.FULL;</span>
+      case COMMA:
+<span class="nc" id="L604">        return JoinRelType.INNER; // Typically equivalent to CROSS or INNER with condition in WHERE</span>
+      default:
+<span class="nc" id="L606">        throw new UnsupportedOperationException(&quot;Unsupported join type: &quot; + joinType);</span>
+    }
+  }
+
+  /**
+   * Generates join condition for NATURAL JOIN.
+   * Note: This only generates the condition. It doesn't handle the projection
+   * required by NATURAL JOIN (selecting common columns once, then others).
+   */
+  protected RexNode convertNaturalJoinCondition(RelDataType leftType, RelDataType rightType) {
+<span class="nc" id="L616">    List&lt;String&gt; leftNames = leftType.getFieldNames();</span>
+<span class="nc" id="L617">    List&lt;String&gt; rightNames = rightType.getFieldNames();</span>
+<span class="nc" id="L618">    List&lt;RexNode&gt; conditions = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L619">    int leftFieldCount = leftType.getFieldCount();</span>
+
+<span class="nc" id="L621">    final List&lt;String&gt; commonNames = new ArrayList&lt;&gt;();</span>
+<span class="nc bnc" id="L622" title="All 2 branches missed.">    for (RelDataTypeField leftField : leftType.getFieldList()) {</span>
+      // Case-insensitive match? Calcite usually handles this via validator config. Assume insensitive.
+<span class="nc" id="L624">      RelDataTypeField rightField = rightType.getField(leftField.getName(), false, false);</span>
+<span class="nc bnc" id="L625" title="All 2 branches missed.">      if (rightField != null) {</span>
+<span class="nc" id="L626">        commonNames.add(leftField.getName()); // Track common names for potential projection later</span>
+        // Check type compatibility? Assumed validated.
+<span class="nc" id="L628">        RexNode leftRef = rexBuilder.makeInputRef(leftField.getType(), leftField.getIndex());</span>
+        // Right input refs are offset by the number of left fields
+<span class="nc" id="L630">        RexNode rightRef = rexBuilder.makeInputRef(rightField.getType(), leftFieldCount + rightField.getIndex());</span>
+<span class="nc" id="L631">        conditions.add(rexBuilder.makeCall(SqlStdOperatorTable.EQUALS, leftRef, rightRef));</span>
+      }
+<span class="nc" id="L633">    }</span>
+
+<span class="nc bnc" id="L635" title="All 2 branches missed.">    if (conditions.isEmpty()) {</span>
+      // Standard SQL behavior for NATURAL JOIN with no common columns is CROSS JOIN.
+<span class="nc" id="L637">      return rexBuilder.makeLiteral(true);</span>
+    }
+<span class="nc" id="L639">    return RexUtil.composeConjunction(rexBuilder, conditions);</span>
+  }
+
+  /**
+   * Generates join condition for JOIN USING.
+   * Note: This only generates the condition. It doesn't handle the projection
+   * required by USING (selecting common columns once, then others).
+   * Requires the join *input* scope to resolve potential type differences if needed,
+   * although we primarily use the row types here.
+   */
+  protected RexNode convertUsingJoinCondition(SqlNodeList usingList, RelDataType leftType, RelDataType rightType, Scope joinInputScope) {
+<span class="nc" id="L650">    List&lt;RexNode&gt; conditions = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L651">    int leftFieldCount = leftType.getFieldCount();</span>
+
+<span class="nc bnc" id="L653" title="All 2 branches missed.">    for (SqlNode node : usingList) {</span>
+<span class="nc" id="L654">      SqlIdentifier id = (SqlIdentifier) node;</span>
+<span class="nc" id="L655">      String name = id.getSimple(); // USING columns are unqualified</span>
+
+      // Find the fields in the respective types
+<span class="nc" id="L658">      RelDataTypeField leftField = leftType.getField(name, false, false);</span>
+<span class="nc" id="L659">      RelDataTypeField rightField = rightType.getField(name, false, false);</span>
+
+<span class="nc bnc" id="L661" title="All 4 branches missed.">      if (leftField == null || rightField == null) {</span>
+<span class="nc" id="L662">        throw new RuntimeException(&quot;Column '&quot; + name + &quot;' specified in USING clause not found in both tables or is ambiguous&quot;);</span>
+      }
+      // Check type compatibility? Assumed validated.
+
+<span class="nc" id="L666">      RexNode leftRef = rexBuilder.makeInputRef(leftField.getType(), leftField.getIndex());</span>
+<span class="nc" id="L667">      RexNode rightRef = rexBuilder.makeInputRef(rightField.getType(), leftFieldCount + rightField.getIndex());</span>
+
+      // Use RexBuilder to create the equality check, allowing it to handle type coercion if necessary
+      // (though ideally types are already compatible post-validation)
+<span class="nc" id="L671">      conditions.add(rexBuilder.makeCall(SqlStdOperatorTable.EQUALS, leftRef, rightRef));</span>
+<span class="nc" id="L672">    }</span>
+<span class="nc bnc" id="L673" title="All 2 branches missed.">    if (conditions.isEmpty()) {</span>
+      // Should not happen if usingList is not empty, but handle defensively
+<span class="nc" id="L675">      return rexBuilder.makeLiteral(true);</span>
+    }
+<span class="nc" id="L677">    return RexUtil.composeConjunction(rexBuilder, conditions);</span>
+  }
+
+  /**
+   * Converts GROUP BY, aggregate functions, and HAVING.
+   * Takes the input Scope and returns the Scope after aggregation and optional HAVING filter.
+   */
+  protected Scope convertAggregate(SqlSelect select, Scope inputScope) {
+<span class="nc" id="L685">    RelNode inputRel = inputScope.getRelNode();</span>
+
+    // 1. Find GROUP BY expressions &amp; Build GroupSet
+    ImmutableBitSet groupSet;
+<span class="nc" id="L689">    List&lt;RexNode&gt; groupExprs = new ArrayList&lt;&gt;(); // Expressions corresponding to groupSet bits</span>
+<span class="nc" id="L690">    Map&lt;Integer, RexNode&gt; groupExprMap = new HashMap&lt;&gt;(); // Map group index -&gt; RexNode (relative to input)</span>
+
+<span class="nc bnc" id="L692" title="All 2 branches missed.">    if (select.getGroup() != null) {</span>
+<span class="nc" id="L693">      ImmutableBitSet.Builder groupSetBuilder = ImmutableBitSet.builder();</span>
+<span class="nc bnc" id="L694" title="All 2 branches missed.">      for (SqlNode groupNode : select.getGroup().getList()) {</span>
+        // Resolve GROUP BY expressions against the input scope
+<span class="nc" id="L696">        RexNode groupRex = convertExpression(groupNode, inputScope);</span>
+<span class="nc" id="L697">        groupExprs.add(groupRex);</span>
+        // Try to find if this expression matches an input field index
+<span class="nc" id="L699">        int inputIndex = findRexInputIndex(groupRex, inputRel);</span>
+<span class="nc bnc" id="L700" title="All 2 branches missed.">        if (inputIndex != -1) {</span>
+<span class="nc" id="L701">          groupSetBuilder.set(inputIndex);</span>
+<span class="nc" id="L702">          groupExprMap.put(inputIndex, groupRex);</span>
+        } else {
+          // Grouping by a complex expression requires Project beforehand or handling in Aggregate.
+          // Standard Aggregate requires groupSet to refer to input fields.
+          // We might need to project the expression first.
+          // TODO: Implement pre-projection for complex group keys if needed.
+<span class="nc" id="L708">          throw new UnsupportedOperationException(&quot;Grouping by complex expression '&quot; + groupNode + &quot;' requires pre-projection (not implemented here). Input fields: &quot; + inputRel.getRowType().getFieldNames());</span>
+        }
+<span class="nc" id="L710">      }</span>
+<span class="nc" id="L711">      groupSet = groupSetBuilder.build();</span>
+<span class="nc" id="L712">    } else {</span>
+      // Global aggregation (no GROUP BY clause)
+<span class="nc" id="L714">      groupSet = ImmutableBitSet.of();</span>
+    }
+
+    // 2. Find Aggregate Calls (in SELECT list and HAVING clause)
+<span class="nc" id="L718">    AggregateFinder aggFinder = new AggregateFinder();</span>
+    // Visit relevant parts of the select statement
+<span class="nc bnc" id="L720" title="All 2 branches missed.">    if (select.getSelectList() != null) {</span>
+<span class="nc" id="L721">      select.getSelectList().accept(aggFinder);</span>
+    }
+<span class="nc bnc" id="L723" title="All 2 branches missed.">    if (select.getHaving() != null) {</span>
+<span class="nc" id="L724">      select.getHaving().accept(aggFinder);</span>
+    }
+    // TODO: Consider aggregates in ORDER BY if allowed (standard SQL disallows them there unless also in SELECT)
+<span class="nc" id="L727">    List&lt;AggregateCallInfo&gt; aggregateCallInfos = aggFinder.getAggCalls();</span>
+
+    // 3. Create AggregateCall instances for LogicalAggregate
+<span class="nc" id="L730">    List&lt;AggregateCall&gt; aggCalls = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L731">    Map&lt;AggregateCallInfo, Integer&gt; aggCallOutputIndexMap = new HashMap&lt;&gt;(); // Map info -&gt; index in aggCalls list</span>
+
+<span class="nc bnc" id="L733" title="All 2 branches missed.">    for (AggregateCallInfo info : aggregateCallInfos) {</span>
+<span class="nc" id="L734">      List&lt;Integer&gt; argList = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L735">      List&lt;RexNode&gt; argRexNodes = new ArrayList&lt;&gt;(); // Store RexNodes for type derivation</span>
+<span class="nc bnc" id="L736" title="All 2 branches missed.">      for (SqlNode operand : info.sqlOperands) {</span>
+        // Resolve aggregate arguments against the input scope
+<span class="nc" id="L738">        RexNode operandRex = convertExpression(operand, inputScope);</span>
+<span class="nc" id="L739">        argRexNodes.add(operandRex);</span>
+        // AggregateCall arguments must be input refs. Project if necessary.
+<span class="nc" id="L741">        int inputIndex = findRexInputIndex(operandRex, inputRel);</span>
+<span class="nc bnc" id="L742" title="All 2 branches missed.">        if (inputIndex == -1) {</span>
+          // Aggregate argument is a complex expression. Requires pre-projection.
+          // TODO: Implement pre-projection for complex aggregate arguments if needed.
+<span class="nc" id="L745">          throw new UnsupportedOperationException(&quot;Aggregate function '&quot; + info.sqlAggFunction.getName()</span>
+<span class="nc" id="L746">              + &quot;' argument '&quot; + operand + &quot;' is complex and requires pre-projection (not implemented here). Input fields: &quot; + inputRel.getRowType().getFieldNames());</span>
+        }
+<span class="nc" id="L748">        argList.add(inputIndex);</span>
+<span class="nc" id="L749">      }</span>
+
+<span class="nc" id="L751">      SqlAggFunction calciteAgg = mapSqlAggregation(info.sqlAggFunction);</span>
+<span class="nc bnc" id="L752" title="All 2 branches missed.">      if (calciteAgg == null) {</span>
+<span class="nc" id="L753">        throw new UnsupportedOperationException(&quot;Unsupported aggregate function: &quot; + info.sqlAggFunction.getName());</span>
+      }
+
+      // Handle FILTER clause
+<span class="nc" id="L757">      int filterArg = getFilterArg(inputRel, inputScope, info);</span>
+
+      // Determine aggregate call type (crucial and complex without validator)
+<span class="nc" id="L760">      RelDataType type = deriveAggCallType(calciteAgg, argRexNodes, inputScope);</span>
+
+      // Determine nullability - often complex. A simple heuristic: nullable if any arg is nullable or if agg func can return null (e.g., AVG, SUM on empty set).
+<span class="nc" id="L763">      boolean nullable = argRexNodes.stream().anyMatch(rex -&gt; rex.getType().isNullable());</span>
+//          || calciteAgg.getKind() == SqlKind.AVG // AVG, SUM, STDDEV etc. can be null for empty input
+//          || calciteAgg.getKind() == SqlKind.SUM;
+      // MIN/MAX nullable depends on input nullability
+      // COUNT is not nullable
+
+<span class="nc" id="L769">      RelDataType finalType = typeFactory.createTypeWithNullability(type, nullable);</span>
+
+<span class="nc bnc" id="L771" title="All 2 branches missed.">      String name = info.alias != null ? info.alias : generateAggAlias(info.sqlAggFunction, aggCalls.size());</span>
+
+      // TODO: Handle ORDER BY within aggregate call (info.orderKeys) -&gt; requires RelCollation
+<span class="nc" id="L774">      RelCollation collation = RelCollations.EMPTY; // Placeholder</span>
+
+<span class="nc" id="L776">      AggregateCall aggCall = AggregateCall.create(</span>
+          calciteAgg,
+          info.isDistinct,
+          info.isApproximate, // approximate
+          false, // ignoreNulls - specific to some functions, assume false
+<span class="nc" id="L781">          List.of(), // Pass RexNodes for context, though create uses argList indices</span>
+          argList,
+          filterArg,
+          null, // distinctKeys - related to DISTINCT implementation detail
+          collation, // collation for ORDER BY within aggregate
+          finalType,
+          name);
+
+<span class="nc" id="L789">      aggCallOutputIndexMap.put(info, aggCalls.size());</span>
+<span class="nc" id="L790">      aggCalls.add(aggCall);</span>
+<span class="nc" id="L791">    }</span>
+
+    // 4. Create the LogicalAggregate node
+    // The output row type includes group keys first, then aggregate calls.
+    // groupSets argument is for GROUPING SETS, CUBE, ROLLUP - not handled here.
+<span class="nc" id="L796">    RelNode aggregateRel = LogicalAggregate.create(inputRel, groupSet, null, aggCalls);</span>
+
+    // 5. HAVING clause - Filter *after* aggregation
+<span class="nc" id="L799">    RelNode resultRel = aggregateRel;</span>
+<span class="nc" id="L800">    Scope currentScope = Scope.createAggregateOutputScope(inputScope, aggregateRel, groupSet, groupExprMap, aggCalls, aggCallOutputIndexMap);</span>
+
+<span class="nc bnc" id="L802" title="All 2 branches missed.">    if (select.getHaving() != null) {</span>
+      // Convert HAVING expression using the scope that reflects the Aggregate output.
+      // This scope knows how to resolve group keys and aggregate calls.
+<span class="nc" id="L805">      RexNode havingCondition = convertExpression(select.getHaving(), currentScope);</span>
+<span class="nc" id="L806">      resultRel = LogicalFilter.create(aggregateRel, havingCondition);</span>
+      // Update the scope to reflect the output of the Filter (row type unchanged, but it's a new node)
+<span class="nc" id="L808">      currentScope = Scope.createAggregateOutputScope(currentScope, resultRel, groupSet, groupExprMap, aggCalls, aggCallOutputIndexMap); // Alias lost after filter</span>
+    }
+
+    // Return the scope representing the final output of this stage (Aggregate or Filter)
+<span class="nc" id="L812">    return currentScope;</span>
+  }
+
+  /** Derives the return type for an aggregate call. */
+  protected RelDataType deriveAggCallType(SqlAggFunction aggFunction, List&lt;RexNode&gt; argRexNodes, Scope inputScope) {
+    // This is tricky without the validator's binding context.
+    // 1. Try the function's own type inference if available and simple.
+    // 2. Use RexBuilder as a fallback.
+    // 3. Handle COUNT specially.
+
+<span class="nc bnc" id="L822" title="All 2 branches missed.">    if (aggFunction.getKind() == SqlKind.COUNT) {</span>
+      // COUNT always returns BIGINT NOT NULL (or maybe just NOT NULL based on dialect?)
+      // Let's assume BIGINT NOT NULL for standard behavior.
+<span class="nc" id="L825">      return typeFactory.createSqlType(SqlTypeName.BIGINT); // Nullability handled later</span>
+    }
+
+<span class="nc" id="L828">    RelDataType type = null;</span>
+    try {
+      // Try inferReturnType with just operand types (may be inaccurate)
+<span class="nc" id="L831">      List&lt;RelDataType&gt; argTypes = argRexNodes.stream().map(RexNode::getType).collect(Collectors.toList());</span>
+<span class="nc" id="L832">      type = aggFunction.inferReturnType(typeFactory, argTypes);</span>
+<span class="nc" id="L833">    } catch (Exception e) { /* Fallback */ }</span>
+
+<span class="nc bnc" id="L835" title="All 2 branches missed.">    if (type == null) {</span>
+      try {
+        // RexBuilder might have better logic
+<span class="nc" id="L838">        type = rexBuilder.deriveReturnType(aggFunction, argRexNodes);</span>
+<span class="nc" id="L839">      } catch (Exception e) {</span>
+<span class="nc" id="L840">        throw new IllegalStateException(&quot;Could not derive return type for aggregate function &quot;</span>
+<span class="nc" id="L841">            + aggFunction.getName() + &quot; with args: &quot; + argRexNodes, e);</span>
+<span class="nc" id="L842">      }</span>
+    }
+
+<span class="nc bnc" id="L845" title="All 2 branches missed.">    if (type == null) {</span>
+<span class="nc" id="L846">      throw new IllegalStateException(&quot;Could not derive return type for aggregate function &quot; + aggFunction.getName());</span>
+    }
+
+    // Return the base type; nullability is adjusted separately.
+<span class="nc" id="L850">    return type;</span>
+  }
+
+
+  /** Handles the FILTER (WHERE ...) clause for aggregate functions */
+  private int getFilterArg(RelNode input, Scope inputScope, AggregateCallInfo info) {
+<span class="nc" id="L856">    int filterArg = -1; // Default: no filter</span>
+
+<span class="nc bnc" id="L858" title="All 2 branches missed.">    if (info.filter != null) {</span>
+      // Convert the filter expression to a RexNode using the aggregate's input scope
+<span class="nc" id="L860">      RexNode filterRex = convertExpression(info.filter, inputScope);</span>
+
+      // Filter must be a boolean expression
+<span class="nc bnc" id="L863" title="All 2 branches missed.">      if (!SqlTypeUtil.isBoolean(filterRex.getType())) {</span>
+<span class="nc" id="L864">        throw new IllegalArgumentException(&quot;FILTER expression must be boolean, found: &quot; +</span>
+<span class="nc" id="L865">            filterRex.getType().getSqlTypeName() + &quot; for expression: &quot; + info.filter);</span>
+      }
+
+      // The filter expression needs to be represented as an index into the input.
+      // If it's a complex expression, it requires pre-projection.
+<span class="nc" id="L870">      int inputIndex = findRexInputIndex(filterRex, input);</span>
+<span class="nc bnc" id="L871" title="All 2 branches missed.">      if (inputIndex != -1) {</span>
+        // Simple case: filter is a direct column reference
+<span class="nc" id="L873">        filterArg = inputIndex;</span>
+      } else {
+        // Complex filter requires pre-projection
+        // TODO: Implement pre-projection for complex filter expressions if needed.
+<span class="nc" id="L877">        throw new UnsupportedOperationException(&quot;Complex filter expressions in FILTER clause '&quot; + info.filter</span>
+<span class="nc" id="L878">            + &quot;' require pre-projection (not implemented here). Input fields: &quot; + input.getRowType().getFieldNames());</span>
+      }
+    }
+<span class="nc" id="L881">    return filterArg;</span>
+  }
+
+  /**
+   * Converts the SELECT list (projection).
+   * Takes the input Scope and returns the Scope after projection.
+   */
+  protected Scope convertProject(SqlNodeList selectList, Scope inputScope) {
+<span class="nc" id="L889">    RelNode inputRel = inputScope.getRelNode();</span>
+<span class="nc" id="L890">    RelDataType inputRowType = inputRel.getRowType();</span>
+
+<span class="nc" id="L892">    List&lt;RexNode&gt; projects = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L893">    List&lt;String&gt; aliases = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L894">    AtomicInteger aliasCounter = new AtomicInteger(0); // For generating default aliases</span>
+
+<span class="nc bnc" id="L896" title="All 4 branches missed.">    if (selectList == null || selectList.getList().isEmpty()) {</span>
+      // Should not happen with valid SQL, but handle defensively.
+      // Create a project with no columns? Or handle based on context?
+      // Let's assume selectList is valid and non-empty.
+<span class="nc" id="L900">      throw new IllegalArgumentException(&quot;SELECT list cannot be null or empty.&quot;);</span>
+    }
+
+<span class="nc bnc" id="L903" title="All 2 branches missed.">    for (SqlNode node : selectList.getList()) {</span>
+<span class="nc bnc" id="L904" title="All 2 branches missed.">      assert node != null;</span>
+<span class="nc bnc" id="L905" title="All 4 branches missed.">      if (node.getKind() == SqlKind.IDENTIFIER &amp;&amp; ((SqlIdentifier) node).isStar()) {</span>
+        // Expand SELECT * or SELECT table.*
+<span class="nc" id="L907">        SqlIdentifier starId = (SqlIdentifier) node;</span>
+<span class="nc bnc" id="L908" title="All 2 branches missed.">        if (starId.names.size() &gt; 1) {</span>
+          // Expand SELECT table.*
+<span class="nc" id="L910">          String qualifier = starId.names.get(0);</span>
+          // Find the frame (relation) corresponding to the qualifier in the input scope
+<span class="nc" id="L912">          Frame sourceFrame = inputScope.findRelationByAlias(qualifier);</span>
+<span class="nc bnc" id="L913" title="All 2 branches missed.">          if (sourceFrame == null) {</span>
+<span class="nc" id="L914">            throw new RuntimeException(&quot;Unknown table alias or relation '&quot; + qualifier + &quot;' in SELECT list: &quot; + starId);</span>
+          }
+<span class="nc" id="L916">          RelDataType sourceRowType = sourceFrame.relNode.getRowType();</span>
+<span class="nc bnc" id="L917" title="All 2 branches missed.">          for (int i = 0; i &lt; sourceRowType.getFieldCount(); i++) {</span>
+<span class="nc" id="L918">            RelDataTypeField field = sourceRowType.getFieldList().get(i);</span>
+            // Create RexInputRef relative to the *combined* input node using the frame's offset
+<span class="nc" id="L920">            projects.add(rexBuilder.makeInputRef(field.getType(), sourceFrame.offset + i));</span>
+<span class="nc" id="L921">            aliases.add(field.getName()); // Use original field name</span>
+          }
+<span class="nc" id="L923">        } else {</span>
+          // Expand SELECT * (all columns from all frames in the input scope)
+<span class="nc bnc" id="L925" title="All 2 branches missed.">          for (Frame frame : inputScope.getRelations()) {</span>
+<span class="nc" id="L926">            RelDataType frameRowType = frame.relNode.getRowType();</span>
+<span class="nc bnc" id="L927" title="All 2 branches missed.">            for (int i = 0; i &lt; frameRowType.getFieldCount(); i++) {</span>
+<span class="nc" id="L928">              RelDataTypeField field = frameRowType.getFieldList().get(i);</span>
+<span class="nc" id="L929">              projects.add(rexBuilder.makeInputRef(field.getType(), frame.offset + i));</span>
+<span class="nc" id="L930">              aliases.add(field.getName()); // Use original field name</span>
+            }
+<span class="nc" id="L932">          }</span>
+          // Check if input was empty (e.g., FROM-less select resulted in empty Values)
+<span class="nc bnc" id="L934" title="All 4 branches missed.">          if (projects.isEmpty() &amp;&amp; inputRowType.getFieldCount() == 0) {</span>
+            // Handle SELECT * from a source with no columns (e.g., VALUES())
+            // This results in a projection with no columns.
+<span class="nc bnc" id="L937" title="All 2 branches missed.">          } else if (projects.isEmpty()) {</span>
+            // This case (SELECT * resulting in no columns when input had columns) should ideally not happen.
+<span class="nc" id="L939">            throw new IllegalStateException(&quot;SELECT * expanded to zero columns, but input had columns: &quot; + inputRowType.getFieldNames());</span>
+          }
+        }
+<span class="nc" id="L942">      } else {</span>
+        // Convert regular expression
+        // Use the input scope to resolve identifiers within the expression
+<span class="nc" id="L945">        RexNode projExpr = convertExpression(node, inputScope);</span>
+<span class="nc" id="L946">        projects.add(projExpr);</span>
+        // Use explicit alias (AS) or derive one
+        // Use SqlValidatorUtil.getAlias as a helper, but it might rely on validator state.
+        // A simpler alternative: check for AS, otherwise generate.
+<span class="nc" id="L950">        String alias = getExplicitAlias(node);</span>
+<span class="nc bnc" id="L951" title="All 2 branches missed.">        if (alias == null) {</span>
+          // Generate a default alias like EXPR$0, EXPR$1...
+          // Note: Calcite's default is often $f0, $f1... or based on expression text.
+          // Let's use EXPR$ for clarity.
+<span class="nc" id="L955">          alias = &quot;EXPR$&quot; + aliasCounter.getAndIncrement();</span>
+          // Ensure generated alias doesn't clash with existing ones (less likely with EXPR$)
+        }
+<span class="nc" id="L958">        aliases.add(alias);</span>
+      }
+<span class="nc" id="L960">    }</span>
+
+    // Create the projection node
+    // Need to derive the output row type using the calculated aliases and expression types.
+<span class="nc" id="L964">    RelDataType outputRowType = RexUtil.createStructType(typeFactory, projects, aliases, SqlValidatorUtil.F_SUGGESTER);</span>
+
+    // Check if the projection is trivial (identity projection)
+<span class="nc bnc" id="L967" title="All 4 branches missed.">    boolean isIdentity = projects.size() == inputRowType.getFieldCount() &amp;&amp; !projects.isEmpty();</span>
+<span class="nc bnc" id="L968" title="All 2 branches missed.">    if (isIdentity) {</span>
+<span class="nc bnc" id="L969" title="All 2 branches missed.">      for (int i = 0; i &lt; projects.size(); i++) {</span>
+<span class="nc bnc" id="L970" title="All 4 branches missed.">        if (!(projects.get(i) instanceof RexInputRef) || ((RexInputRef) projects.get(i)).getIndex() != i) {</span>
+<span class="nc" id="L971">          isIdentity = false;</span>
+<span class="nc" id="L972">          break;</span>
+        }
+        // Also check if aliases match input field names (case-insensitively?)
+<span class="nc bnc" id="L975" title="All 2 branches missed.">        if (!aliases.get(i).equalsIgnoreCase(inputRowType.getFieldNames().get(i))) {</span>
+          // If only aliases differ, it's not a strict identity RelNode-wise,
+          // but might be optimized away later. Treat as non-identity for now.
+          // isIdentity = false; // Keep as true if only aliases differ? Calcite might optimize. Let's say alias change means non-identity here.
+<span class="nc" id="L979">          isIdentity = false; // Safer to create Project if aliases change.</span>
+<span class="nc" id="L980">          break;</span>
+        }
+      }
+    }
+
+
+    RelNode projectRel;
+<span class="nc bnc" id="L987" title="All 2 branches missed.">    if (isIdentity) {</span>
+      // If it's an identity projection (same fields, same order, same names), skip creating LogicalProject
+<span class="nc" id="L989">      projectRel = inputRel;</span>
+    } else {
+<span class="nc" id="L991">      projectRel = LogicalProject.create(inputRel, ImmutableList.of() /* hints */, projects, outputRowType);</span>
+    }
+
+
+    // Create the scope reflecting the projection output
+    // This scope replaces the input scope's relations with a single frame representing the projection.
+<span class="nc" id="L997">    return Scope.createProjectScope(inputScope.getParent(), projectRel, aliases);</span>
+  }
+
+  /** Helper to get an explicit alias from a node (e.g., expr AS alias) */
+  private @Nullable String getExplicitAlias(SqlNode node) {
+<span class="nc bnc" id="L1002" title="All 2 branches missed.">    if (node.getKind() == SqlKind.AS) {</span>
+<span class="nc" id="L1003">      SqlCall asCall = (SqlCall) node;</span>
+<span class="nc" id="L1004">      SqlNode aliasNode = asCall.getOperandList().get(1);</span>
+<span class="nc bnc" id="L1005" title="All 2 branches missed.">      if (aliasNode instanceof SqlIdentifier) {</span>
+<span class="nc" id="L1006">        return ((SqlIdentifier) aliasNode).getSimple();</span>
+      }
+<span class="nc bnc" id="L1008" title="All 2 branches missed.">    } else if (node.getKind() == SqlKind.IDENTIFIER) {</span>
+<span class="nc bnc" id="L1009" title="All 2 branches missed.">      if (((SqlIdentifier) node).isSimple()) {</span>
+        // Simple identifier (no AS) - return as alias
+<span class="nc" id="L1011">        return ((SqlIdentifier) node).getSimple();</span>
+      }
+      // Qualified identifier (e.g., table.column) - return the last part as alias
+<span class="nc" id="L1014">      SqlIdentifier id = (SqlIdentifier) node;</span>
+<span class="nc" id="L1015">      return id.names.get(id.names.size() - 1);</span>
+    }
+<span class="nc" id="L1017">    return null;</span>
+  }
+
+
+  /**
+   * Converts an ORDER BY clause (including LIMIT/OFFSET).
+   * Takes the Scope of the query to be sorted and returns a Scope representing the sorted output.
+   */
+  protected Scope convertOrderBy(SqlOrderBy orderBy, Scope parentScope) {
+    // Convert the underlying query first. It executes in its own scope.
+<span class="nc" id="L1027">    Scope inputScope = convertQueryRecursive(orderBy.query, false, parentScope);</span>
+<span class="nc" id="L1028">    RelNode inputRel = inputScope.getRelNode();</span>
+
+<span class="nc" id="L1030">    List&lt;RelFieldCollation&gt; collations = new ArrayList&lt;&gt;();</span>
+
+<span class="nc bnc" id="L1032" title="All 4 branches missed.">    if (orderBy.orderList != null &amp;&amp; !orderBy.orderList.getList().isEmpty()) {</span>
+<span class="nc bnc" id="L1033" title="All 2 branches missed.">      for (SqlNode orderNode : orderBy.orderList.getList()) {</span>
+<span class="nc" id="L1034">        RelFieldCollation.Direction direction = RelFieldCollation.Direction.ASCENDING; // Default</span>
+<span class="nc" id="L1035">        RelFieldCollation.NullDirection nullDirection = RelFieldCollation.NullDirection.UNSPECIFIED; // Default based on direction</span>
+
+<span class="nc" id="L1037">        SqlNode exprNode = orderNode;</span>
+
+        // Handle DESCENDING, NULLS FIRST, NULLS LAST modifiers
+        // These wrap the expression, so unwrap step-by-step
+<span class="nc bnc" id="L1041" title="All 2 branches missed.">        if (orderNode.getKind() == SqlKind.DESCENDING) {</span>
+<span class="nc" id="L1042">          exprNode = ((SqlCall) orderNode).getOperandList().get(0);</span>
+<span class="nc" id="L1043">          direction = RelFieldCollation.Direction.DESCENDING;</span>
+        }
+        // Check for NULLS FIRST/LAST *after* potential DESCENDING
+<span class="nc bnc" id="L1046" title="All 2 branches missed.">        if (exprNode.getKind() == SqlKind.NULLS_FIRST) {</span>
+<span class="nc" id="L1047">          exprNode = ((SqlCall) exprNode).getOperandList().get(0);</span>
+<span class="nc" id="L1048">          nullDirection = RelFieldCollation.NullDirection.FIRST;</span>
+<span class="nc bnc" id="L1049" title="All 2 branches missed.">        } else if (exprNode.getKind() == SqlKind.NULLS_LAST) {</span>
+<span class="nc" id="L1050">          exprNode = ((SqlCall) exprNode).getOperandList().get(0);</span>
+<span class="nc" id="L1051">          nullDirection = RelFieldCollation.NullDirection.LAST;</span>
+        }
+
+        // Set default null direction based on SQL standard if unspecified
+<span class="nc bnc" id="L1055" title="All 2 branches missed.">        if (nullDirection == RelFieldCollation.NullDirection.UNSPECIFIED) {</span>
+          // Standard SQL: NULLS LAST for ASC, NULLS FIRST for DESC
+<span class="nc bnc" id="L1057" title="All 2 branches missed.">          nullDirection = (direction == RelFieldCollation.Direction.DESCENDING)</span>
+<span class="nc" id="L1058">              ? RelFieldCollation.NullDirection.FIRST</span>
+<span class="nc" id="L1059">              : RelFieldCollation.NullDirection.LAST;</span>
+        }
+
+        // Convert the ordering expression - it refers to the output of the underlying query (inputScope)
+<span class="nc" id="L1063">        RexNode orderRex = convertExpression(exprNode, inputScope);</span>
+
+        // Find the index of this expression in the input RelNode's output fields
+        // This requires matching the RexNode against the fields defined in inputScope.
+<span class="nc" id="L1067">        int fieldIndex = findRexOutputIndex(orderRex, inputScope);</span>
+
+<span class="nc bnc" id="L1069" title="All 2 branches missed.">        if (fieldIndex != -1) {</span>
+<span class="nc" id="L1070">          collations.add(new RelFieldCollation(fieldIndex, direction, nullDirection));</span>
+        } else {
+          // If the expression is not a simple output field reference, it should have been projected.
+          // Calcite's SqlToRelConverter often adds complex ORDER BY expressions to the
+          // underlying projection if they aren't already present. Doing this manually
+          // here is complex. Assume ORDER BY refers to output columns/expressions by alias or structure.
+          // Try matching by structure/digest if simple index lookup fails?
+          // For now, throw an error if not found.
+<span class="nc" id="L1078">          throw new UnsupportedOperationException(&quot;ORDER BY expression '&quot; + exprNode</span>
+              + &quot;' could not be resolved to an output column/expression index of the query: &quot;
+<span class="nc" id="L1080">              + inputScope.getFieldNames() + &quot;. Pre-projection might be required or alias matching needed.&quot;);</span>
+          // Alternative: If exprNode is an integer literal, treat as ordinal (1-based index)
+          // if (exprNode instanceof SqlNumericLiteral) { ... handle ordinal ... }
+        }
+<span class="nc" id="L1084">      }</span>
+    }
+
+<span class="nc" id="L1087">    RexNode offset = null;</span>
+<span class="nc" id="L1088">    RexNode fetch = null;</span>
+
+<span class="nc bnc" id="L1090" title="All 2 branches missed.">    if (orderBy.offset != null) {</span>
+      // Offset expression is evaluated without input scope (should be constant)
+<span class="nc" id="L1092">      offset = convertExpression(orderBy.offset, Scope.createRoot()); // Evaluate in empty scope</span>
+      // Validate it's a non-negative integer literal/parameter
+<span class="nc bnc" id="L1094" title="All 2 branches missed.">      if (!isValidLimitOffset(offset)) {</span>
+<span class="nc" id="L1095">        throw new IllegalArgumentException(&quot;OFFSET requires a non-negative integer literal or parameter, found: &quot; + orderBy.offset);</span>
+      }
+    }
+<span class="nc bnc" id="L1098" title="All 2 branches missed.">    if (orderBy.fetch != null) {</span>
+      // Fetch/Limit expression is evaluated without input scope (should be constant)
+<span class="nc" id="L1100">      fetch = convertExpression(orderBy.fetch, Scope.createRoot()); // Evaluate in empty scope</span>
+<span class="nc bnc" id="L1101" title="All 2 branches missed.">      if (!isValidLimitOffset(fetch)) {</span>
+<span class="nc" id="L1102">        throw new IllegalArgumentException(&quot;FETCH/LIMIT requires a non-negative integer literal or parameter, found: &quot; + orderBy.fetch);</span>
+      }
+    }
+
+    // Create LogicalSort only if needed
+<span class="nc" id="L1107">    RelNode outputRel = inputRel;</span>
+<span class="nc bnc" id="L1108" title="All 6 branches missed.">    if (!collations.isEmpty() || offset != null || fetch != null) {</span>
+<span class="nc" id="L1109">      RelCollation relCollation = RelCollations.of(collations);</span>
+<span class="nc" id="L1110">      outputRel = LogicalSort.create(inputRel, relCollation, offset, fetch);</span>
+    }
+
+    // Return a scope representing the output of the Sort (or the input if no sort was applied)
+    // The row type is the same, but collation is added.
+<span class="nc" id="L1115">    return Scope.createScopeForRelNode(parentScope, outputRel, inputScope.getAlias()); // Preserve alias if any</span>
+  }
+
+  /** Check if RexNode is suitable for LIMIT/OFFSET */
+  private boolean isValidLimitOffset(RexNode rex) {
+<span class="nc bnc" id="L1120" title="All 2 branches missed.">    if (rex == null) return false;</span>
+    // Allow non-negative integer literals
+<span class="nc bnc" id="L1122" title="All 2 branches missed.">    if (rex instanceof RexLiteral) {</span>
+<span class="nc" id="L1123">      RexLiteral lit = (RexLiteral) rex;</span>
+<span class="nc bnc" id="L1124" title="All 4 branches missed.">      if (SqlTypeUtil.isExactNumeric(lit.getType()) &amp;&amp; !lit.isNull()) {</span>
+<span class="nc" id="L1125">        BigDecimal val = lit.getValueAs(BigDecimal.class);</span>
+<span class="nc bnc" id="L1126" title="All 6 branches missed.">        return val != null &amp;&amp; val.signum() &gt;= 0 &amp;&amp; val.scale() &lt;= 0; // Non-negative integer</span>
+      }
+    }
+    // Allow dynamic parameters (RexDynamicParam) - assume they will be valid integers at runtime
+<span class="nc bnc" id="L1130" title="All 2 branches missed.">    if (rex instanceof RexDynamicParam) {</span>
+      // Could check dynamic param type if available, but generally assume valid
+<span class="nc" id="L1132">      return SqlTypeUtil.isExactNumeric(rex.getType()); // Check if type is numeric at least</span>
+    }
+<span class="nc" id="L1134">    return false;</span>
+  }
+
+
+  /**
+   * Converts set operations (UNION, INTERSECT, EXCEPT).
+   * Takes the parent Scope and returns a Scope representing the output of the set operation.
+   */
+  protected Scope convertSetOp(SqlCall setOp, Scope parentScope) {
+    // Convert inputs recursively. They operate in their own scopes but share the parent scope.
+<span class="nc" id="L1144">    Scope leftScope = convertQueryRecursive(setOp.getOperandList().get(0), false, parentScope);</span>
+<span class="nc" id="L1145">    Scope rightScope = convertQueryRecursive(setOp.getOperandList().get(1), false, parentScope);</span>
+
+<span class="nc" id="L1147">    RelNode leftRel = leftScope.getRelNode();</span>
+<span class="nc" id="L1148">    RelNode rightRel = rightScope.getRelNode();</span>
+
+    // TODO: Validate that left and right row types are compatible (same field count, compatible types).
+    // Assumed validated for now. Type coercion might be needed in LogicalSetOp implementations.
+<span class="nc bnc" id="L1152" title="All 2 branches missed.">    if (leftRel.getRowType().getFieldCount() != rightRel.getRowType().getFieldCount()) {</span>
+<span class="nc" id="L1153">      throw new IllegalArgumentException(&quot;Operands of set operation &quot; + setOp.getOperator().getName()</span>
+<span class="nc" id="L1154">          + &quot; must have the same number of columns. Left: &quot; + leftRel.getRowType().getFieldCount()</span>
+<span class="nc" id="L1155">          + &quot;, Right: &quot; + rightRel.getRowType().getFieldCount());</span>
+    }
+    // Deeper type compatibility check needed here in a real implementation.
+
+<span class="nc" id="L1159">    boolean all = false;</span>
+<span class="nc bnc" id="L1160" title="All 2 branches missed.">    if (setOp.getOperator() instanceof SqlSetOperator) {</span>
+<span class="nc" id="L1161">      all = ((SqlSetOperator) setOp.getOperator()).isAll();</span>
+    }
+<span class="nc" id="L1163">    List&lt;RelNode&gt; inputs = ImmutableList.of(leftRel, rightRel);</span>
+
+<span class="nc" id="L1165">    SqlKind kind = setOp.getKind();</span>
+    RelNode setOpRel;
+<span class="nc bnc" id="L1167" title="All 4 branches missed.">    switch (kind) {</span>
+      case UNION:
+<span class="nc" id="L1169">        setOpRel = LogicalUnion.create(inputs, all);</span>
+<span class="nc" id="L1170">        break;</span>
+      case INTERSECT:
+<span class="nc" id="L1172">        setOpRel = LogicalIntersect.create(inputs, all);</span>
+<span class="nc" id="L1173">        break;</span>
+      case EXCEPT:
+<span class="nc" id="L1175">        setOpRel = LogicalMinus.create(inputs, all);</span>
+<span class="nc" id="L1176">        break;</span>
+      default:
+<span class="nc" id="L1178">        throw new AssertionError(&quot;Unexpected set operator: &quot; + kind);</span>
+    }
+
+    // The output row type and field names are typically derived from the left operand.
+    // Create a scope representing the output.
+<span class="nc" id="L1183">    return Scope.createScopeForRelNode(parentScope, setOpRel, null); // SetOps usually don't have an alias</span>
+  }
+
+  /**
+   * Converts a VALUES clause.
+   * Returns a Scope representing the LogicalValues node.
+   */
+  protected Scope convertValues(SqlCall valuesCall, Scope parentScope) {
+<span class="nc bnc" id="L1191" title="All 2 branches missed.">    assert valuesCall.getOperator().equals(SqlStdOperatorTable.VALUES);</span>
+
+<span class="nc" id="L1193">    List&lt;ImmutableList&lt;RexLiteral&gt;&gt; tuples = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L1194">    RelDataType rowType = null;</span>
+<span class="nc" id="L1195">    List&lt;String&gt; fieldNames = null;</span>
+
+<span class="nc bnc" id="L1197" title="All 2 branches missed.">    if (valuesCall.getOperandList().isEmpty()) {</span>
+      // No rows provided, e.g., INSERT INTO T SELECT * FROM (VALUES)
+      // We need a schema. This is hard without context.
+      // Calcite often uses a special EmptyScope or infers from target.
+      // Let's create a zero-row, zero-column Values node.
+      // This might not be correct in all contexts (e.g., INSERT).
+<span class="nc" id="L1203">      RelDataType emptyType = typeFactory.createStructType(ImmutableList.of(), ImmutableList.of());</span>
+<span class="nc" id="L1204">      RelNode emptyValues = LogicalValues.create(cluster, emptyType, ImmutableList.of());</span>
+<span class="nc" id="L1205">      return Scope.createScopeForRelNode(parentScope, emptyValues, &quot;$VALUES_EMPTY&quot;);</span>
+    }
+
+    // Use the first row to infer types and names
+<span class="nc bnc" id="L1209" title="All 2 branches missed.">    for (int i = 0; i &lt; valuesCall.getOperandList().size(); i++) {</span>
+<span class="nc" id="L1210">      SqlNode rowConstructor = valuesCall.getOperandList().get(i);</span>
+<span class="nc bnc" id="L1211" title="All 4 branches missed.">      if (!(rowConstructor instanceof SqlCall) || !((SqlCall) rowConstructor).getOperator().equals(SqlStdOperatorTable.ROW)) {</span>
+<span class="nc" id="L1212">        throw new IllegalArgumentException(&quot;VALUES operands must be ROW constructors, found: &quot; + rowConstructor.getKind());</span>
+      }
+<span class="nc" id="L1214">      SqlCall rowCall = (SqlCall) rowConstructor;</span>
+<span class="nc" id="L1215">      ImmutableList.Builder&lt;RexLiteral&gt; tupleBuilder = ImmutableList.builder();</span>
+<span class="nc" id="L1216">      List&lt;RelDataType&gt; types = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L1217">      List&lt;String&gt; currentFieldNames = new ArrayList&lt;&gt;();</span>
+
+<span class="nc bnc" id="L1219" title="All 2 branches missed.">      if (i == 0) { // Infer from first row</span>
+<span class="nc" id="L1220">        fieldNames = new ArrayList&lt;&gt;();</span>
+<span class="nc bnc" id="L1221" title="All 2 branches missed.">        for (int j = 0; j &lt; rowCall.getOperandList().size(); j++) {</span>
+<span class="nc" id="L1222">          SqlNode operand = rowCall.getOperandList().get(j);</span>
+          // Use a null/empty scope as literals don't depend on input
+<span class="nc" id="L1224">          RexNode rex = convertExpression(operand, Scope.createRoot());</span>
+
+<span class="nc bnc" id="L1226" title="All 2 branches missed.">          if (!(rex instanceof RexLiteral)) {</span>
+            // Allow DEFAULT? Requires context. Allow simple expressions? Maybe CAST?
+            // Standard SQL VALUES typically requires literals or simple expressions.
+            // For simplicity, stick to literals.
+<span class="nc" id="L1230">            throw new UnsupportedOperationException(&quot;VALUES clause currently only supports literals. Found: &quot; + rex.getKind() + &quot; for operand: &quot; + operand);</span>
+          }
+<span class="nc" id="L1232">          tupleBuilder.add((RexLiteral) rex);</span>
+<span class="nc" id="L1233">          types.add(rex.getType());</span>
+          // Try to get alias, default to COL$j
+<span class="nc" id="L1235">          String name = getExplicitAlias(operand); // Check for CAST(lit AS alias) or similar? Unlikely here.</span>
+<span class="nc bnc" id="L1236" title="All 2 branches missed.">          if (name == null) {</span>
+            // Calcite default: COLUMN$index
+<span class="nc" id="L1238">            name = &quot;COLUMN$&quot; + j;</span>
+          }
+<span class="nc" id="L1240">          currentFieldNames.add(name);</span>
+        }
+        // Determine the row type from the first row.
+        // Need to handle potential type coercion across rows (e.g., INT and DECIMAL -&gt; DECIMAL).
+        // This requires looking ahead or assuming validation handled it.
+        // Let's assume the first row's types are the target types.
+<span class="nc" id="L1246">        rowType = typeFactory.createStructType(types, currentFieldNames);</span>
+<span class="nc" id="L1247">        fieldNames = currentFieldNames; // Store for the final node</span>
+<span class="nc" id="L1248">        tuples.add(tupleBuilder.build());</span>
+
+      } else { // Subsequent rows
+<span class="nc bnc" id="L1251" title="All 2 branches missed.">        if (rowType == null) throw new IllegalStateException(&quot;Row type should have been determined by the first row.&quot;);</span>
+<span class="nc bnc" id="L1252" title="All 2 branches missed.">        if (rowCall.getOperandList().size() != rowType.getFieldCount()) {</span>
+<span class="nc" id="L1253">          throw new IllegalArgumentException(&quot;VALUES row &quot; + i + &quot; has &quot; + rowCall.getOperandList().size()</span>
+<span class="nc" id="L1254">              + &quot; columns, but expected &quot; + rowType.getFieldCount());</span>
+        }
+<span class="nc bnc" id="L1256" title="All 2 branches missed.">        for (int j = 0; j &lt; rowCall.getOperandList().size(); j++) {</span>
+<span class="nc" id="L1257">          SqlNode operand = rowCall.getOperandList().get(j);</span>
+<span class="nc" id="L1258">          RexNode rex = convertExpression(operand, Scope.createRoot());</span>
+<span class="nc bnc" id="L1259" title="All 2 branches missed.">          if (!(rex instanceof RexLiteral)) {</span>
+<span class="nc" id="L1260">            throw new UnsupportedOperationException(&quot;VALUES clause currently only supports literals. Found: &quot; + rex.getKind() + &quot; for operand: &quot; + operand);</span>
+          }
+          // TODO: Type Compatibility Check: Check if rex.getType() is assignable to rowType.getFieldList().get(j).getType()
+          // This might involve casting the literal if needed. Assumed validated for now.
+          // Example: If column 1 is DECIMAL and row 2 has INTEGER, cast INTEGER literal to DECIMAL.
+<span class="nc" id="L1265">          RexLiteral literal = (RexLiteral) rex;</span>
+<span class="nc" id="L1266">          RelDataType targetFieldType = rowType.getFieldList().get(j).getType();</span>
+<span class="nc bnc" id="L1267" title="All 2 branches missed.">          if (!literal.getType().equals(targetFieldType)) {</span>
+            // Attempt to cast the literal to the target type
+            try {
+<span class="nc" id="L1270">              literal = (RexLiteral) rexBuilder.makeCast(targetFieldType, literal);</span>
+<span class="nc" id="L1271">            } catch (Exception e) {</span>
+<span class="nc" id="L1272">              throw new IllegalArgumentException(&quot;Cannot assign value &quot; + literal + &quot; of type &quot; + literal.getType()</span>
+<span class="nc" id="L1273">                  + &quot; to column &quot; + fieldNames.get(j) + &quot; of type &quot; + targetFieldType + &quot; in VALUES row &quot; + i, e);</span>
+<span class="nc" id="L1274">            }</span>
+          }
+<span class="nc" id="L1276">          tupleBuilder.add(literal);</span>
+        }
+<span class="nc" id="L1278">        tuples.add(tupleBuilder.build());</span>
+      }
+    }
+
+<span class="nc bnc" id="L1282" title="All 2 branches missed.">    if (rowType == null) {</span>
+      // Should not happen if operand list was not empty
+<span class="nc" id="L1284">      throw new IllegalStateException(&quot;Could not determine row type for VALUES clause&quot;);</span>
+    }
+
+<span class="nc" id="L1287">    RelNode valuesRel = LogicalValues.create(cluster, rowType, ImmutableList.copyOf(tuples));</span>
+<span class="nc" id="L1288">    return Scope.createScopeForRelNode(parentScope, valuesRel, &quot;$VALUES&quot;); // Use a synthetic alias</span>
+  }
+
+
+  // =====================================================================
+  // Expression Conversion (SqlNode -&gt; RexNode) - No return type changes needed here
+  // =====================================================================
+
+  /**
+   * Converts a {@link SqlNode} expression into a {@link RexNode} within a given scope.
+   *
+   * @param node  The SqlNode expression to convert.
+   * @param scope The scope providing context for identifier resolution.
+   * @return The equivalent RexNode.
+   */
+  protected RexNode convertExpression(SqlNode node, Scope scope) {
+    // Handle AS at the top level - the alias is metadata, not part of the RexNode value.
+<span class="nc bnc" id="L1305" title="All 2 branches missed.">    if (node.getKind() == SqlKind.AS) {</span>
+<span class="nc" id="L1306">      SqlCall asCall = (SqlCall) node;</span>
+<span class="nc bnc" id="L1307" title="All 2 branches missed.">      if (asCall.getOperandList().size() &gt;= 1) {</span>
+        // Convert the actual expression part, ignoring the alias.
+<span class="nc" id="L1309">        return convertExpression(asCall.getOperandList().get(0), scope);</span>
+      } else {
+<span class="nc" id="L1311">        throw new IllegalArgumentException(&quot;Invalid AS operator usage. Node: &quot; + node);</span>
+      }
+    }
+    // Handle DEFAULT keyword - needs special context, often replaced by NULL or target column default.
+<span class="nc bnc" id="L1315" title="All 2 branches missed.">    if (node.getKind() == SqlKind.DEFAULT) {</span>
+      // Cannot handle DEFAULT without knowing the target context (e.g., target column in INSERT/UPDATE).
+      // Throwing an error is safest here. A real implementation might substitute NULL or require context.
+<span class="nc" id="L1318">      throw new UnsupportedOperationException(&quot;DEFAULT keyword cannot be converted to RexNode without target context.&quot;);</span>
+    }
+
+
+<span class="nc" id="L1322">    SqlKind kind = node.getKind();</span>
+<span class="nc bnc" id="L1323" title="All 8 branches missed.">    switch (kind) {</span>
+      case LITERAL:
+<span class="nc" id="L1325">        return convertLiteral((SqlLiteral) node);</span>
+      case IDENTIFIER:
+<span class="nc" id="L1327">        return convertIdentifier((SqlIdentifier) node, scope);</span>
+      case CASE:
+<span class="nc" id="L1329">        return convertCase((SqlCall) node, scope);</span>
+      case ROW:
+<span class="nc" id="L1331">        return convertRow((SqlCall) node, scope);</span>
+      case LITERAL_CHAIN: // e.g., 'abc' 'def'
+<span class="nc" id="L1333">        throw new UnsupportedOperationException(&quot;LITERAL_CHAIN is not supported directly. Consider using CONCAT or similar.&quot;);</span>
+//        return convertLiteralChain((SqlLiteralChain) node);
+      case OVER: // Window function call
+<span class="nc" id="L1336">        return convertOver((SqlCall) node, scope);</span>
+
+      // Add other expression kinds: CAST, functions, operators...
+      case OTHER_FUNCTION: // Includes user-defined functions
+      case PLUS:
+      case MINUS:
+      case TIMES:
+      case DIVIDE:
+      case MOD:
+      case EQUALS:
+      case NOT_EQUALS:
+      case LESS_THAN:
+      case GREATER_THAN:
+      case LESS_THAN_OR_EQUAL:
+      case GREATER_THAN_OR_EQUAL:
+      case AND:
+      case OR:
+      case NOT:
+      case IS_NULL:
+      case IS_NOT_NULL:
+      case IS_TRUE:
+      case IS_NOT_TRUE:
+      case IS_FALSE:
+      case IS_NOT_FALSE:
+      case PLUS_PREFIX:
+      case MINUS_PREFIX:
+      case EXISTS:
+      case SCALAR_QUERY:
+      case IN:
+      case NOT_IN:
+      case LIKE:
+      case SIMILAR:
+      case BETWEEN:
+//      case NOT_BETWEEN: // Often expanded: NOT (expr BETWEEN lower AND upper)
+      case CAST:
+      case FLOOR: // Example date/time function
+      case CEIL:  // Example date/time function
+      case EXTRACT: // Example date/time function
+      case POSITION: // Example string function
+//      case SUBSTRING: // Example string function
+      case TRIM: // Example string function
+//      case UPPER: // Example string function
+//      case LOWER: // Example string function
+//      case CONCAT: // Example string operator (||)
+      case COALESCE:
+      case NULLIF:
+        // ... other operators and standard functions
+<span class="nc" id="L1383">        return convertCall((SqlCall) node, scope);</span>
+      default:
+        // Check for aggregate functions - should only be converted directly
+        // in specific contexts (e.g., post-aggregation).
+<span class="nc bnc" id="L1387" title="All 4 branches missed.">        if (node instanceof SqlCall &amp;&amp; ((SqlCall) node).getOperator() instanceof SqlAggFunction) {</span>
+          // This might be called from convertAggregate or convertPostAggregationExpression
+          // If called from general convertExpression, it's likely an error unless it's
+          // inside an OVER clause (handled by convertOver).
+<span class="nc bnc" id="L1391" title="All 2 branches missed.">          if (scope.isAggregateContext()) {</span>
+            // If we are in a post-aggregation scope (HAVING, ORDER BY),
+            // this aggregate call should resolve to an input reference from the Aggregate node.
+<span class="nc" id="L1394">            return convertAggregateCallExpr((SqlCall) node, scope);</span>
+          } else {
+            // Aggregate function outside of aggregation context or OVER clause.
+<span class="nc" id="L1397">            throw new IllegalStateException(&quot;Aggregate function &quot; + ((SqlCall) node).getOperator().getName()</span>
+                + &quot; encountered outside of aggregation context or OVER clause.&quot;);
+          }
+        }
+        // create RexCall for unhandled function
+<span class="nc bnc" id="L1402" title="All 2 branches missed.">        if (node instanceof SqlCall sqlCall) {</span>
+<span class="nc" id="L1403">          List&lt;RexNode&gt; operands = sqlCall.getOperandList().stream()</span>
+<span class="nc" id="L1404">              .map(op -&gt; convertExpression(op, scope))</span>
+<span class="nc" id="L1405">              .toList();</span>
+<span class="nc" id="L1406">          RelDataType type = typeFactory.createSqlType(SqlTypeName.ANY);</span>
+<span class="nc" id="L1407">          return rexBuilder.makeCall(type, sqlCall.getOperator(), operands);</span>
+        }
+<span class="nc" id="L1409">        throw new UnsupportedOperationException(&quot;Unsupported expression node type: &quot; + kind + &quot; (&quot; + node.getClass().getSimpleName() + &quot;)&quot;);</span>
+    }
+  }
+
+  private SqlFunction createUDF(String functionName) {
+    // Create a SqlFunction instance for the UDF
+<span class="nc" id="L1415">    SqlIdentifier functionId = new SqlIdentifier(functionName, SqlParserPos.ZERO);</span>
+<span class="nc" id="L1416">    SqlFunction function = new SqlFunction(functionId.getSimple(), SqlKind.OTHER_FUNCTION,</span>
+        null, null, null, null);
+<span class="nc" id="L1418">    return function;</span>
+  }
+
+  /**
+   * Converts a literal SqlNode to RexLiteral.
+   */
+  protected RexLiteral convertLiteral(SqlLiteral literal) {
+<span class="nc" id="L1425">    SqlTypeName typeName = literal.getTypeName();</span>
+<span class="nc" id="L1426">    Object value = literal.getValue(); // May be null</span>
+
+<span class="nc bnc" id="L1428" title="All 2 branches missed.">    if (value == null) {</span>
+      // Handle NULL literal. Need type information.
+      // If this literal is inside a CAST(NULL AS type), convertCast handles it.
+      // Otherwise, it's ambiguous. Calcite often uses a special NULL type initially.
+<span class="nc" id="L1432">      RelDataType type = typeFactory.createSqlType(SqlTypeName.NULL);</span>
+      // RexBuilder.makeNullLiteral requires a specific type.
+      // We *must* get the type from context (e.g., CAST or target column).
+      // Throwing an error here if type is unknown is safer.
+      // However, convertExpression might be called within CAST, so let CAST handle it.
+      // If called elsewhere, it's an untyped NULL.
+      // Let's return a RexLiteral with the basic NULL type, hoping context resolves it.
+      // This is risky. A better approach needs context.
+      // return (RexLiteral) rexBuilder.makeNullLiteral(type); // Fails as RexBuilder needs specific type
+      // Let's try creating a specific typed null, e.g., VARCHAR NULL, as a placeholder? Very risky.
+      // Safest: Assume it's handled by CAST or throw. Let's throw for now if not in CAST.
+      // Revisit: How does Calcite handle untyped NULLs pre-validation? It often relies on context.
+      // Let's use makeNullLiteral(targetType) inside convertCast, and maybe default to VARCHAR NULL here?
+      // Defaulting to VARCHAR NULL:
+      // RelDataType varcharType = typeFactory.createSqlType(SqlTypeName.VARCHAR);
+      // return (RexLiteral) rexBuilder.makeNullLiteral(varcharType);
+      // Let's stick to the basic NULL type and rely on CAST or context.
+<span class="nc" id="L1449">      return rexBuilder.constantNull(); // Returns a generic NULL literal</span>
+    }
+
+    try {
+<span class="nc bnc" id="L1453" title="All 14 branches missed.">      switch (typeName) {</span>
+        case BOOLEAN:
+<span class="nc" id="L1455">          return rexBuilder.makeLiteral(literal.booleanValue());</span>
+        case TINYINT:
+        case SMALLINT:
+        case INTEGER:
+        case BIGINT:
+          // Use BigDecimal for precision, derive type from literal's typeName
+<span class="nc" id="L1461">          RelDataType exactType = typeFactory.createSqlType(typeName);</span>
+<span class="nc" id="L1462">          return rexBuilder.makeExactLiteral(literal.getValueAs(BigDecimal.class), exactType);</span>
+        case DECIMAL:
+          // Need precision/scale. SqlLiteral doesn't always hold it directly.
+          // Infer from value or use default? Assume validation set it or infer.
+<span class="nc" id="L1466">          Integer decValue = literal.getValueAs(Integer.class);</span>
+//          int precision = Math.max(decValue.precision(), decValue.scale()) + 1; // Basic inference
+//          int scale = decValue.scale();
+<span class="nc" id="L1469">          RelDataType decType = typeFactory.createSqlType(SqlTypeName.INTEGER);</span>
+<span class="nc" id="L1470">          return rexBuilder.makeLiteral(decValue, decType);</span>
+        case FLOAT: // Approximate
+        case REAL:  // Approximate
+        case DOUBLE: // Approximate
+<span class="nc" id="L1474">          RelDataType approxType = typeFactory.createSqlType(typeName);</span>
+          // RexBuilder often expects BigDecimal even for approx types
+<span class="nc" id="L1476">          return rexBuilder.makeApproxLiteral(literal.getValueAs(BigDecimal.class), approxType);</span>
+        case CHAR:
+        case VARCHAR:
+          // Use NlsString which includes charset/collation info
+<span class="nc" id="L1480">          NlsString nlsString = literal.getValueAs(NlsString.class);</span>
+//          RelDataType charType = typeFactory.createSqlType(typeName, nlsString.getValue().length());
+//          charType = typeFactory.createTypeWithCharsetAndCollation(charType, nlsString.getCharset(), nlsString.getCollation());
+<span class="nc" id="L1483">          return rexBuilder.makeCharLiteral(nlsString); // Pass type explicitly</span>
+        case BINARY:
+        case VARBINARY:
+<span class="nc" id="L1486">          throw new UnsupportedOperationException(&quot;BINARY/VARBINARY literals not supported yet.&quot;);</span>
+//          ByteString byteString = literal.getValueAs(ByteString.class);
+//          RelDataType binaryType = typeFactory.createSqlType(typeName, byteString.length());
+//          return rexBuilder.makeBinaryLiteral(byteString, binaryType); // Pass type explicitly
+        case DATE:
+          // Value is DateString
+<span class="nc" id="L1492">          DateString dateString = literal.getValueAs(DateString.class);</span>
+//          RelDataType dateType = typeFactory.createSqlType(SqlTypeName.DATE);
+<span class="nc" id="L1494">          return rexBuilder.makeDateLiteral(dateString); // Pass type explicitly</span>
+        case TIME:
+          // Value is TimeString. Need precision.
+<span class="nc" id="L1497">          TimeString timeString = literal.getValueAs(TimeString.class);</span>
+<span class="nc" id="L1498">          int timePrecision = timeString.toString(0).length(); // Infer precision</span>
+//          RelDataType timeType = typeFactory.createSqlType(SqlTypeName.TIME, timePrecision);
+<span class="nc" id="L1500">          return rexBuilder.makeTimeLiteral(timeString, timePrecision); // Pass type explicitly</span>
+        case TIMESTAMP:
+          // Value is TimestampString. Need precision.
+<span class="nc" id="L1503">          TimestampString tsString = literal.getValueAs(TimestampString.class);</span>
+<span class="nc" id="L1504">          int tsPrecision = tsString.toString().length(); // Infer precision</span>
+//          RelDataType tsType = typeFactory.createSqlType(SqlTypeName.TIMESTAMP, tsPrecision);
+<span class="nc" id="L1506">          return rexBuilder.makeTimestampLiteral(tsString, tsPrecision); // Pass type explicitly</span>
+        case INTERVAL_YEAR:
+        case INTERVAL_YEAR_MONTH:
+        case INTERVAL_MONTH:
+        case INTERVAL_DAY:
+        case INTERVAL_DAY_HOUR:
+        case INTERVAL_DAY_MINUTE:
+        case INTERVAL_DAY_SECOND:
+        case INTERVAL_HOUR:
+        case INTERVAL_HOUR_MINUTE:
+        case INTERVAL_HOUR_SECOND:
+        case INTERVAL_MINUTE:
+        case INTERVAL_MINUTE_SECOND:
+        case INTERVAL_SECOND:
+          // Value is SqlIntervalLiteral.IntervalValue
+<span class="nc" id="L1521">          SqlIntervalLiteral.IntervalValue intValue = (SqlIntervalLiteral.IntervalValue) value;</span>
+<span class="nc" id="L1522">          SqlIntervalQualifier qualifier = intValue.getIntervalQualifier();</span>
+          // Ensure qualifier has precision if needed (e.g., SECOND(p))
+<span class="nc" id="L1524">          RelDataType intervalType = typeFactory.createSqlIntervalType(qualifier);</span>
+          // Value needs to be parsed carefully based on qualifier units
+<span class="nc" id="L1526">          BigDecimal intervalValueDecimal = new BigDecimal(intValue.getSign() * Long.parseLong(intValue.getIntervalLiteral()));</span>
+<span class="nc" id="L1527">          return rexBuilder.makeIntervalLiteral(intervalValueDecimal, qualifier); // RexBuilder uses qualifier</span>
+
+        case SYMBOL: // Used for flags like DESC, NULLS FIRST/LAST - not expression literals
+<span class="nc" id="L1530">          throw new IllegalArgumentException(&quot;Cannot convert SYMBOL literal to RexNode: &quot; + literal);</span>
+        case MULTISET: // Requires complex handling
+<span class="nc" id="L1532">          throw new UnsupportedOperationException(&quot;MULTISET literals not supported yet.&quot;);</span>
+        case GEOMETRY:
+<span class="nc" id="L1534">          throw new UnsupportedOperationException(&quot;GEOMETRY literals not supported yet.&quot;);</span>
+          // Add other types (ARRAY, MAP, ROW?)
+        default:
+<span class="nc" id="L1537">          throw new UnsupportedOperationException(&quot;Unsupported literal type: &quot; + typeName);</span>
+      }
+<span class="nc" id="L1539">    } catch (ClassCastException e) {</span>
+<span class="nc" id="L1540">      throw new IllegalArgumentException(&quot;Literal value &quot; + value + &quot; (class &quot; + value.getClass().getName() + &quot;) does not match expected type for &quot; + typeName + &quot;: &quot; + literal, e);</span>
+    }
+  }
+
+  /**
+   * Converts an identifier SqlNode to RexInputRef or RexFieldAccess.
+   */
+  protected RexNode convertIdentifier(SqlIdentifier id, Scope scope) {
+    // Try to find the field in the current scope
+<span class="nc" id="L1549">    Pair&lt;Frame, RelDataTypeField&gt; fieldInfo = scope.findField(id);</span>
+
+<span class="nc bnc" id="L1551" title="All 2 branches missed.">    if (fieldInfo != null) {</span>
+<span class="nc" id="L1552">      Frame frame = fieldInfo.left;</span>
+<span class="nc" id="L1553">      RelDataTypeField field = fieldInfo.right;</span>
+      // Calculate the absolute index based on the frame's offset in the combined input
+<span class="nc" id="L1555">      int index = frame.offset + field.getIndex();</span>
+      // Create a RexInputRef using the field's type and calculated index
+<span class="nc" id="L1557">      return rexBuilder.makeInputRef(field.getType(), index);</span>
+    }
+
+    // If not found in the immediate scope relations, check for correlation variables.
+    // This requires walking up the parent scope chain.
+<span class="nc" id="L1562">    Pair&lt;Scope, RelDataTypeField&gt; corrVarInfo = scope.findCorrelationVariable(id);</span>
+<span class="nc bnc" id="L1563" title="All 2 branches missed.">    if (corrVarInfo != null) {</span>
+<span class="nc" id="L1564">      Scope definingScope = corrVarInfo.left;</span>
+<span class="nc" id="L1565">      RelDataTypeField field = corrVarInfo.right;</span>
+<span class="nc" id="L1566">      CorrelationId corrId = definingScope.getCorrelationId(); // Scope needs to manage CorrelationIds</span>
+<span class="nc bnc" id="L1567" title="All 2 branches missed.">      if (corrId == null) {</span>
+        // This should not happen if findCorrelationVariable returned successfully
+<span class="nc" id="L1569">        throw new IllegalStateException(&quot;Found correlation variable but no CorrelationId in defining scope for: &quot; + id);</span>
+      }
+      // Create RexFieldAccess: rexBuilder.makeFieldAccess(rexBuilder.makeCorrel(definingScope.getRowType(), corrId), field.getIndex())
+      // Need the row type of the correlation source from the defining scope.
+<span class="nc" id="L1573">      RelDataType corrVarType = definingScope.getCorrelationType(); // Scope needs to provide this</span>
+<span class="nc bnc" id="L1574" title="All 2 branches missed.">      if (corrVarType == null) {</span>
+<span class="nc" id="L1575">        throw new IllegalStateException(&quot;Found correlation variable but no correlation type in defining scope for: &quot; + id);</span>
+      }
+<span class="nc" id="L1577">      RexNode corrVarRef = rexBuilder.makeCorrel(corrVarType, corrId);</span>
+<span class="nc" id="L1578">      return rexBuilder.makeFieldAccess(corrVarRef, field.getIndex());</span>
+    }
+
+
+    // If not found anywhere, it's an error (assuming prior validation)
+//    throw new RuntimeException(&quot;Identifier '&quot; + id + &quot;' not found in current scope or parent scopes: &quot; + scope.getFieldNames());
+<span class="nc bnc" id="L1584" title="All 2 branches missed.">    String value = id.isSimple() ? id.getSimple() : String.join(&quot;.&quot;, id.names);</span>
+<span class="nc" id="L1585">    return rexBuilder.makeLiteral(value); // Fallback to literal - not ideal, but prevents crash</span>
+  }
+
+  /**
+   * Converts a CASE expression.
+   */
+  protected RexNode convertCase(SqlCall call, Scope scope) {
+<span class="nc bnc" id="L1592" title="All 2 branches missed.">    assert call.getOperator().equals(SqlStdOperatorTable.CASE);</span>
+<span class="nc" id="L1593">    SqlCase caseCall = (SqlCase) call;</span>
+<span class="nc" id="L1594">    List&lt;RexNode&gt; rexOperands = new ArrayList&lt;&gt;();</span>
+
+<span class="nc bnc" id="L1596" title="All 2 branches missed.">    for (int i = 0; i &lt; caseCall.getWhenOperands().size(); i++) {</span>
+<span class="nc" id="L1597">      SqlNode whenOperand = caseCall.getWhenOperands().get(i);</span>
+<span class="nc" id="L1598">      rexOperands.add(convertExpression(whenOperand, scope));</span>
+<span class="nc" id="L1599">      SqlNode thenOperand = caseCall.getThenOperands().get(i);</span>
+<span class="nc" id="L1600">      rexOperands.add(convertExpression(thenOperand, scope));</span>
+    }
+<span class="nc" id="L1602">    SqlNode elseOperand = caseCall.getElseOperand();</span>
+<span class="nc bnc" id="L1603" title="All 2 branches missed.">    if (elseOperand != null) {</span>
+<span class="nc" id="L1604">      rexOperands.add(convertExpression(elseOperand, scope));</span>
+    }
+
+    // RexBuilder.makeCall handles type inference for the result (least restrictive of THEN/ELSE)
+    // It needs the target type explicitly if operands include untyped NULLs.
+    // Let's try without explicit type first.
+    try {
+<span class="nc" id="L1611">      return rexBuilder.makeCall(SqlStdOperatorTable.CASE, rexOperands);</span>
+<span class="nc" id="L1612">    } catch (IllegalArgumentException e) {</span>
+      // If it fails due to untyped nulls, we might need to infer the type.
+      // Infer type from non-null THEN/ELSE clauses.
+<span class="nc" id="L1615">      RelDataType resultType = inferCaseResultType(rexOperands);</span>
+<span class="nc bnc" id="L1616" title="All 2 branches missed.">      if (resultType != null) {</span>
+<span class="nc" id="L1617">        return rexBuilder.makeCall(resultType, SqlStdOperatorTable.CASE, rexOperands);</span>
+      } else {
+        // Cannot infer type (e.g., CASE WHEN cond THEN NULL ELSE NULL END)
+        // Need context or default type. Throwing error is safest.
+<span class="nc" id="L1621">        throw new IllegalStateException(&quot;Cannot determine result type for CASE expression with ambiguous NULL types: &quot; + caseCall, e);</span>
+      }
+    }
+  }
+
+  /** Infer result type for CASE, finding least restrictive among non-null THEN/ELSE */
+  private @Nullable RelDataType inferCaseResultType(List&lt;RexNode&gt; rexOperands) {
+<span class="nc" id="L1628">    List&lt;RelDataType&gt; types = new ArrayList&lt;&gt;();</span>
+    // Operands are WHEN1, THEN1, WHEN2, THEN2, ..., ELSE
+<span class="nc bnc" id="L1630" title="All 2 branches missed.">    for (int i = 1; i &lt; rexOperands.size(); i += 2) { // THEN clauses</span>
+<span class="nc bnc" id="L1631" title="All 2 branches missed.">      if (!rexOperands.get(i).getType().getSqlTypeName().equals(SqlTypeName.NULL)) {</span>
+<span class="nc" id="L1632">        types.add(rexOperands.get(i).getType());</span>
+      }
+    }
+<span class="nc bnc" id="L1635" title="All 2 branches missed.">    if (rexOperands.size() % 2 != 0) { // ELSE clause exists</span>
+<span class="nc" id="L1636">      RexNode elseNode = rexOperands.get(rexOperands.size() - 1);</span>
+<span class="nc bnc" id="L1637" title="All 2 branches missed.">      if (!elseNode.getType().getSqlTypeName().equals(SqlTypeName.NULL)) {</span>
+<span class="nc" id="L1638">        types.add(elseNode.getType());</span>
+      }
+    }
+<span class="nc bnc" id="L1641" title="All 2 branches missed.">    if (types.isEmpty()) {</span>
+<span class="nc" id="L1642">      return null; // All THEN/ELSE are NULL</span>
+    }
+<span class="nc" id="L1644">    return typeFactory.leastRestrictive(types);</span>
+  }
+
+  /**
+   * Converts a ROW constructor expression.
+   */
+  protected RexNode convertRow(SqlCall rowCall, Scope scope) {
+<span class="nc bnc" id="L1651" title="All 2 branches missed.">    assert rowCall.getOperator().equals(SqlStdOperatorTable.ROW);</span>
+<span class="nc" id="L1652">    List&lt;RexNode&gt; rexOperands = rowCall.getOperandList().stream()</span>
+<span class="nc" id="L1653">        .map(operand -&gt; convertExpression(operand, scope))</span>
+<span class="nc" id="L1654">        .collect(Collectors.toList());</span>
+
+    // Determine type - relies on operand types. RexBuilder can derive this.
+    // No explicit type needed for makeCall for ROW.
+<span class="nc" id="L1658">    return rexBuilder.makeCall(SqlStdOperatorTable.ROW, rexOperands);</span>
+  }
+
+  /** Converts a SqlLiteralChain (e.g. 'abc' 'def') */
+//  protected RexNode convertLiteralChain(SqlLiteralChain chain) {
+//    // Concatenate the literals. Assumes they are all character literals.
+//    // Validation should ensure this.
+//    StringBuilder sb = new StringBuilder();
+//    NlsString sample = null; // To get charset/collation
+//    SqlTypeName typeName = null; // Should be CHAR or VARCHAR
+//
+//    for (SqlNode node : chain.getOperandList()) {
+//      if (!(node instanceof SqlAbstractStringLiteral)) {
+//        throw new IllegalArgumentException(&quot;Literal chain must contain only string literals: &quot; + chain);
+//      }
+//      SqlAbstractStringLiteral stringLiteral = (SqlAbstractStringLiteral) node;
+//      if (typeName == null) {
+//        typeName = stringLiteral.getTypeName(); // Use type of first literal
+//      } else if (stringLiteral.getTypeName() != typeName) {
+//        // Mixed types (e.g., CHAR and VARCHAR) - validation should prevent?
+//        // Use VARCHAR if mixed? Let's assume consistent type.
+//        throw new IllegalArgumentException(&quot;Literal chain contains mixed string types: &quot; + chain);
+//      }
+//
+//      if (stringLiteral instanceof SqlCharStringLiteral) {
+//        NlsString nls = ((SqlCharStringLiteral) stringLiteral).getNlsString();
+//        sb.append(nls.getValue());
+//        if (sample == null) sample = nls; // Use first literal for charset/collation
+//      } else {
+//        // Handle other string types like binary if needed
+//        throw new UnsupportedOperationException(&quot;Unsupported string literal type in chain: &quot; + stringLiteral.getClass());
+//      }
+//    }
+//
+//    if (sample == null) { // Empty chain? Or non-char strings?
+//      // Default charset/collation? Risky. Assume validation ensures non-empty char chain.
+//      if (typeName == null) typeName = SqlTypeName.VARCHAR; // Default guess
+//      sample = new NlsString(&quot;&quot;, NlsString.DEFAULT_CHARSET_NAME, NlsString.DEFAULT_COLLATION_NAME); // Empty string with defaults
+//    }
+//
+//    NlsString result = new NlsString(sb.toString(), sample.getCharsetName(), sample.getCollation());
+//    // Determine type - should be CHAR/VARCHAR with combined length?
+//    RelDataType type = typeFactory.createSqlType(typeName, result.getValue().length());
+//    type = typeFactory.createTypeWithCharsetAndCollation(type, result.getCharset(), result.getCollation());
+//
+//    return rexBuilder.makeCharLiteral(result, type); // Pass explicit type
+//  }
+
+  /**
+   * Converts a window function call (OVER). Requires LogicalWindow.
+   */
+  protected RexNode convertOver(SqlCall overCall, Scope scope) {
+    // Manual creation of RexOver is complex as it ties into LogicalWindow.
+    // LogicalWindow itself requires careful setup of partitions, orderings, and frame.
+    // This is one of the most complex parts to do without RelBuilder/Validator.
+    // We need to:
+    // 1. Identify the aggregate function call (e.g., SUM(col)).
+    // 2. Identify the window spec (PARTITION BY, ORDER BY, frame).
+    // 3. Convert aggregate args, partition keys, order keys using the input scope.
+    // 4. Convert the frame bounds.
+    // 5. Create a RexOver node.
+    // 6. Ensure a LogicalWindow node is added later in the plan (typically after Project).
+
+    // This simplified version assumes the OVER call structure is valid.
+<span class="nc bnc" id="L1722" title="All 2 branches missed.">    if (overCall.getOperandList().size() != 2) {</span>
+<span class="nc" id="L1723">      throw new IllegalArgumentException(&quot;OVER operator requires 2 operands (aggregate call, window spec)&quot;);</span>
+    }
+<span class="nc" id="L1725">    SqlCall aggCallNode = (SqlCall) overCall.getOperandList().get(0);</span>
+<span class="nc" id="L1726">    SqlWindow windowNode = (SqlWindow) overCall.getOperandList().get(1);</span>
+
+    // --- Convert Aggregate Part ---
+<span class="nc bnc" id="L1729" title="All 2 branches missed.">    if (!(aggCallNode.getOperator() instanceof SqlAggFunction)) {</span>
+<span class="nc" id="L1730">      throw new IllegalArgumentException(&quot;First operand of OVER must be an aggregate function call, found: &quot; + aggCallNode.getOperator());</span>
+    }
+<span class="nc" id="L1732">    SqlAggFunction sqlAggFunc = (SqlAggFunction) aggCallNode.getOperator();</span>
+<span class="nc" id="L1733">    List&lt;RexNode&gt; aggArgs = aggCallNode.getOperandList().stream()</span>
+<span class="nc" id="L1734">        .map(op -&gt; convertExpression(op, scope))</span>
+<span class="nc" id="L1735">        .collect(Collectors.toList());</span>
+<span class="nc" id="L1736">    boolean distinct = false; // TODO: Handle DISTINCT within OVER if needed (e.g., COUNT(DISTINCT x) OVER (...))</span>
+
+    // --- Convert Window Spec ---
+    // Partition Keys
+<span class="nc" id="L1740">    List&lt;RexNode&gt; partitionKeys = windowNode.getPartitionList().getList().stream()</span>
+<span class="nc" id="L1741">        .map(p -&gt; convertExpression(p, scope))</span>
+<span class="nc" id="L1742">        .collect(Collectors.toList());</span>
+
+    // Order Keys
+<span class="nc" id="L1745">    ImmutableList.Builder&lt;RexFieldCollation&gt; orderKeys = ImmutableList.builder();</span>
+<span class="nc bnc" id="L1746" title="All 2 branches missed.">    for (SqlNode orderNode : windowNode.getOrderList().getList()) {</span>
+      // Similar logic to convertOrderBy for direction/nulls
+<span class="nc" id="L1748">      SqlKind direction = null;</span>
+<span class="nc" id="L1749">      SqlKind nullDirection = null;</span>
+<span class="nc" id="L1750">      SqlNode exprNode = orderNode;</span>
+      // Unwrap modifiers
+<span class="nc bnc" id="L1752" title="All 2 branches missed.">      if (orderNode.getKind() == SqlKind.DESCENDING) {</span>
+<span class="nc" id="L1753">        exprNode = ((SqlCall) orderNode).getOperandList().get(0);</span>
+<span class="nc" id="L1754">        direction = SqlKind.DESCENDING;</span>
+      }
+<span class="nc bnc" id="L1756" title="All 2 branches missed.">      if (exprNode.getKind() == SqlKind.NULLS_FIRST) {</span>
+<span class="nc" id="L1757">        exprNode = ((SqlCall) exprNode).getOperandList().get(0);</span>
+<span class="nc" id="L1758">        nullDirection = SqlKind.NULLS_FIRST;//RelFieldCollation.NullDirection.FIRST;</span>
+<span class="nc bnc" id="L1759" title="All 2 branches missed.">      } else if (exprNode.getKind() == SqlKind.NULLS_LAST) {</span>
+<span class="nc" id="L1760">        exprNode = ((SqlCall) exprNode).getOperandList().get(0);</span>
+<span class="nc" id="L1761">        nullDirection = SqlKind.NULLS_FIRST;//RelFieldCollation.NullDirection.LAST;</span>
+      }
+      // Set default null direction
+//      if (nullDirection == SqlKind.UNSPECIFIED) {
+//        nullDirection = (direction == RelFieldCollation.Direction.DESCENDING) ? RelFieldCollation.NullDirection.FIRST : RelFieldCollation.NullDirection.LAST;
+//      }
+      // Convert expression
+<span class="nc" id="L1768">      RexNode orderRex = convertExpression(exprNode, scope);</span>
+<span class="nc bnc" id="L1769" title="All 4 branches missed.">      if (direction != null &amp;&amp; nullDirection != null) {</span>
+        // Create a RexFieldCollation with direction and null direction
+        // RelFieldCollation.Direction and RelFieldCollation.NullDirection are enums
+        // This is a placeholder, actual creation might differ based on internal APIs
+        // orderKeys.add(new RexFieldCollation(orderRex, Set.of(direction, nullDirection)));
+<span class="nc" id="L1774">        orderKeys.add(new RexFieldCollation(orderRex, Set.of(direction, nullDirection)));</span>
+<span class="nc bnc" id="L1775" title="All 2 branches missed.">      } else if (direction != null) {</span>
+        // Create a RexFieldCollation with direction only
+        // orderKeys.add(new RexFieldCollation(orderRex, Set.of(direction)));
+<span class="nc" id="L1778">        orderKeys.add(new RexFieldCollation(orderRex, Set.of(direction)));</span>
+      } else {
+        // Default direction (ASC)
+        // orderKeys.add(new RexFieldCollation(orderRex, Set.of()));
+<span class="nc" id="L1782">        orderKeys.add(new RexFieldCollation(orderRex, Set.of()));</span>
+      }
+<span class="nc" id="L1784">    }</span>
+
+    RexWindowBound lowerBound;
+    RexWindowBound upperBound;
+
+<span class="nc bnc" id="L1789" title="All 2 branches missed.">    if (!aggCallNode.getOperator().allowsFraming()) {</span>
+      // No frame specified, default to entire partition
+      // This is a placeholder, actual defaulting might differ based on internal APIs
+<span class="nc" id="L1792">      lowerBound = convertWindowBound(SqlWindow.createUnboundedPreceding(SqlParserPos.ZERO), scope);</span>
+<span class="nc" id="L1793">      upperBound = convertWindowBound(SqlWindow.createCurrentRow(SqlParserPos.ZERO), scope);</span>
+    } else {
+<span class="nc" id="L1795">      lowerBound = convertWindowBound(windowNode.getLowerBound(), scope);</span>
+<span class="nc" id="L1796">      upperBound = convertWindowBound(windowNode.getUpperBound(), scope);</span>
+    }
+<span class="nc" id="L1798">    boolean isRows = windowNode.isRows(); // ROWS or RANGE</span>
+
+    // Determine type of the aggregate function result
+<span class="nc" id="L1801">    RelDataType aggResultType = deriveAggCallType(sqlAggFunc, aggArgs, scope);</span>
+    // Adjust nullability based on function and window? Complex. Assume base nullability for now.
+<span class="nc" id="L1803">    aggResultType = typeFactory.createTypeWithNullability(aggResultType, true); // Window functions can often produce NULL</span>
+
+    // Create the RexOver node
+    // Note: RexOver constructor is protected. Use RexBuilder helper if possible, or reflect.
+    // RexBuilder doesn't have a public method to create RexOver directly.
+    // This highlights the difficulty without internal Calcite tools.
+    // We might need to construct it manually, which is fragile.
+
+    // Placeholder - Actual creation is complex and might require internal APIs or RelBuilder usage.
+//    throw new UnsupportedOperationException(&quot;Manual creation of RexOver for window functions is highly complex and not fully implemented here. Requires internal Calcite APIs or RelBuilder.&quot;);
+
+    // If we could create it:
+<span class="nc" id="L1815">    return rexBuilder.makeOver(aggResultType, sqlAggFunc, aggArgs, partitionKeys, orderKeys.build(),</span>
+        lowerBound, upperBound, isRows, true, false /*ignoreNulls*/, false /*fromFirst*/, false /*fromLast*/);
+  }
+
+  /** Converts a SqlWindow bound (e.g., UNBOUNDED PRECEDING, CURRENT ROW, N FOLLOWING) */
+  protected RexWindowBound convertWindowBound(SqlNode boundNode, Scope scope) {
+<span class="nc bnc" id="L1821" title="All 2 branches missed.">    if (boundNode == null) {</span>
+      // Default bounds depend on context (e.g., presence of ORDER BY)
+      // This requires more logic, assume explicit bounds for now.
+<span class="nc" id="L1824">      throw new IllegalArgumentException(&quot;Window bounds cannot be null (defaulting not implemented)&quot;);</span>
+    }
+<span class="nc bnc" id="L1826" title="All 2 branches missed.">    if (!(boundNode instanceof SqlCall)) {</span>
+      // Could be SqlWindow.createCurrentRow() etc. which might not be SqlCalls? Check API.
+      // Assume SqlCall for PRECEDING/FOLLOWING with offset.
+      // Handle UNBOUNDED/CURRENT ROW based on operator/class.
+<span class="nc bnc" id="L1830" title="All 2 branches missed.">      if (SqlWindow.isUnboundedPreceding(boundNode)) {</span>
+<span class="nc" id="L1831">        return RexWindowBound.create(boundNode, null); // No offset needed</span>
+<span class="nc bnc" id="L1832" title="All 2 branches missed.">      } else if (SqlWindow.isCurrentRow(boundNode)) {</span>
+<span class="nc" id="L1833">        return RexWindowBound.create(boundNode, null); // No offset needed</span>
+<span class="nc bnc" id="L1834" title="All 2 branches missed.">      } else if (SqlWindow.isUnboundedFollowing(boundNode)) {</span>
+<span class="nc" id="L1835">        return RexWindowBound.create(boundNode, null); // No offset needed</span>
+      } else {
+<span class="nc" id="L1837">        throw new IllegalArgumentException(&quot;Unsupported window bound node type: &quot; + boundNode.getClass());</span>
+      }
+    }
+
+<span class="nc" id="L1841">    SqlCall boundCall = (SqlCall) boundNode;</span>
+<span class="nc" id="L1842">    SqlOperator operator = boundCall.getOperator(); // PRECEDING or FOLLOWING</span>
+
+<span class="nc bnc" id="L1844" title="All 4 branches missed.">    if (operator == SqlWindow.PRECEDING_OPERATOR || operator == SqlWindow.FOLLOWING_OPERATOR) {</span>
+<span class="nc bnc" id="L1845" title="All 2 branches missed.">      if (boundCall.getOperandList().size() != 1) {</span>
+<span class="nc" id="L1846">        throw new IllegalArgumentException(operator.getName() + &quot; requires 1 operand (offset)&quot;);</span>
+      }
+      // Convert the offset expression (should be constant or simple)
+<span class="nc" id="L1849">      RexNode offsetRex = convertExpression(boundCall.getOperandList().get(0), scope);</span>
+      // Offset type needs validation (non-negative numeric for ROWS, specific types for RANGE)
+<span class="nc" id="L1851">      return RexWindowBound.create(boundNode, offsetRex);</span>
+    } else {
+<span class="nc" id="L1853">      throw new IllegalArgumentException(&quot;Unexpected operator for window bound: &quot; + operator);</span>
+    }
+  }
+
+  /**
+   * Converts a generic SqlCall (operator or function).
+   */
+  protected RexNode convertCall(SqlCall call, Scope scope) {
+<span class="nc" id="L1861">    SqlOperator operator = call.getOperator();</span>
+<span class="nc" id="L1862">    List&lt;SqlNode&gt; operands = call.getOperandList();</span>
+
+    // Handle special operators explicitly if they don't fit the generic model easily
+    // or require specific RexNode types (like RexSubQuery).
+<span class="nc bnc" id="L1866" title="All 2 branches missed.">    if (operator.equals(SqlStdOperatorTable.CAST)) {</span>
+<span class="nc" id="L1867">      return convertCast(call, scope);</span>
+    }
+<span class="nc bnc" id="L1869" title="All 4 branches missed.">    if (operator.equals(SqlStdOperatorTable.IN) || operator.equals(SqlStdOperatorTable.NOT_IN)) {</span>
+<span class="nc" id="L1870">      return convertIn(call, scope);</span>
+    }
+<span class="nc bnc" id="L1872" title="All 2 branches missed.">    if (operator.equals(SqlStdOperatorTable.EXISTS)) {</span>
+      // EXISTS is special, takes a subquery operand directly
+<span class="nc" id="L1874">      return convertExists(call, scope);</span>
+    }
+<span class="nc bnc" id="L1876" title="All 2 branches missed.">    if (operator.getKind() == SqlKind.SCALAR_QUERY) {</span>
+      // SCALAR_QUERY is special, takes a subquery operand directly
+<span class="nc" id="L1878">      return convertScalarSubquery(call, scope);</span>
+    }
+<span class="nc bnc" id="L1880" title="All 4 branches missed.">    if (operator.equals(SqlStdOperatorTable.BETWEEN) || operator.equals(SqlStdOperatorTable.NOT_BETWEEN)) {</span>
+<span class="nc" id="L1881">      return convertBetween(call, scope);</span>
+    }
+    // TODO: Handle other special cases like LIKE, SIMILAR, etc. if they need non-standard RexNode creation.
+
+    // Generic handling for most operators/functions
+<span class="nc" id="L1886">    List&lt;RexNode&gt; rexOperands = operands.stream()</span>
+<span class="nc" id="L1887">        .map(operand -&gt; convertExpression(operand, scope))</span>
+<span class="nc" id="L1888">        .collect(Collectors.toList());</span>
+
+    // Type Inference: Crucial and hard without SqlValidator.
+    // Use deriveType helper which tries operator inference and RexBuilder fallback.
+<span class="nc" id="L1892">    RelDataType returnType = deriveType(call, operator, rexOperands, scope); // Pass call and scope for context</span>
+
+    // Use RexBuilder.makeCall, which handles operator mapping and type checks.
+    // It might require the explicit return type if inference within RexBuilder fails.
+    try {
+<span class="nc" id="L1897">      return rexBuilder.makeCall(returnType, operator, rexOperands);</span>
+<span class="nc" id="L1898">    } catch (IllegalArgumentException e) {</span>
+      // Catch potential errors from RexBuilder (e.g., type mismatch)
+<span class="nc" id="L1900">      throw new IllegalArgumentException(&quot;Error creating call for operator &quot; + operator.getName()</span>
+          + &quot; with operands &quot; + rexOperands + &quot; and derived type &quot; + returnType + &quot;. SQL: &quot; + call, e);
+    }
+  }
+
+  /**
+   * Derives return type for an operator call.
+   * Needs call context for some operators (e.g., function lookup).
+   */
+  protected RelDataType deriveType(SqlCall call, SqlOperator operator, List&lt;RexNode&gt; rexOperands, Scope scope) {
+    // 1. Try SqlOperator.inferReturnType (might need more context than just types)
+    // 2. Fallback to RexBuilder.deriveReturnType
+    // 3. Handle specific overrides if needed.
+
+<span class="nc" id="L1914">    RelDataType returnType = null;</span>
+
+    // Attempt 1: SqlOperator.inferReturnType
+    // This often needs a CallBinding, which we don't have.
+    // Try the simpler overload with just operand types.
+    try {
+<span class="nc" id="L1920">      List&lt;RelDataType&gt; operandTypes = rexOperands.stream().map(RexNode::getType).collect(Collectors.toList());</span>
+      // Some operators might need literal values (e.g., EXTRACT unit) - not available here easily.
+<span class="nc" id="L1922">      returnType = operator.inferReturnType(typeFactory, operandTypes);</span>
+<span class="nc" id="L1923">    } catch (Exception e) {</span>
+      // Ignore inference failure, fallback below
+<span class="nc" id="L1925">    }</span>
+
+    // Attempt 2: RexBuilder.deriveReturnType
+<span class="nc bnc" id="L1928" title="All 2 branches missed.">    if (returnType == null) {</span>
+      try {
+        // RexBuilder has more robust internal logic, handles common cases.
+<span class="nc" id="L1931">        returnType = rexBuilder.deriveReturnType(operator, rexOperands);</span>
+<span class="nc" id="L1932">      } catch (Exception e) {</span>
+        // If RexBuilder also fails, we have a problem.
+<span class="nc" id="L1934">        throw new IllegalStateException(&quot;Could not determine return type using RexBuilder for operator &quot; + operator.getName()</span>
+<span class="nc" id="L1935">            + &quot; with operand types: &quot; + rexOperands.stream().map(r -&gt; r.getType().getFullTypeString()).collect(Collectors.joining(&quot;, &quot;))</span>
+            + &quot;. SQL: &quot; + call, e);
+<span class="nc" id="L1937">      }</span>
+    }
+
+    // Attempt 3: Manual Overrides (if necessary for specific functions/operators)
+    // e.g., if a function's type depends on arguments not captured by RexNode types.
+    // if (operator.getName().equalsIgnoreCase(&quot;MY_SPECIAL_FUNCTION&quot;)) { ... }
+
+
+<span class="nc bnc" id="L1945" title="All 2 branches missed.">    if (returnType == null) {</span>
+      // Should not be reached if RexBuilder succeeded or threw.
+<span class="nc" id="L1947">      throw new IllegalStateException(&quot;Could not determine return type for operator &quot; + operator.getName() + &quot;. SQL: &quot; + call);</span>
+    }
+
+    // Nullability Inference: This is extremely complex without a validator.
+    // SqlOperator.validateOperands and inferReturnType usually handle this.
+    // We rely heavily on the type returned by inferReturnType/deriveReturnType having the correct nullability.
+    // A simple heuristic: result is nullable if the operator *can* return null (e.g., arithmetic with null operand)
+    // or if any operand known to influence nullability is nullable.
+    // This is very hard to get right generically. Rely on the derived type's nullability for now.
+    // boolean isNullable = operator.isNullable( ... ) // Needs validator context
+    // boolean operandNullable = rexOperands.stream().anyMatch(r -&gt; r.getType().isNullable());
+    // if (isNullable || operandNullable) {
+    //     returnType = typeFactory.createTypeWithNullability(returnType, true);
+    // }
+
+<span class="nc" id="L1962">    return returnType;</span>
+  }
+
+  /**
+   * Converts a CAST expression.
+   */
+  protected RexNode convertCast(SqlCall castCall, Scope scope) {
+<span class="nc bnc" id="L1969" title="All 2 branches missed.">    assert castCall.getOperator().equals(SqlStdOperatorTable.CAST);</span>
+<span class="nc bnc" id="L1970" title="All 2 branches missed.">    if (castCall.getOperandList().size() != 2) {</span>
+<span class="nc" id="L1971">      throw new IllegalArgumentException(&quot;CAST requires 2 operands, found: &quot; + castCall.getOperandList().size() + &quot; in &quot; + castCall);</span>
+    }
+<span class="nc" id="L1973">    SqlNode expression = castCall.getOperandList().get(0);</span>
+<span class="nc" id="L1974">    SqlNode typeNode = castCall.getOperandList().get(1);</span>
+
+    // Convert the expression being cast
+<span class="nc" id="L1977">    RexNode operand = convertExpression(expression, scope);</span>
+
+    // Derive the target type from the SqlDataTypeSpec
+    RelDataType targetType;
+<span class="nc bnc" id="L1981" title="All 2 branches missed.">    if (typeNode instanceof SqlDataTypeSpec) {</span>
+<span class="nc" id="L1982">      SqlDataTypeSpec typeSpec = (SqlDataTypeSpec) typeNode;</span>
+      // Use deriveType(RelDataTypeFactory) - requires validator usually.
+      // Try simpler deriveType(typeFactory) if available, or parse manually.
+      // This is a major gap without SqlValidator.
+      // Let's attempt manual parsing for common types.
+<span class="nc" id="L1987">      targetType = parseDataTypeSpec(typeSpec);</span>
+<span class="nc bnc" id="L1988" title="All 2 branches missed.">      if (targetType == null) {</span>
+<span class="nc" id="L1989">        throw new IllegalStateException(&quot;Could not derive type from SqlDataTypeSpec: &quot; + typeSpec + &quot;. Manual parsing failed.&quot;);</span>
+      }
+<span class="nc" id="L1991">    } else {</span>
+<span class="nc" id="L1992">      throw new IllegalArgumentException(&quot;CAST target type must be a SqlDataTypeSpec, found: &quot; + typeNode.getKind());</span>
+    }
+
+
+    // Handle CAST(NULL AS Type) - makeNullLiteral needs the target type
+    // Check if operand is the generic NULL constant returned by convertLiteral(null)
+<span class="nc bnc" id="L1998" title="All 6 branches missed.">    if (operand instanceof RexLiteral &amp;&amp; ((RexLiteral) operand).isNull() &amp;&amp; ((RexLiteral) operand).getTypeName() == SqlTypeName.NULL) {</span>
+<span class="nc" id="L1999">      return rexBuilder.makeNullLiteral(targetType);</span>
+    }
+
+    // Check if cast is necessary (operand type might already match target type)
+<span class="nc bnc" id="L2003" title="All 2 branches missed.">    if (operand.getType().equals(targetType)) {</span>
+<span class="nc" id="L2004">      return operand; // No cast needed</span>
+    }
+    // Check for assignability (e.g., casting VARCHAR(10) to VARCHAR(20))
+<span class="nc bnc" id="L2007" title="All 2 branches missed.">    if (SqlTypeUtil.canAssignFrom(targetType, operand.getType())) {</span>
+      // If only precision/scale/nullability differs but base types match,
+      // RexBuilder.makeCast might still be needed to enforce the target type properties.
+      // Example: INTEGER to DECIMAL, VARCHAR(10) to VARCHAR(20).
+      // Let RexBuilder handle it.
+    }
+
+
+    // Create the cast call using RexBuilder
+    try {
+<span class="nc" id="L2017">      return rexBuilder.makeCast(targetType, operand);</span>
+<span class="nc" id="L2018">    } catch (Exception e) {</span>
+<span class="nc" id="L2019">      throw new IllegalArgumentException(&quot;Failed to create CAST from &quot; + operand.getType() + &quot; to &quot; + targetType + &quot;. SQL: &quot; + castCall, e);</span>
+    }
+  }
+
+  protected RelDataType parseDataTypeSpec(SqlDataTypeSpec spec) {
+<span class="nc" id="L2024">    throw new UnsupportedOperationException(&quot;Manual parsing of SqlDataTypeSpec is not implemented yet.&quot;);</span>
+  }
+
+
+  /**
+   * Converts IN / NOT IN expression (subquery or value list).
+   */
+  protected RexNode convertIn(SqlCall inCall, Scope scope) {
+<span class="nc" id="L2032">    boolean isNotIn = inCall.getOperator().equals(SqlStdOperatorTable.NOT_IN);</span>
+<span class="nc bnc" id="L2033" title="All 2 branches missed.">    if (inCall.getOperandList().size() != 2) {</span>
+<span class="nc" id="L2034">      throw new IllegalArgumentException(inCall.getOperator().getName() + &quot; requires 2 operands&quot;);</span>
+    }
+
+<span class="nc" id="L2037">    RexNode lhs = convertExpression(inCall.getOperandList().get(0), scope);</span>
+<span class="nc" id="L2038">    SqlNode rhsNode = inCall.getOperandList().get(1);</span>
+
+    RexNode rex;
+<span class="nc bnc" id="L2041" title="All 2 branches missed.">    if (rhsNode instanceof SqlNodeList) {</span>
+      // IN (value list)
+<span class="nc" id="L2043">      List&lt;RexNode&gt; rhsList = new ArrayList&lt;&gt;();</span>
+<span class="nc bnc" id="L2044" title="All 2 branches missed.">      for (SqlNode node : ((SqlNodeList) rhsNode).getList()) {</span>
+<span class="nc" id="L2045">        rhsList.add(convertExpression(node, scope));</span>
+<span class="nc" id="L2046">      }</span>
+      // RexBuilder creates an OR chain (lhs=v1 OR lhs=v2 ...) or uses RexInNode
+      // Need to ensure type compatibility between lhs and rhsList elements.
+      // RexBuilder.makeIn handles some coercion.
+<span class="nc bnc" id="L2050" title="All 2 branches missed.">      if (rhsList.isEmpty()) {</span>
+        // IN () is always false, NOT IN () is always true
+<span class="nc" id="L2052">        rex = rexBuilder.makeLiteral(false);</span>
+      } else {
+<span class="nc" id="L2054">        rex = rexBuilder.makeIn(lhs, ImmutableList.copyOf(rhsList));</span>
+      }
+
+<span class="nc" id="L2057">    } else {</span>
+      // IN (subquery)
+      // Convert the subquery. It needs its own scope, potentially correlated.
+      // Pass the current scope as parent for correlation.
+<span class="nc" id="L2061">      Scope subQueryScope = convertQueryRecursive(rhsNode, false, scope);</span>
+<span class="nc" id="L2062">      RelNode subQueryRel = subQueryScope.getRelNode();</span>
+
+      // Ensure subquery returns one column
+<span class="nc bnc" id="L2065" title="All 2 branches missed.">      if (subQueryRel.getRowType().getFieldCount() != 1) {</span>
+<span class="nc" id="L2066">        throw new IllegalArgumentException(&quot;Subquery for IN operator must return exactly one column, found &quot;</span>
+<span class="nc" id="L2067">            + subQueryRel.getRowType().getFieldCount() + &quot; in: &quot; + rhsNode);</span>
+      }
+      // TODO: Type compatibility check between lhs and subquery column? Assumed validated.
+<span class="nc" id="L2070">      RelDataType subQueryColType = subQueryRel.getRowType().getFieldList().get(0).getType();</span>
+<span class="nc bnc" id="L2071" title="All 4 branches missed.">      if (!SqlTypeUtil.canAssignFrom(subQueryColType, lhs.getType()) &amp;&amp; !SqlTypeUtil.canAssignFrom(lhs.getType(), subQueryColType)) {</span>
+        // Types are not compatible. Need coercion or validation should have caught this.
+        // For now, assume compatible or rely on RexSubQuery to handle runtime checks.
+      }
+
+
+      // Create RexSubQuery for IN. This requires correlation handling.
+      // RexSubQuery.in(rel, operands) where operands refer to fields from the *outer* query (lhs).
+      // Need to manage CorrelationId.
+<span class="nc" id="L2080">      CorrelationId correlationId = scope.createCorrelationId(subQueryScope.getAlias()); // Scope needs method to manage correlations</span>
+<span class="nc" id="L2081">      RexNode corrVar = rexBuilder.makeCorrel(subQueryRel.getRowType(), correlationId); // This seems wrong, correl type should be outer?</span>
+
+      // Let's rethink RexSubQuery creation.
+      // RexSubQuery.in(RelNode rel, ImmutableList&lt;RexNode&gt; operands)
+      // 'rel' is the subquery RelNode.
+      // 'operands' are the expressions from the *outer* query to be compared against the subquery's output column.
+      // The subquery RelNode itself might contain RexInputRefs referring back to the outer query via CorrelationId.
+
+      // 1. Convert subquery, potentially creating correlations if it references outer scope.
+      //    This requires convertIdentifier to handle correlations correctly.
+      // 2. Create the RexSubQuery node linking the outer operand (lhs) to the subquery plan.
+
+      // Simplified approach assuming RexSubQuery handles the linkage internally:
+<span class="nc" id="L2094">      rex = RexSubQuery.in(subQueryRel, ImmutableList.of(lhs));</span>
+
+      // TODO: Proper correlation handling is needed here. The subquery conversion
+      // must identify references to the outer scope ('scope') and replace them with
+      // RexInputRefs using a CorrelationId provided by 'scope'. The RexSubQuery
+      // then uses this correlation info. This is complex to set up manually.
+      // For now, this might only work for non-correlated subqueries.
+    }
+
+<span class="nc bnc" id="L2103" title="All 2 branches missed.">    if (isNotIn) {</span>
+<span class="nc" id="L2104">      rex = rexBuilder.makeCall(SqlStdOperatorTable.NOT, rex);</span>
+    }
+    // Handle null semantics for IN/NOT IN (e.g., `x IN (1, NULL)` might be UNKNOWN)
+    // RexBuilder usually handles this.
+<span class="nc" id="L2108">    return rex;</span>
+  }
+
+  /**
+   * Converts EXISTS expression.
+   */
+  protected RexNode convertExists(SqlCall existsCall, Scope scope) {
+<span class="nc bnc" id="L2115" title="All 2 branches missed.">    assert existsCall.getOperator().equals(SqlStdOperatorTable.EXISTS);</span>
+<span class="nc bnc" id="L2116" title="All 2 branches missed.">    if (existsCall.getOperandList().size() != 1) {</span>
+<span class="nc" id="L2117">      throw new IllegalArgumentException(&quot;EXISTS requires 1 operand (subquery)&quot;);</span>
+    }
+<span class="nc" id="L2119">    SqlNode subQueryNode = existsCall.getOperandList().get(0);</span>
+
+    // Convert the subquery, passing current scope as parent for correlation.
+<span class="nc" id="L2122">    Scope subQueryScope = convertQueryRecursive(subQueryNode, false, scope);</span>
+<span class="nc" id="L2123">    RelNode subQueryRel = subQueryScope.getRelNode();</span>
+
+    // Create RexSubQuery for EXISTS.
+    // Similar correlation complexities as IN subquery apply here.
+<span class="nc" id="L2127">    RexSubQuery rex = RexSubQuery.exists(subQueryRel);</span>
+
+    // TODO: Implement proper correlation handling.
+<span class="nc" id="L2130">    return rex;</span>
+  }
+
+  /**
+   * Converts SCALAR subquery expression.
+   */
+  protected RexNode convertScalarSubquery(SqlCall scalarCall, Scope scope) {
+<span class="nc bnc" id="L2137" title="All 2 branches missed.">    assert scalarCall.getKind() == SqlKind.SCALAR_QUERY;</span>
+<span class="nc bnc" id="L2138" title="All 2 branches missed.">    if (scalarCall.getOperandList().size() != 1) {</span>
+<span class="nc" id="L2139">      throw new IllegalArgumentException(&quot;SCALAR_QUERY requires 1 operand (subquery)&quot;);</span>
+    }
+<span class="nc" id="L2141">    SqlNode subQueryNode = scalarCall.getOperandList().get(0);</span>
+
+    // Convert the subquery, passing current scope as parent for correlation.
+<span class="nc" id="L2144">    Scope subQueryScope = convertQueryRecursive(subQueryNode, false, scope);</span>
+<span class="nc" id="L2145">    RelNode subQueryRel = subQueryScope.getRelNode();</span>
+
+    // Ensure subquery returns one column (cardinality checked at runtime usually)
+<span class="nc bnc" id="L2148" title="All 2 branches missed.">    if (subQueryRel.getRowType().getFieldCount() != 1) {</span>
+<span class="nc" id="L2149">      throw new IllegalArgumentException(&quot;Scalar subquery must return exactly one column, found &quot;</span>
+<span class="nc" id="L2150">          + subQueryRel.getRowType().getFieldCount() + &quot; in: &quot; + subQueryNode);</span>
+    }
+
+    // Create RexSubQuery for SCALAR query.
+    // Similar correlation complexities as IN subquery apply here.
+<span class="nc" id="L2155">    RexSubQuery rex = RexSubQuery.scalar(subQueryRel);</span>
+
+    // TODO: Implement proper correlation handling.
+<span class="nc" id="L2158">    return rex;</span>
+  }
+
+  /** Converts BETWEEN / NOT BETWEEN */
+  protected RexNode convertBetween(SqlCall call, Scope scope) {
+<span class="nc" id="L2163">    boolean isNotBetween = call.getOperator().equals(SqlStdOperatorTable.NOT_BETWEEN);</span>
+<span class="nc bnc" id="L2164" title="All 2 branches missed.">    if (call.getOperandList().size() != 3) {</span>
+<span class="nc" id="L2165">      throw new IllegalArgumentException(call.getOperator().getName() + &quot; requires 3 operands&quot;);</span>
+    }
+
+<span class="nc" id="L2168">    RexNode value = convertExpression(call.getOperandList().get(0), scope);</span>
+<span class="nc" id="L2169">    RexNode lower = convertExpression(call.getOperandList().get(1), scope);</span>
+<span class="nc" id="L2170">    RexNode upper = convertExpression(call.getOperandList().get(2), scope);</span>
+
+    // Expand BETWEEN into AND &gt;= &lt;=
+    // value &gt;= lower AND value &lt;= upper
+<span class="nc" id="L2174">    RexNode ge = rexBuilder.makeCall(SqlStdOperatorTable.GREATER_THAN_OR_EQUAL, value, lower);</span>
+<span class="nc" id="L2175">    RexNode le = rexBuilder.makeCall(SqlStdOperatorTable.LESS_THAN_OR_EQUAL, value, upper);</span>
+<span class="nc" id="L2176">    RexNode and = rexBuilder.makeCall(SqlStdOperatorTable.AND, ge, le);</span>
+
+    // Handle symmetric vs asymmetric (standard is asymmetric: &gt;= lower AND &lt;= upper)
+    // If SqlStdOperatorTable.SYMMETRIC_BETWEEN was used, logic would differ. Assume asymmetric.
+
+<span class="nc bnc" id="L2181" title="All 2 branches missed.">    if (isNotBetween) {</span>
+      // NOT (value &gt;= lower AND value &lt;= upper)
+<span class="nc" id="L2183">      return rexBuilder.makeCall(SqlStdOperatorTable.NOT, and);</span>
+    } else {
+<span class="nc" id="L2185">      return and;</span>
+    }
+  }
+
+
+  /**
+   * Converts an aggregate function call encountered in an expression context
+   * (e.g., HAVING, ORDER BY post-aggregation). Resolves it to an input reference
+   * from the Aggregate node's output.
+   */
+  protected RexNode convertAggregateCallExpr(SqlCall aggCall, Scope scope) {
+    // This should only be called when converting expressions *after* aggregation.
+<span class="nc bnc" id="L2197" title="All 2 branches missed.">    if (!scope.isAggregateContext()) {</span>
+      // This check might be redundant if called correctly, but good for safety.
+<span class="nc" id="L2199">      throw new IllegalStateException(&quot;Unexpected aggregate function call in non-aggregate scope: &quot; + aggCall);</span>
+    }
+
+    // Find the corresponding aggregate call result from the scope.
+    // Scope needs to map the SqlCall (or its info) to the output index.
+<span class="nc" id="L2204">    Pair&lt;Integer, AggregateCall&gt; aggInfo = scope.findAggregateCallResult(aggCall);</span>
+<span class="nc bnc" id="L2205" title="All 2 branches missed.">    if (aggInfo == null) {</span>
+      // Could also be a reference to a GROUP BY key if the expression matches.
+<span class="nc" id="L2207">      RexNode groupByRex = scope.findGroupByExpression(aggCall);</span>
+<span class="nc bnc" id="L2208" title="All 2 branches missed.">      if (groupByRex != null) {</span>
+<span class="nc" id="L2209">        return groupByRex;</span>
+      }
+
+<span class="nc" id="L2212">      throw new RuntimeException(&quot;Aggregate function or GROUP BY expression '&quot; + aggCall</span>
+          + &quot;' used in post-aggregation clause but not found in Aggregate node output or group keys. Scope: &quot; + scope);
+    }
+
+<span class="nc" id="L2216">    int fieldIndex = aggInfo.left; // Index in the Aggregate node's output row type</span>
+<span class="nc" id="L2217">    AggregateCall callInstance = aggInfo.right;</span>
+
+    // Create a RexInputRef pointing to the aggregate result field in the Aggregate node's output.
+<span class="nc" id="L2220">    return rexBuilder.makeInputRef(callInstance.getType(), fieldIndex);</span>
+  }
+
+
+  // =====================================================================
+  // Helper Methods &amp; Classes
+  // =====================================================================
+
+  /**
+   * Finds the input index corresponding to a RexNode if it's a simple RexInputRef
+   * relative to the given input RelNode.
+   * Returns -1 if not a direct input ref or index out of bounds.
+   */
+  protected int findRexInputIndex(RexNode rex, RelNode input) {
+<span class="nc bnc" id="L2234" title="All 2 branches missed.">    if (rex instanceof RexInputRef) {</span>
+<span class="nc" id="L2235">      int index = ((RexInputRef) rex).getIndex();</span>
+<span class="nc bnc" id="L2236" title="All 4 branches missed.">      if (index &gt;= 0 &amp;&amp; index &lt; input.getRowType().getFieldCount()) {</span>
+<span class="nc" id="L2237">        return index;</span>
+      }
+    }
+    // More complex matching (e.g., finding 'a+b' in input if rex is 'a+b') is hard.
+    // Requires comparing expression structure or digests. Assume simple refs for now.
+    // This is a limitation compared to using RelBuilder/Validator which handle this.
+<span class="nc" id="L2243">    return -1;</span>
+  }
+
+  /**
+   * Finds the output index corresponding to a RexNode by matching against the
+   * fields/expressions represented in the Scope. Used for ORDER BY resolution.
+   */
+  protected int findRexOutputIndex(RexNode rex, Scope outputScope) {
+    // 1. If rex is a simple RexInputRef, its index directly refers to the output field.
+<span class="nc bnc" id="L2252" title="All 2 branches missed.">    if (rex instanceof RexInputRef) {</span>
+<span class="nc" id="L2253">      int index = ((RexInputRef) rex).getIndex();</span>
+      // Validate index against the scope's effective output arity
+<span class="nc bnc" id="L2255" title="All 4 branches missed.">      if (index &gt;= 0 &amp;&amp; index &lt; outputScope.getFieldCount()) {</span>
+<span class="nc" id="L2256">        return index;</span>
+      } else {
+        // Index out of bounds, shouldn't happen if scope is correct.
+<span class="nc" id="L2259">        return -1;</span>
+      }
+    }
+
+    // 2. If rex is more complex, try to match it against the expressions
+    //    that generated the output fields in the scope (e.g., project expressions).
+    //    This requires the Scope to store the generating RexNodes for its fields.
+    //    Scope.getRelation(0).getGeneratingRexNodes() ? Needs Frame enhancement.
+
+    // 3. Fallback: Compare string representation (brittle) or digest (better).
+    //    Let's try digest comparison if available.
+<span class="nc" id="L2270">    String targetDigest = rex.toString(); // Use toString as proxy for digest here</span>
+
+<span class="nc" id="L2272">    List&lt;RelDataTypeField&gt; outputFields = outputScope.getRelNode().getRowType().getFieldList();</span>
+<span class="nc bnc" id="L2273" title="All 2 branches missed.">    for (int i = 0; i &lt; outputFields.size(); i++) {</span>
+      // How to get the RexNode that generated output field 'i'?
+      // If the scope came from a Project, the Project node holds the expressions.
+<span class="nc" id="L2276">      RelNode sourceRel = outputScope.getRelNode();</span>
+<span class="nc bnc" id="L2277" title="All 2 branches missed.">      if (sourceRel instanceof LogicalProject) {</span>
+<span class="nc" id="L2278">        LogicalProject project = (LogicalProject) sourceRel;</span>
+<span class="nc bnc" id="L2279" title="All 2 branches missed.">        if (i &lt; project.getProjects().size()) {</span>
+<span class="nc" id="L2280">          RexNode projectExpr = project.getProjects().get(i);</span>
+<span class="nc bnc" id="L2281" title="All 2 branches missed.">          if (projectExpr.toString().equals(targetDigest)) { // Compare digests/strings</span>
+<span class="nc" id="L2282">            return i;</span>
+          }
+        }
+<span class="nc" id="L2285">      }</span>
+      // If scope came from Aggregate, need to check group keys and agg calls.
+<span class="nc bnc" id="L2287" title="All 4 branches missed.">      else if (sourceRel instanceof LogicalAggregate &amp;&amp; outputScope.isAggregateContext()) {</span>
+        // Check group keys first
+<span class="nc" id="L2289">        ImmutableBitSet groupSet = outputScope.getGroupSet(); // Indices relative to agg input</span>
+<span class="nc" id="L2290">        Map&lt;Integer, RexNode&gt; groupExprMap = outputScope.getGroupExprMap(); // Original group exprs</span>
+<span class="nc" id="L2291">        int groupKeyIndex = 0;</span>
+<span class="nc bnc" id="L2292" title="All 2 branches missed.">        for (int groupInputIndex : groupSet) {</span>
+<span class="nc" id="L2293">          RexNode groupExpr = groupExprMap.get(groupInputIndex);</span>
+<span class="nc bnc" id="L2294" title="All 4 branches missed.">          if (groupExpr != null &amp;&amp; groupExpr.toString().equals(targetDigest)) {</span>
+<span class="nc" id="L2295">            return groupKeyIndex; // Index within the aggregate output</span>
+          }
+<span class="nc" id="L2297">          groupKeyIndex++;</span>
+<span class="nc" id="L2298">        }</span>
+        // Check aggregate calls
+<span class="nc" id="L2300">        List&lt;AggregateCall&gt; aggCalls = outputScope.getAggCalls();</span>
+<span class="nc bnc" id="L2301" title="All 2 branches missed.">        for (int j = 0; j &lt; aggCalls.size(); j++) {</span>
+          // Can we match rex against the definition of aggCalls.get(j)? Hard.
+          // Usually ORDER BY refers to aggregates by alias, handled by convertIdentifier.
+          // Matching complex expressions is difficult here.
+        }
+      }
+      // If scope came from TableScan, fields are direct inputs (handled by case 1).
+      // If scope came from Join, fields are direct inputs (handled by case 1).
+      // If scope came from Values, fields are literals (unlikely to match complex rex).
+
+      // If we cannot find the generating expression, matching fails.
+    }
+
+
+    // If no match found by index or structure/digest.
+<span class="nc" id="L2316">    return -1;</span>
+  }
+
+
+  /**
+   * Maps a {@link SqlAggFunction} (from the parsed SQL node) to a Calcite
+   * {@link SqlAggFunction} instance (often from {@link SqlStdOperatorTable}).
+   * This might involve checking operand types for overloaded functions.
+   */
+  protected SqlAggFunction mapSqlAggregation(SqlAggFunction sqlAggFunction) {
+    // This mapping is crucial and can be complex for UDFs or overloaded functions.
+    // For standard functions, we can often look them up in SqlStdOperatorTable.
+    // Using equals() might work if the parser uses standard instances.
+    // Using name comparison is a fallback but ignores overloading.
+
+    // Try direct instance check first (if parser uses std instances)
+<span class="nc bnc" id="L2332" title="All 2 branches missed.">    if (sqlAggFunction == SqlStdOperatorTable.COUNT) return SqlStdOperatorTable.COUNT;</span>
+<span class="nc bnc" id="L2333" title="All 2 branches missed.">    if (sqlAggFunction == SqlStdOperatorTable.SUM) return SqlStdOperatorTable.SUM;</span>
+<span class="nc bnc" id="L2334" title="All 2 branches missed.">    if (sqlAggFunction == SqlStdOperatorTable.AVG) return SqlStdOperatorTable.AVG;</span>
+<span class="nc bnc" id="L2335" title="All 2 branches missed.">    if (sqlAggFunction == SqlStdOperatorTable.MIN) return SqlStdOperatorTable.MIN;</span>
+<span class="nc bnc" id="L2336" title="All 2 branches missed.">    if (sqlAggFunction == SqlStdOperatorTable.MAX) return SqlStdOperatorTable.MAX;</span>
+    // Add others like SUM0, STDDEV_POP, STDDEV_SAMP, VAR_POP, VAR_SAMP, COLLECT, FUSION, etc.
+
+    // Fallback: Lookup by name (case-insensitive) in standard table.
+    // WARNING: This ignores overloading based on operand types or syntax (e.g., COUNT(*), COUNT(col), COUNT(DISTINCT col)).
+    // The AggregateCall creation needs to handle the specifics (e.g., arg list, distinct flag).
+<span class="nc" id="L2342">    String name = sqlAggFunction.getName();</span>
+<span class="nc" id="L2343">    List&lt;SqlOperator&gt; stdOperators = SqlStdOperatorTable.instance().getOperatorList();</span>
+<span class="nc bnc" id="L2344" title="All 2 branches missed.">    for (SqlOperator op : stdOperators) {</span>
+<span class="nc bnc" id="L2345" title="All 4 branches missed.">      if (op instanceof SqlAggFunction &amp;&amp; op.getName().equalsIgnoreCase(name)) {</span>
+        // Found a match by name. Return the standard instance.
+        // This assumes the first match by name is correct, which is risky for overloads.
+        // A real implementation might need the SqlFunction based on SqlIdentifier from parser.
+<span class="nc" id="L2349">        return (SqlAggFunction) op;</span>
+      }
+<span class="nc" id="L2351">    }</span>
+
+    // If it's not standard, assume it's a UDAF registered elsewhere (e.g., in catalogReader).
+    // Need a way to look up UDAFs. CatalogReader might provide this.
+    // SqlOperator op = catalogReader.lookupAggFunction(sqlAggFunction.getSqlIdentifier()); // Hypothetical lookup
+    // if (op instanceof SqlAggFunction) return (SqlAggFunction) op;
+
+<span class="nc" id="L2358">    throw new UnsupportedOperationException(&quot;Cannot map SqlAggFunction '&quot; + sqlAggFunction.getName()</span>
+        + &quot;' to a known Calcite Aggregation. Check standard functions or UDAF registration.&quot;);
+  }
+
+  /**
+   * Generates a default alias for an aggregate call if none is provided.
+   */
+  private String generateAggAlias(SqlAggFunction function, int index) {
+    // Mimic Calcite's default naming like $f0, $f1 or EXPR$1
+    // Using function name might be clearer but can clash if function is used multiple times.
+    // return function.getName() + &quot;$&quot; + index; // Potential clash
+<span class="nc" id="L2369">    return &quot;$f&quot; + index; // Calcite-like default</span>
+  }
+
+  /**
+   * Information about a parsed aggregate call, extracted by AggregateFinder.
+   * Used to bridge between SqlNode parsing and AggregateCall creation.
+   */
+  protected static class AggregateCallInfo {
+    final SqlAggFunction sqlAggFunction;
+    final List&lt;SqlNode&gt; sqlOperands;
+    final boolean isDistinct;
+    final boolean isApproximate;
+    final @Nullable SqlNode filter;
+    final @Nullable SqlNodeList orderKeys; // ORDER BY within aggregate
+    final @Nullable String alias; // Alias from SELECT list, if any
+    final SqlCall originalNode; // The original SqlCall node (e.g., SUM(x))
+
+<span class="nc" id="L2386">    AggregateCallInfo(SqlCall call, @Nullable String alias) {</span>
+<span class="nc" id="L2387">      this.originalNode = call;</span>
+<span class="nc" id="L2388">      this.sqlAggFunction = (SqlAggFunction) call.getOperator();</span>
+
+      // Determine distinctness - check for SqlSelectKeyword.DISTINCT modifier
+      // This depends on how the parser represents it. Assume call.getFunctionQuantifier() exists.
+<span class="nc" id="L2392">      SqlLiteral quantifier = call.getFunctionQuantifier();</span>
+<span class="nc bnc" id="L2393" title="All 4 branches missed.">      this.isDistinct = quantifier != null &amp;&amp; quantifier.getValue() == SqlSelectKeyword.DISTINCT;</span>
+
+      // Check for APPROXIMATE keyword (if supported by parser)
+<span class="nc" id="L2396">      this.isApproximate = false; // TODO: Detect APPROXIMATE keyword</span>
+
+      // Operands, FILTER, ORDER BY depend on the specific SqlAggFunction's syntax &amp; parsing.
+      // Standard syntax: AGG( [DISTINCT] arg1, ... ) [ FILTER (WHERE ...) ] [ WITHIN GROUP (ORDER BY ...) ]
+      // Need to parse these components from the SqlCall structure.
+      // This is complex and depends heavily on the parser implementation.
+
+      // Simple assumption: Operands are direct children.
+<span class="nc" id="L2404">      this.sqlOperands = call.getOperandList(); // This might include FILTER/ORDER BY nodes if parser flattens them. Needs refinement.</span>
+
+      // TODO: Extract FILTER clause if present. Requires inspecting operands based on operator syntax.
+<span class="nc" id="L2407">      this.filter = findAggFilter(call);</span>
+
+      // TODO: Extract ORDER BY within aggregate if present. Requires inspecting operands.
+<span class="nc" id="L2410">      this.orderKeys = findAggOrderKeys(call);</span>
+
+      // Adjust sqlOperands to exclude filter/order keys if they were included by getOperandList()
+      // This requires knowing the exact structure produced by the parser for aggregate calls.
+
+<span class="nc" id="L2415">      this.alias = alias;</span>
+<span class="nc" id="L2416">    }</span>
+
+    // Placeholder: Logic to find FILTER clause within SqlCall operands
+    private @Nullable SqlNode findAggFilter(SqlCall call) {
+      // Example: Check if last operand is a FILTER operator call? Depends on parser.
+      // SqlNode lastOperand = call.getOperandList().isEmpty() ? null : call.getOperandList().get(call.getOperandList().size() - 1);
+      // if (lastOperand instanceof SqlCall &amp;&amp; ((SqlCall) lastOperand).getOperator().getName().equals(&quot;FILTER&quot;)) {
+      //     return ((SqlCall) lastOperand).getOperandList().get(0); // The WHERE condition
+      // }
+<span class="nc" id="L2425">      return null; // Not implemented robustly</span>
+    }
+
+    // Placeholder: Logic to find ORDER BY clause within SqlCall operands
+    private @Nullable SqlNodeList findAggOrderKeys(SqlCall call) {
+      // Example: Check for WITHIN GROUP (ORDER BY ...)? Depends on parser.
+<span class="nc" id="L2431">      return null; // Not implemented robustly</span>
+    }
+
+
+    // Use originalNode's digest or string for equals/hashCode. String is simpler but less robust.
+    @Override
+    public boolean equals(Object o) {
+<span class="nc bnc" id="L2438" title="All 2 branches missed.">      if (this == o) return true;</span>
+<span class="nc bnc" id="L2439" title="All 4 branches missed.">      if (o == null || getClass() != o.getClass()) return false;</span>
+<span class="nc" id="L2440">      AggregateCallInfo that = (AggregateCallInfo) o;</span>
+      // Compare based on the original SqlNode structure/string.
+<span class="nc" id="L2442">      return Objects.equals(originalNode.toString(), that.originalNode.toString());</span>
+    }
+
+    @Override
+    public int hashCode() {
+<span class="nc" id="L2447">      return Objects.hash(originalNode.toString());</span>
+    }
+
+    @Override
+    public String toString() {
+<span class="nc bnc" id="L2452" title="All 2 branches missed.">      return originalNode.toString() + (alias != null ? &quot; AS &quot; + alias : &quot;&quot;);</span>
+    }
+  }
+
+<span class="nc" id="L2456">  protected static class IdentifierCollector extends SqlBasicVisitor&lt;Void&gt; {</span>
+<span class="nc" id="L2457">    private final List&lt;SqlIdentifier&gt; identifiers = new ArrayList&lt;&gt;();</span>
+
+    @Override
+    public Void visit(SqlIdentifier identifier) {
+<span class="nc" id="L2461">      identifiers.add(identifier);</span>
+<span class="nc" id="L2462">      return super.visit(identifier);</span>
+    }
+
+    public static List&lt;SqlIdentifier&gt; collect(SqlNode node) {
+<span class="nc" id="L2466">      IdentifierCollector collector = new IdentifierCollector();</span>
+<span class="nc" id="L2467">      node.accept(collector);</span>
+<span class="nc" id="L2468">      return collector.identifiers;</span>
+    }
+  }
+
+  /**
+   * Visitor to find aggregate calls within a SqlNode tree (SELECT list, HAVING).
+   * Needs careful handling of OVER clauses and aliases.
+   */
+<span class="nc" id="L2476">  protected static class AggregateFinder extends SqlBasicVisitor&lt;Void&gt; {</span>
+<span class="nc" id="L2477">    private final List&lt;AggregateCallInfo&gt; aggCalls = new ArrayList&lt;&gt;();</span>
+    // Avoid infinite recursion on cyclic structures (though unlikely in valid SQL AST)
+<span class="nc" id="L2479">    private final Set&lt;SqlNode&gt; visited = new HashSet&lt;&gt;();</span>
+    // Track alias for the immediate aggregate function if found via AS
+<span class="nc" id="L2481">    private @Nullable String currentAlias = null;</span>
+
+    public List&lt;AggregateCallInfo&gt; getAggCalls() {
+<span class="nc" id="L2484">      return aggCalls;</span>
+    }
+
+    @Override
+    public Void visit(SqlCall call) {
+<span class="nc bnc" id="L2489" title="All 2 branches missed.">      if (!visited.add(call)) {</span>
+<span class="nc" id="L2490">        return null; // Already visited</span>
+      }
+
+<span class="nc" id="L2493">      SqlOperator operator = call.getOperator();</span>
+
+      // --- Special Handling ---
+
+      // 1. AS Operator: Capture alias and visit operand
+<span class="nc bnc" id="L2498" title="All 2 branches missed.">      if (operator.equals(SqlStdOperatorTable.AS)) {</span>
+<span class="nc bnc" id="L2499" title="All 2 branches missed.">        if (call.getOperandList().size() == 2) {</span>
+<span class="nc" id="L2500">          SqlNode potentialAgg = call.getOperandList().get(0);</span>
+<span class="nc" id="L2501">          SqlNode aliasNode = call.getOperandList().get(1);</span>
+<span class="nc" id="L2502">          String savedAlias = currentAlias; // Save outer alias context</span>
+<span class="nc bnc" id="L2503" title="All 2 branches missed.">          currentAlias = (aliasNode instanceof SqlIdentifier) ? ((SqlIdentifier) aliasNode).getSimple() : null;</span>
+          // Visit the expression that might be an aggregate
+<span class="nc" id="L2505">          potentialAgg.accept(this);</span>
+<span class="nc" id="L2506">          currentAlias = savedAlias; // Restore outer alias context</span>
+        }
+<span class="nc" id="L2508">        return null; // Don't recurse further into AS operands here</span>
+      }
+
+      // 2. OVER Operator: Visit the aggregate function operand, ignore window spec
+<span class="nc bnc" id="L2512" title="All 2 branches missed.">      if (operator.equals(SqlStdOperatorTable.OVER)) {</span>
+<span class="nc bnc" id="L2513" title="All 2 branches missed.">        if (!call.getOperandList().isEmpty()) {</span>
+<span class="nc" id="L2514">          SqlNode aggFunctionNode = call.getOperandList().get(0);</span>
+          // The alias applies to the OVER expression result, not the inner agg func directly
+          // Pass currentAlias=null when visiting the inner agg func? Or let it find its own alias if nested?
+          // Let's assume alias applies to the OVER result. We don't collect RexOver here, only base aggregates.
+          // So, visit the agg func part without passing the alias meant for the OVER().
+<span class="nc" id="L2519">          String savedAlias = currentAlias;</span>
+<span class="nc" id="L2520">          currentAlias = null;</span>
+<span class="nc" id="L2521">          aggFunctionNode.accept(this);</span>
+<span class="nc" id="L2522">          currentAlias = savedAlias;</span>
+        }
+<span class="nc" id="L2524">        return null; // Don't visit window spec operands (partition, order, frame)</span>
+      }
+
+      // 3. Aggregate Function Found: Create info and stop recursion here
+<span class="nc bnc" id="L2528" title="All 2 branches missed.">      if (operator instanceof SqlAggFunction) {</span>
+        // Use the alias captured from an enclosing AS operator, if any
+<span class="nc" id="L2530">        aggCalls.add(new AggregateCallInfo(call, currentAlias));</span>
+        // Reset alias context as it's been consumed
+<span class="nc" id="L2532">        currentAlias = null;</span>
+<span class="nc" id="L2533">        return null; // Do not recurse into arguments of the aggregate function itself</span>
+      }
+
+      // --- Default Recursion ---
+      // For other functions/operators, recurse into operands.
+      // Reset alias context for children, as AS applies only to the top level it modifies.
+<span class="nc" id="L2539">      String savedAlias = currentAlias;</span>
+<span class="nc" id="L2540">      currentAlias = null;</span>
+<span class="nc bnc" id="L2541" title="All 2 branches missed.">      for (SqlNode operand : call.getOperandList()) {</span>
+<span class="nc bnc" id="L2542" title="All 2 branches missed.">        if (operand != null) {</span>
+<span class="nc" id="L2543">          operand.accept(this);</span>
+        }
+<span class="nc" id="L2545">      }</span>
+<span class="nc" id="L2546">      currentAlias = savedAlias; // Restore alias context for siblings (though usually null here)</span>
+<span class="nc" id="L2547">      return null;</span>
+    }
+
+    @Override
+    public Void visit(SqlNodeList nodeList) {
+<span class="nc bnc" id="L2552" title="All 2 branches missed.">      if (!visited.add(nodeList)) {</span>
+<span class="nc" id="L2553">        return null;</span>
+      }
+      // Visit each element in the list. Reset alias context for each element.
+<span class="nc" id="L2556">      String savedAlias = currentAlias;</span>
+<span class="nc bnc" id="L2557" title="All 2 branches missed.">      for (SqlNode node : nodeList) {</span>
+<span class="nc bnc" id="L2558" title="All 2 branches missed.">        if (node != null) {</span>
+<span class="nc" id="L2559">          currentAlias = null; // Reset alias for each list item</span>
+<span class="nc" id="L2560">          node.accept(this);</span>
+        }
+<span class="nc" id="L2562">      }</span>
+<span class="nc" id="L2563">      currentAlias = savedAlias; // Restore context</span>
+<span class="nc" id="L2564">      return null;</span>
+    }
+
+    // Visit literals, identifiers, etc. - stop recursion
+<span class="nc" id="L2568">    @Override public Void visit(SqlLiteral literal) { visited.add(literal); return null; }</span>
+<span class="nc" id="L2569">    @Override public Void visit(SqlIdentifier id) { visited.add(id); return null; }</span>
+<span class="nc" id="L2570">    @Override public Void visit(SqlDataTypeSpec type) { visited.add(type); return null; }</span>
+<span class="nc" id="L2571">    @Override public Void visit(SqlDynamicParam param) { visited.add(param); return null; }</span>
+<span class="nc" id="L2572">    @Override public Void visit(SqlIntervalQualifier interval) { visited.add(interval); return null; }</span>
+  }
+
+  /**
+   * Represents one input relation (table, subquery, join result) within a scope.
+   * Includes alias, offset within a combined input type, and the RelNode itself.
+   */
+  public static class Frame {
+    final @Nullable String alias; // Explicit alias (from AS) or implicit (table name/CTE name)
+    final int offset; // Starting index of this frame's fields in the combined input row type (relevant for join input scopes)
+    final RelNode relNode; // The relational node this frame represents
+    final RelDataType rowType; // Cached row type from relNode
+    // Field aliases specific to this frame (e.g., from Project output). Stored here for consistency.
+    final ImmutableList&lt;String&gt; fieldAliases;
+
+    // Constructor for simple cases (single node, offset 0)
+    Frame(@Nullable String alias, int offset, RelNode relNode) {
+<span class="nc" id="L2589">      this(alias, offset, relNode, relNode.getRowType().getFieldNames()); // Default aliases from row type</span>
+<span class="nc" id="L2590">    }</span>
+
+    // Constructor allowing explicit field aliases (e.g., for Project output)
+<span class="nc" id="L2593">    Frame(@Nullable String alias, int offset, RelNode relNode, List&lt;String&gt; fieldAliases) {</span>
+<span class="nc" id="L2594">      this.alias = alias;</span>
+<span class="nc" id="L2595">      this.offset = offset;</span>
+<span class="nc" id="L2596">      this.relNode = Objects.requireNonNull(relNode, &quot;relNode&quot;);</span>
+<span class="nc" id="L2597">      this.rowType = relNode.getRowType(); // Use row type from RelNode directly</span>
+
+      // Ensure fieldAliases size matches rowType field count, use defaults if not.
+<span class="nc bnc" id="L2600" title="All 4 branches missed.">      if (fieldAliases != null &amp;&amp; fieldAliases.size() == this.rowType.getFieldCount()) {</span>
+<span class="nc" id="L2601">        this.fieldAliases = ImmutableList.copyOf(fieldAliases);</span>
+      } else {
+        // Mismatch or null aliases, use default field names from the RelNode's row type
+<span class="nc" id="L2604">        this.fieldAliases = ImmutableList.copyOf(this.rowType.getFieldNames());</span>
+      }
+<span class="nc" id="L2606">    }</span>
+
+    @Override
+    public String toString() {
+<span class="nc" id="L2610">      return &quot;Frame{&quot; +</span>
+          &quot;alias='&quot; + alias + '\'' +
+          &quot;, offset=&quot; + offset +
+<span class="nc" id="L2613">          &quot;, node=&quot; + relNode.getClass().getSimpleName() +</span>
+          &quot;, fields=&quot; + fieldAliases +
+          '}';
+    }
+  }
+
+  /**
+   * Utility class to check if a select statement requires aggregation.
+   * Looks for aggregate functions or GROUP BY / HAVING clauses.
+   */
+<span class="nc" id="L2623">  protected static class AggregateChecker extends SqlBasicVisitor&lt;Void&gt; {</span>
+<span class="nc" id="L2624">    private boolean containsAggregate = false;</span>
+<span class="nc" id="L2625">    private final Set&lt;SqlNode&gt; visited = new HashSet&lt;&gt;();</span>
+
+    public static boolean isAggregate(SqlSelect select) {
+<span class="nc bnc" id="L2628" title="All 4 branches missed.">      if (select.getGroup() != null || select.getHaving() != null) {</span>
+<span class="nc" id="L2629">        return true;</span>
+      }
+      // Check select list and order by (if aggregates allowed there)
+<span class="nc" id="L2632">      AggregateChecker checker = new AggregateChecker();</span>
+//      if (select.getSelectList() != null) {
+//        select.getSelectList().accept(checker);
+//        if (checker.containsAggregate) return true;
+//      }
+      // Standard SQL doesn't allow aggregates in ORDER BY unless also in SELECT/GROUP BY.
+      // If supporting extensions that allow it, check select.getOrderList() too.
+<span class="nc" id="L2639">      return checker.containsAggregate;</span>
+    }
+
+    @Override
+    public Void visit(SqlCall call) {
+<span class="nc bnc" id="L2644" title="All 4 branches missed.">      if (containsAggregate || !visited.add(call)) {</span>
+<span class="nc" id="L2645">        return null; // Stop if already found or visited</span>
+      }
+<span class="nc" id="L2647">      SqlOperator operator = call.getOperator();</span>
+
+      // Found aggregate function
+<span class="nc bnc" id="L2650" title="All 2 branches missed.">      if (operator instanceof SqlAggFunction) {</span>
+<span class="nc" id="L2651">        containsAggregate = true;</span>
+<span class="nc" id="L2652">        return null; // Stop recursion here</span>
+      }
+
+      // Do not recurse into OVER clause window spec, only the function part
+<span class="nc bnc" id="L2656" title="All 2 branches missed.">      if (operator.equals(SqlStdOperatorTable.OVER)) {</span>
+<span class="nc bnc" id="L2657" title="All 2 branches missed.">        if (!call.getOperandList().isEmpty()) {</span>
+<span class="nc" id="L2658">          call.getOperandList().get(0).accept(this); // Visit only the agg func part</span>
+        }
+<span class="nc" id="L2660">        return null; // Stop recursion here for OVER</span>
+      }
+
+      // Default: visit operands
+<span class="nc bnc" id="L2664" title="All 2 branches missed.">      for (SqlNode operand : call.getOperandList()) {</span>
+<span class="nc bnc" id="L2665" title="All 2 branches missed.">        if (operand != null) {</span>
+<span class="nc" id="L2666">          operand.accept(this);</span>
+<span class="nc bnc" id="L2667" title="All 2 branches missed.">          if (containsAggregate) return null; // Stop early if found in operand</span>
+        }
+<span class="nc" id="L2669">      }</span>
+<span class="nc" id="L2670">      return null;</span>
+    }
+
+    @Override
+    public Void visit(SqlNodeList nodeList) {
+<span class="nc bnc" id="L2675" title="All 4 branches missed.">      if (containsAggregate || !visited.add(nodeList)) {</span>
+<span class="nc" id="L2676">        return null;</span>
+      }
+<span class="nc bnc" id="L2678" title="All 2 branches missed.">      for (SqlNode node : nodeList) {</span>
+<span class="nc bnc" id="L2679" title="All 2 branches missed.">        if (node != null) {</span>
+<span class="nc" id="L2680">          node.accept(this);</span>
+<span class="nc bnc" id="L2681" title="All 2 branches missed.">          if (containsAggregate) return null;</span>
+        }
+<span class="nc" id="L2683">      }</span>
+<span class="nc" id="L2684">      return null;</span>
+    }
+
+    // Stop recursion at leaves
+<span class="nc" id="L2688">    @Override public Void visit(SqlLiteral literal) { visited.add(literal); return null; }</span>
+<span class="nc" id="L2689">    @Override public Void visit(SqlIdentifier id) { visited.add(id); return null; }</span>
+<span class="nc" id="L2690">    @Override public Void visit(SqlDataTypeSpec type) { visited.add(type); return null; }</span>
+<span class="nc" id="L2691">    @Override public Void visit(SqlDynamicParam param) { visited.add(param); return null; }</span>
+<span class="nc" id="L2692">    @Override public Void visit(SqlIntervalQualifier interval) { visited.add(interval); return null; }</span>
+  }
+
+} // End class SqlToRelConverter
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

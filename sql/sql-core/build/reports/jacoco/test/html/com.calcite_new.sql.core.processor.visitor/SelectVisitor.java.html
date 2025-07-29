@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>SelectVisitor.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">sql-core</a> &gt; <a href="index.source.html" class="el_package">com.calcite_new.sql.core.processor.visitor</a> &gt; <span class="el_source">SelectVisitor.java</span></div><h1>SelectVisitor.java</h1><pre class="source lang-java linenums">package com.calcite_new.sql.core.processor.visitor;
+
+import com.calcite_new.sql.core.processor.utils.InClauseAnalyzer;
+import com.calcite_new.sql.model.enums.StatementType;
+import com.calcite_new.sql.model.entity.context.clause.SelectClause;
+import com.calcite_new.sql.model.entity.context.clause.WhereClause;
+import org.apache.calcite.sql.*;
+
+public class SelectVisitor extends BaseStatementVisitor {
+
+    public SelectVisitor(String userName, String defaultDatabase, String defaultSchema) {
+<span class="nc" id="L12">        super(userName, defaultDatabase, defaultSchema);</span>
+<span class="nc" id="L13">    }</span>
+
+    @Override
+    public SqlNodeVisitor.Result visit(SqlCall call) {
+<span class="nc" id="L17">        SqlSelect select = (SqlSelect) call;</span>
+<span class="nc" id="L18">        SqlNodeVisitor.Result result = new SqlNodeVisitor.Result();</span>
+<span class="nc" id="L19">        result.setStatementType(StatementType.SELECT);</span>
+
+<span class="nc" id="L21">        SelectClause selectClause = new SelectClause();</span>
+<span class="nc" id="L22">        selectClause.setHasSelectAll(isSelectAll(select));</span>
+<span class="nc" id="L23">        selectClause.setHasDistinct(select.isDistinct());</span>
+<span class="nc" id="L24">        result.getContext().setSelectClause(selectClause);</span>
+
+<span class="nc bnc" id="L26" title="All 2 branches missed.">        if (select.getFrom() != null) {</span>
+<span class="nc" id="L27">            SqlNodeVisitor visitor = new SqlNodeVisitor(userName, defaultDatabase, defaultSchema);</span>
+<span class="nc" id="L28">            SqlNodeVisitor.Result fromResult = select.getFrom().accept(visitor);</span>
+<span class="nc" id="L29">            SqlNodeVisitor.mergeResults(result, fromResult);</span>
+<span class="nc" id="L30">            addAccess(select.getFrom(), result);</span>
+        }
+
+<span class="nc bnc" id="L33" title="All 2 branches missed.">        if (select.getWhere() != null) {</span>
+<span class="nc" id="L34">            SqlNode whereExpr = select.getWhere();</span>
+<span class="nc" id="L35">            WhereClause whereClause = new WhereClause();</span>
+<span class="nc" id="L36">            InClauseAnalyzer.InClauseInfo inInfo = InClauseAnalyzer.analyze(whereExpr);</span>
+<span class="nc" id="L37">            whereClause.setHasInWithSubquery(inInfo.hasInWithSubquery());</span>
+<span class="nc" id="L38">            whereClause.setHasInWithConstant(inInfo.hasInWithConstant());</span>
+
+<span class="nc" id="L40">            result.getContext().setWhereClause(whereClause);</span>
+
+<span class="nc" id="L42">            SqlNodeVisitor visitor = new SqlNodeVisitor(userName, defaultDatabase, defaultSchema);</span>
+<span class="nc" id="L43">            SqlNodeVisitor.Result whereResult = select.getWhere().accept(visitor);</span>
+<span class="nc" id="L44">            SqlNodeVisitor.mergeResults(result, whereResult);</span>
+        }
+
+<span class="nc" id="L47">        return result;</span>
+    }
+
+
+    private static boolean isSelectAll(SqlSelect select) {
+<span class="nc bnc" id="L52" title="All 4 branches missed.">        return select.getSelectList().size() == 1 &amp;&amp; &quot;*&quot;.equals(select.getSelectList().get(0).toString());</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

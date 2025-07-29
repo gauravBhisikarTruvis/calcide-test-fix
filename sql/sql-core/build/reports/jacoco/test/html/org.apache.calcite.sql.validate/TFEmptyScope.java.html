@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>TFEmptyScope.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">sql-core</a> &gt; <a href="index.source.html" class="el_package">org.apache.calcite.sql.validate</a> &gt; <span class="el_source">TFEmptyScope.java</span></div><h1>TFEmptyScope.java</h1><pre class="source lang-java linenums">package org.apache.calcite.sql.validate;
+
+import com.calcite_new.core.dialect.sql.SqlDialect;
+import com.calcite_new.core.model.EntityQualifier;
+import com.calcite_new.core.model.Identifier;
+import org.apache.calcite.jdbc.CalciteSchema;
+import org.apache.calcite.plan.RelOptSchema;
+import org.apache.calcite.prepare.Prepare;
+import org.apache.calcite.prepare.RelOptTableImpl;
+import org.apache.calcite.rel.type.RelDataType;
+import org.apache.calcite.rel.type.StructKind;
+import org.apache.calcite.schema.Table;
+import org.apache.calcite.schema.Wrapper;
+import org.apache.calcite.util.Util;
+
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * Deviant implementation of {@link SqlValidatorScope} for the top of the scope
+ */
+public class TFEmptyScope extends EmptyScope {
+  private final SqlDialect dialect;
+
+  public TFEmptyScope(SqlDialect dialect, SqlValidatorImpl validator) {
+<span class="nc" id="L26">    super(validator);</span>
+<span class="nc" id="L27">    this.dialect = dialect;</span>
+<span class="nc" id="L28">  }</span>
+
+
+  @Override public void resolveTable(List&lt;String&gt; names, SqlNameMatcher nameMatcher,
+                                     Path path, Resolved resolved) {
+<span class="nc" id="L33">    final List&lt;Resolve&gt; imperfectResolves = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L34">    final List&lt;Resolve&gt; resolves = ((ResolvedImpl) resolved).resolves;</span>
+
+    // Look in the default schema, then default catalog, then root schema.
+<span class="nc bnc" id="L37" title="All 2 branches missed.">    for (List&lt;String&gt; schemaPath : validator.catalogReader.getSchemaPaths()) {</span>
+<span class="nc" id="L38">      resolve_(validator.catalogReader.getRootSchema(), names, schemaPath,</span>
+          nameMatcher, path, resolved);
+<span class="nc bnc" id="L40" title="All 2 branches missed.">      for (Resolve resolve : resolves) {</span>
+<span class="nc bnc" id="L41" title="All 2 branches missed.">        if (resolve.remainingNames.isEmpty()) {</span>
+          // There is a full match. Return it as the only match.
+<span class="nc" id="L43">          ((ResolvedImpl) resolved).clear();</span>
+<span class="nc" id="L44">          resolves.add(resolve);</span>
+<span class="nc" id="L45">          return;</span>
+        }
+<span class="nc" id="L47">      }</span>
+<span class="nc" id="L48">      imperfectResolves.addAll(resolves);</span>
+<span class="nc" id="L49">    }</span>
+    // If there were no matches in the last round, restore those found in
+    // previous rounds
+<span class="nc bnc" id="L52" title="All 2 branches missed.">    if (resolves.isEmpty()) {</span>
+<span class="nc" id="L53">      resolves.addAll(imperfectResolves);</span>
+    }
+<span class="nc" id="L55">  }</span>
+
+  private void resolve_(final CalciteSchema rootSchema, List&lt;String&gt; names,
+                        List&lt;String&gt; schemaNames, SqlNameMatcher nameMatcher, Path path,
+                        Resolved resolved) {
+<span class="nc" id="L60">    EntityQualifier qualifier = new EntityQualifier(names, schemaNames, dialect);</span>
+<span class="nc" id="L61">    final List&lt;String&gt; concat = qualifier.getQualifiers().stream().map(Identifier::getNormalizedName).toList();</span>
+<span class="nc" id="L62">    CalciteSchema schema = rootSchema;</span>
+<span class="nc" id="L63">    SqlValidatorNamespace namespace = null;</span>
+<span class="nc" id="L64">    List&lt;String&gt; remainingNames = concat;</span>
+<span class="nc bnc" id="L65" title="All 2 branches missed.">    for (String schemaName : concat) {</span>
+<span class="nc bnc" id="L66" title="All 2 branches missed.">      if (schema == rootSchema</span>
+<span class="nc bnc" id="L67" title="All 2 branches missed.">          &amp;&amp; nameMatcher.matches(schemaName, schema.name)) {</span>
+<span class="nc" id="L68">        remainingNames = Util.skip(remainingNames);</span>
+<span class="nc" id="L69">        continue;</span>
+      }
+<span class="nc" id="L71">      final CalciteSchema subSchema =</span>
+<span class="nc" id="L72">          schema.getSubSchema(schemaName, nameMatcher.isCaseSensitive());</span>
+<span class="nc bnc" id="L73" title="All 2 branches missed.">      if (subSchema != null) {</span>
+<span class="nc" id="L74">        path = path.plus(null, -1, subSchema.name, StructKind.NONE);</span>
+<span class="nc" id="L75">        remainingNames = Util.skip(remainingNames);</span>
+<span class="nc" id="L76">        schema = subSchema;</span>
+<span class="nc" id="L77">        namespace = new SchemaNamespace(validator, path.stepNames());</span>
+<span class="nc" id="L78">        continue;</span>
+      }
+<span class="nc" id="L80">      CalciteSchema.TableEntry entry =</span>
+<span class="nc" id="L81">          schema.getTable(schemaName, nameMatcher.isCaseSensitive());</span>
+<span class="nc bnc" id="L82" title="All 2 branches missed.">      if (entry == null) {</span>
+<span class="nc" id="L83">        entry =</span>
+<span class="nc" id="L84">            schema.getTableBasedOnNullaryFunction(schemaName,</span>
+<span class="nc" id="L85">                nameMatcher.isCaseSensitive());</span>
+      }
+<span class="nc bnc" id="L87" title="All 2 branches missed.">      if (entry != null) {</span>
+<span class="nc" id="L88">        path = path.plus(null, -1, entry.name, StructKind.NONE);</span>
+<span class="nc" id="L89">        remainingNames = Util.skip(remainingNames);</span>
+<span class="nc" id="L90">        final Table table = entry.getTable();</span>
+<span class="nc" id="L91">        SqlValidatorTable table2 = null;</span>
+<span class="nc bnc" id="L92" title="All 2 branches missed.">        if (table instanceof Wrapper) {</span>
+<span class="nc" id="L93">          table2 = ((Wrapper) table).unwrap(Prepare.PreparingTable.class);</span>
+        }
+<span class="nc bnc" id="L95" title="All 2 branches missed.">        if (table2 == null) {</span>
+<span class="nc" id="L96">          final RelOptSchema relOptSchema =</span>
+<span class="nc" id="L97">              validator.catalogReader.unwrap(RelOptSchema.class);</span>
+<span class="nc" id="L98">          final RelDataType rowType = table.getRowType(validator.typeFactory);</span>
+<span class="nc" id="L99">          table2 = RelOptTableImpl.create(relOptSchema, rowType, entry, null);</span>
+        }
+<span class="nc" id="L101">        namespace = new TableNamespace(validator, table2);</span>
+<span class="nc" id="L102">        resolved.found(namespace, false, this, path, remainingNames);</span>
+<span class="nc" id="L103">        return;</span>
+      }
+      // neither sub-schema nor table
+<span class="nc bnc" id="L106" title="All 2 branches missed.">      if (namespace != null</span>
+<span class="nc bnc" id="L107" title="All 2 branches missed.">          &amp;&amp; !remainingNames.equals(names)) {</span>
+<span class="nc" id="L108">        resolved.found(namespace, false, this, path, remainingNames);</span>
+      }
+<span class="nc" id="L110">      return;</span>
+    }
+<span class="nc" id="L112">  }</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

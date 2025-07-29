@@ -17,7 +17,7 @@ import java.util.List;
  */
 public class BigQueryFoodmartCatalogBuilder {
   private EntityCatalog catalog = new EntityCatalog();
-  private final Identifier dialect = Identifier.of(Product.BIG_QUERY.name, new BigQuerySqlDialect());
+  private final Identifier dialect = Identifier.of(Product.BIGQUERY.name, new BigQuerySqlDialect());
   private Identifier projectName = Identifier.of("test", new BigQuerySqlDialect());
   private Identifier datasetName = Identifier.of("foodmart", new BigQuerySqlDialect());
 

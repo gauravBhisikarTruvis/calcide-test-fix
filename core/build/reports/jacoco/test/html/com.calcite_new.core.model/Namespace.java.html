@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Namespace.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">core</a> &gt; <a href="index.source.html" class="el_package">com.calcite_new.core.model</a> &gt; <span class="el_source">Namespace.java</span></div><h1>Namespace.java</h1><pre class="source lang-java linenums">package com.calcite_new.core.model;
+
+import com.calcite_new.core.model.entity.DatabaseEntity;
+import com.calcite_new.core.model.entity.Table;
+import com.calcite_new.core.model.entity.View;
+import org.apache.calcite.schema.Schema;
+import org.apache.calcite.schema.impl.AbstractSchema;
+
+import java.util.Map;
+import java.util.NavigableMap;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.stream.Collectors;
+
+/**
+ * Namespace is a schema that contains a collection of database entities and child namespaces.
+ * It is used to represent a database schema in the EntityCatalog.
+ */
+public class Namespace extends AbstractSchema {
+  private final Identifier name;
+<span class="nc" id="L21">  private final Map&lt;Identifier, Namespace&gt; children = new ConcurrentHashMap&lt;&gt;();</span>
+<span class="nc" id="L22">  private final EntityMap&lt;Table&gt; tables = new EntityMap&lt;&gt;();</span>
+<span class="nc" id="L23">  private final EntityMap&lt;View&gt; views = new EntityMap&lt;&gt;();</span>
+
+<span class="nc" id="L25">  public Namespace(Identifier name) {</span>
+<span class="nc" id="L26">    this.name = name;</span>
+<span class="nc" id="L27">  }</span>
+
+  public Identifier getName() {
+<span class="nc" id="L30">    return name;</span>
+  }
+
+  public void addTable(Table table) {
+<span class="nc" id="L34">    tables.put(table);</span>
+<span class="nc" id="L35">  }</span>
+
+  public void addView(View view) {
+<span class="nc" id="L38">    views.put(view);</span>
+<span class="nc" id="L39">  }</span>
+
+  public Table getTable(Identifier name) {
+<span class="nc" id="L42">    return tables.get(name);</span>
+  }
+
+  public Namespace getNamespace(Identifier name) {
+<span class="nc" id="L46">    return children.get(name);</span>
+  }
+
+  Namespace getOrAddNamespace(Identifier name) {
+<span class="nc" id="L50">    return children.computeIfAbsent(name, Namespace::new);</span>
+  }
+
+  @Override
+  protected Map&lt;String, Schema&gt; getSubSchemaMap() {
+    // convert children to a map of string to schema
+<span class="nc" id="L56">    return children.entrySet().stream()</span>
+<span class="nc" id="L57">        .collect(Collectors.toMap(</span>
+<span class="nc" id="L58">            entry -&gt; entry.getKey().getNormalizedName(),</span>
+            Map.Entry::getValue));
+  }
+
+  @Override
+  protected Map&lt;String, org.apache.calcite.schema.Table&gt; getTableMap() {
+    // return a map of string to table
+<span class="nc" id="L65">    return tables.entities.entrySet().stream()</span>
+<span class="nc" id="L66">        .collect(Collectors.toMap(</span>
+<span class="nc" id="L67">            entry -&gt; entry.getKey().name.getNormalizedName(),</span>
+<span class="nc" id="L68">            entry -&gt; ScannableTable.create(entry.getValue())));</span>
+  }
+
+<span class="nc" id="L71">  private record Key(Identifier name, long createdTimestamp) implements Comparable&lt;Key&gt; {</span>
+
+    @Override
+    public int compareTo(Key other) {
+<span class="nc" id="L75">      int cmp = name.getNormalizedName().compareTo(other.name.getNormalizedName());</span>
+<span class="nc bnc" id="L76" title="All 2 branches missed.">      if (cmp != 0) {</span>
+<span class="nc" id="L77">        return cmp;</span>
+      }
+<span class="nc" id="L79">      return Long.compare(createdTimestamp, other.createdTimestamp);</span>
+    }
+
+  }
+
+<span class="nc" id="L84">  private static class EntityMap&lt;V extends DatabaseEntity&gt; {</span>
+<span class="nc" id="L85">    private final NavigableMap&lt;Key, V&gt; entities = new ConcurrentSkipListMap&lt;&gt;();</span>
+
+    public V get(Identifier name) {
+<span class="nc" id="L88">      Key key = new Key(name, System.currentTimeMillis());</span>
+<span class="nc" id="L89">      Map.Entry&lt;Key, V&gt; entry = entities.floorEntry(key);</span>
+<span class="nc bnc" id="L90" title="All 2 branches missed.">      if (entry.getKey().name.equals(name)) {</span>
+<span class="nc" id="L91">        return entry.getValue();</span>
+      }
+<span class="nc" id="L93">      return null;</span>
+    }
+
+    public void put(V entity) {
+<span class="nc" id="L97">      Key key = new Key(entity.getName(), entity.getCreatedTimestamp());</span>
+<span class="nc" id="L98">      entities.put(key, entity);</span>
+<span class="nc" id="L99">    }</span>
+  }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

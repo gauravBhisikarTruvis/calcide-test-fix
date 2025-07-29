@@ -1,0 +1,961 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>SnowflakeSqlToCalciteVisitor.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">sql-parser</a> &gt; <a href="index.source.html" class="el_package">com.calcite_new.sql.parser.snowflake</a> &gt; <span class="el_source">SnowflakeSqlToCalciteVisitor.java</span></div><h1>SnowflakeSqlToCalciteVisitor.java</h1><pre class="source lang-java linenums">package com.calcite_new.sql.parser.snowflake;
+
+import com.calcite_new.sql.parser.antlr.SnowflakeSqlBaseVisitor;
+import com.calcite_new.sql.parser.antlr.SnowflakeSqlParser;
+import org.antlr.v4.runtime.ParserRuleContext;
+import org.antlr.v4.runtime.tree.TerminalNode;
+import org.apache.calcite.sql.*;
+import org.apache.calcite.sql.fun.SqlStdOperatorTable;
+import org.apache.calcite.sql.parser.SqlParserPos;
+import org.apache.calcite.sql.type.SqlTypeName;
+
+import java.util.*;
+import java.util.stream.Collectors;
+
+<span class="nc" id="L15">public class SnowflakeSqlToCalciteVisitor extends SnowflakeSqlBaseVisitor&lt;SqlNode&gt; {</span>
+
+  /**
+   * Maps Snowflake data type names to Calcite SqlTypeName enum values
+   */
+<span class="nc" id="L20">  private static final Map&lt;String, SqlTypeName&gt; TYPE_MAPPING = createTypeMapping();</span>
+
+  /**
+   * Maps Snowflake data type prefixes to Calcite SqlTypeName for types that can include parameters
+   */
+<span class="nc" id="L25">  private static final Map&lt;String, SqlTypeName&gt; TYPE_PREFIX_MAPPING = createTypePrefixMapping();</span>
+
+  /**
+   * Initializes the mapping from Snowflake type names to Calcite SqlTypeName enum values
+   */
+  private static Map&lt;String, SqlTypeName&gt; createTypeMapping() {
+
+<span class="nc" id="L32">    return Map.ofEntries(</span>
+        // Exact numeric types
+<span class="nc" id="L34">        Map.entry(&quot;INT&quot;, SqlTypeName.INTEGER),</span>
+<span class="nc" id="L35">        Map.entry(&quot;INTEGER&quot;, SqlTypeName.INTEGER),</span>
+<span class="nc" id="L36">        Map.entry(&quot;BIGINT&quot;, SqlTypeName.BIGINT),</span>
+<span class="nc" id="L37">        Map.entry(&quot;SMALLINT&quot;, SqlTypeName.SMALLINT),</span>
+
+        // Approximate numeric types
+<span class="nc" id="L40">        Map.entry(&quot;FLOAT&quot;, SqlTypeName.FLOAT),</span>
+<span class="nc" id="L41">        Map.entry(&quot;FLOAT4&quot;, SqlTypeName.FLOAT),</span>
+<span class="nc" id="L42">        Map.entry(&quot;FLOAT8&quot;, SqlTypeName.FLOAT),</span>
+<span class="nc" id="L43">        Map.entry(&quot;DOUBLE&quot;, SqlTypeName.DOUBLE),</span>
+<span class="nc" id="L44">        Map.entry(&quot;DOUBLE PRECISION&quot;, SqlTypeName.DOUBLE),</span>
+<span class="nc" id="L45">        Map.entry(&quot;REAL&quot;, SqlTypeName.DOUBLE),</span>
+
+        // Text types
+<span class="nc" id="L48">        Map.entry(&quot;TEXT&quot;, SqlTypeName.VARCHAR),</span>
+
+        // Boolean type
+<span class="nc" id="L51">        Map.entry(&quot;BOOLEAN&quot;, SqlTypeName.BOOLEAN),</span>
+
+        // Date/time types
+<span class="nc" id="L54">        Map.entry(&quot;DATE&quot;, SqlTypeName.DATE),</span>
+
+        // Snowflake-specific types
+<span class="nc" id="L57">        Map.entry(&quot;VARIANT&quot;, SqlTypeName.ANY),</span>
+<span class="nc" id="L58">        Map.entry(&quot;OBJECT&quot;, SqlTypeName.MAP),</span>
+<span class="nc" id="L59">        Map.entry(&quot;ARRAY&quot;, SqlTypeName.ARRAY),</span>
+<span class="nc" id="L60">        Map.entry(&quot;GEOGRAPHY&quot;, SqlTypeName.VARCHAR),</span>
+<span class="nc" id="L61">        Map.entry(&quot;GEOMETRY&quot;, SqlTypeName.VARCHAR));</span>
+  }
+
+  /**
+   * Initializes the mapping from Snowflake type prefixes to Calcite SqlTypeName
+   * for types that can include parameters (precision, scale, length, etc.)
+   */
+  private static Map&lt;String, SqlTypeName&gt; createTypePrefixMapping() {
+<span class="nc" id="L69">    Map&lt;String, SqlTypeName&gt; map = new HashMap&lt;&gt;();</span>
+
+    // Numeric types with precision/scale
+<span class="nc" id="L72">    map.put(&quot;NUMBER&quot;, SqlTypeName.DECIMAL);</span>
+<span class="nc" id="L73">    map.put(&quot;DECIMAL&quot;, SqlTypeName.DECIMAL);</span>
+<span class="nc" id="L74">    map.put(&quot;NUMERIC&quot;, SqlTypeName.DECIMAL);</span>
+
+    // String types with length
+<span class="nc" id="L77">    map.put(&quot;VARCHAR&quot;, SqlTypeName.VARCHAR);</span>
+<span class="nc" id="L78">    map.put(&quot;CHAR&quot;, SqlTypeName.CHAR);</span>
+<span class="nc" id="L79">    map.put(&quot;CHARACTER&quot;, SqlTypeName.CHAR);</span>
+<span class="nc" id="L80">    map.put(&quot;STRING&quot;, SqlTypeName.VARCHAR);</span>
+<span class="nc" id="L81">    map.put(&quot;BINARY&quot;, SqlTypeName.BINARY);</span>
+<span class="nc" id="L82">    map.put(&quot;VARBINARY&quot;, SqlTypeName.VARBINARY);</span>
+
+    // Time/timestamp types with precision
+<span class="nc" id="L85">    map.put(&quot;TIME&quot;, SqlTypeName.TIME);</span>
+<span class="nc" id="L86">    map.put(&quot;TIMESTAMP&quot;, SqlTypeName.TIMESTAMP);</span>
+<span class="nc" id="L87">    map.put(&quot;TIMESTAMP_LTZ&quot;, SqlTypeName.TIMESTAMP_WITH_LOCAL_TIME_ZONE);</span>
+<span class="nc" id="L88">    map.put(&quot;TIMESTAMP_NTZ&quot;, SqlTypeName.TIMESTAMP);</span>
+<span class="nc" id="L89">    map.put(&quot;TIMESTAMP_TZ&quot;, SqlTypeName.TIMESTAMP_WITH_LOCAL_TIME_ZONE);</span>
+
+<span class="nc" id="L91">    return Collections.unmodifiableMap(map);</span>
+  }
+
+  // Helper method to create parser position
+  private SqlParserPos pos() {
+<span class="nc" id="L96">    return SqlParserPos.ZERO;</span>
+  }
+
+  @Override
+  public SqlNode visitSelectStatement(SnowflakeSqlParser.SelectStatementContext ctx) {
+<span class="nc" id="L101">    SqlNode body = visit(ctx.selectCore());</span>
+
+    // Process WITH clause
+<span class="nc bnc" id="L104" title="All 2 branches missed.">    if (ctx.withClause() != null) {</span>
+<span class="nc" id="L105">      SqlNodeList withList = SqlNodeList.EMPTY;</span>
+<span class="nc bnc" id="L106" title="All 2 branches missed.">      for (SnowflakeSqlParser.CommonTableExpressionContext cte : ctx.withClause().commonTableExpression()) {</span>
+<span class="nc" id="L107">        withList.add(visit(cte));</span>
+<span class="nc" id="L108">      }</span>
+<span class="nc bnc" id="L109" title="All 2 branches missed.">      boolean recursive = ctx.withClause().RECURSIVE() != null;</span>
+<span class="nc" id="L110">      body = new SqlWith(pos(), withList, body);</span>
+    }
+
+    // Process ORDER BY clause
+<span class="nc bnc" id="L114" title="All 2 branches missed.">    if (ctx.orderByClause() != null) {</span>
+<span class="nc" id="L115">      List&lt;SqlNode&gt; orderList = new ArrayList&lt;&gt;();</span>
+<span class="nc bnc" id="L116" title="All 2 branches missed.">      for (SnowflakeSqlParser.OrderByItemContext item : ctx.orderByClause().orderByItem()) {</span>
+<span class="nc" id="L117">        orderList.add(visit(item));</span>
+<span class="nc" id="L118">      }</span>
+<span class="nc" id="L119">      body = new SqlOrderBy(pos(), body, SqlNodeList.of(pos(), orderList), null, null);</span>
+    }
+
+    // Process LIMIT clause
+<span class="nc bnc" id="L123" title="All 2 branches missed.">    if (ctx.limitClause() != null) {</span>
+<span class="nc" id="L124">      List&lt;SqlNode&gt; expressions = ctx.limitClause().expression().stream()</span>
+<span class="nc" id="L125">          .map(this::visit)</span>
+<span class="nc" id="L126">          .collect(Collectors.toList());</span>
+
+<span class="nc" id="L128">      SqlNode offset = null;</span>
+<span class="nc" id="L129">      SqlNode fetch = visit(ctx.limitClause().expression(0));</span>
+
+<span class="nc bnc" id="L131" title="All 2 branches missed.">      if (ctx.limitClause().OFFSET() != null) {</span>
+<span class="nc bnc" id="L132" title="All 2 branches missed.">        offset = expressions.size() &gt; 1 ? expressions.get(1) : null;</span>
+      }
+
+<span class="nc" id="L135">      body = new SqlOrderBy(pos(), body, new SqlNodeList(Collections.emptyList(), pos()), offset, fetch);</span>
+    }
+
+<span class="nc" id="L138">    return body;</span>
+  }
+
+  @Override
+  public SqlNode visitCommonTableExpression(SnowflakeSqlParser.CommonTableExpressionContext ctx) {
+<span class="nc" id="L143">    SqlIdentifier name = new SqlIdentifier(ctx.identifier().getText(), pos());</span>
+
+<span class="nc" id="L145">    List&lt;SqlNode&gt; columnNames = new ArrayList&lt;&gt;();</span>
+<span class="nc bnc" id="L146" title="All 4 branches missed.">    if (ctx.columnName() != null &amp;&amp; !ctx.columnName().isEmpty()) {</span>
+<span class="nc bnc" id="L147" title="All 2 branches missed.">      for (SnowflakeSqlParser.ColumnNameContext col : ctx.columnName()) {</span>
+<span class="nc" id="L148">        columnNames.add(new SqlIdentifier(col.getText(), pos()));</span>
+<span class="nc" id="L149">      }</span>
+    }
+
+<span class="nc" id="L152">    SqlNode query = visit(ctx.selectStatement());</span>
+<span class="nc" id="L153">    return new SqlWithItem(pos(), name, new SqlNodeList(columnNames, pos()), query);</span>
+  }
+
+  @Override
+  public SqlNode visitSelectCore(SnowflakeSqlParser.SelectCoreContext ctx) {
+    // Process SELECT list
+<span class="nc" id="L159">    boolean distinct = false;</span>
+<span class="nc bnc" id="L160" title="All 2 branches missed.">    if (ctx.setQuantifier() != null) {</span>
+<span class="nc bnc" id="L161" title="All 2 branches missed.">      distinct = ctx.setQuantifier().DISTINCT() != null;</span>
+    }
+
+<span class="nc" id="L164">    List&lt;SqlNode&gt; selectItems = new ArrayList&lt;&gt;();</span>
+<span class="nc bnc" id="L165" title="All 2 branches missed.">    for (SnowflakeSqlParser.SelectItemContext item : ctx.selectList().selectItem()) {</span>
+<span class="nc" id="L166">      selectItems.add(visit(item));</span>
+<span class="nc" id="L167">    }</span>
+<span class="nc" id="L168">    SqlNodeList selectList = new SqlNodeList(selectItems, pos());</span>
+
+    // Process FROM clause
+<span class="nc" id="L171">    SqlNode from = null;</span>
+<span class="nc bnc" id="L172" title="All 2 branches missed.">    if (ctx.fromClause() != null) {</span>
+<span class="nc" id="L173">      from = visit(ctx.fromClause());</span>
+    }
+
+    // Process WHERE clause
+<span class="nc" id="L177">    SqlNode where = null;</span>
+<span class="nc bnc" id="L178" title="All 2 branches missed.">    if (ctx.whereClause() != null) {</span>
+<span class="nc" id="L179">      where = visit(ctx.whereClause().expression());</span>
+    }
+
+    // Process GROUP BY clause
+<span class="nc" id="L183">    SqlNodeList groupBy = null;</span>
+<span class="nc bnc" id="L184" title="All 2 branches missed.">    if (ctx.groupByClause() != null) {</span>
+<span class="nc" id="L185">      List&lt;SqlNode&gt; groupByItems = new ArrayList&lt;&gt;();</span>
+<span class="nc bnc" id="L186" title="All 2 branches missed.">      for (SnowflakeSqlParser.GroupByItemContext item : ctx.groupByClause().groupByItem()) {</span>
+<span class="nc" id="L187">        groupByItems.add(visit(item));</span>
+<span class="nc" id="L188">      }</span>
+<span class="nc" id="L189">      groupBy = new SqlNodeList(groupByItems, pos());</span>
+    }
+
+    // Process HAVING clause
+<span class="nc" id="L193">    SqlNode having = null;</span>
+<span class="nc bnc" id="L194" title="All 2 branches missed.">    if (ctx.havingClause() != null) {</span>
+<span class="nc" id="L195">      having = visit(ctx.havingClause().expression());</span>
+    }
+
+    // Process WINDOW clause
+<span class="nc" id="L199">    SqlNodeList windowDecls = null;</span>
+<span class="nc bnc" id="L200" title="All 2 branches missed.">    if (ctx.windowClause() != null) {</span>
+<span class="nc" id="L201">      List&lt;SqlNode&gt; windowItems = new ArrayList&lt;&gt;();</span>
+<span class="nc bnc" id="L202" title="All 2 branches missed.">      for (SnowflakeSqlParser.NamedWindowContext namedWindow : ctx.windowClause().namedWindow()) {</span>
+<span class="nc" id="L203">        windowItems.add(visit(namedWindow));</span>
+<span class="nc" id="L204">      }</span>
+<span class="nc" id="L205">      windowDecls = new SqlNodeList(windowItems, pos());</span>
+    }
+
+    // Process QUALIFY clause
+<span class="nc" id="L209">    SqlNode qualify = null;</span>
+<span class="nc bnc" id="L210" title="All 2 branches missed.">    if (ctx.qualifyClause() != null) {</span>
+<span class="nc" id="L211">      qualify = visit(ctx.qualifyClause().expression());</span>
+    }
+
+<span class="nc" id="L214">    return new SqlSelect(</span>
+<span class="nc" id="L215">        pos(),</span>
+        SqlNodeList.EMPTY,                     // HINTS
+        selectList,
+        from,
+        where,
+        groupBy,
+        having,
+        windowDecls,
+        qualify,                   // QUALIFY
+        null,                    // ORDER BY (handled at selectStatement level)
+        null,                    // OFFSET
+        null,                    // FETCH
+        null                    // HINTS
+    );
+  }
+
+  @Override
+  public SqlNode visitSelectItem(SnowflakeSqlParser.SelectItemContext ctx) {
+<span class="nc bnc" id="L233" title="All 2 branches missed.">    if (ctx.getText().equals(&quot;*&quot;)) {</span>
+<span class="nc" id="L234">      return new SqlIdentifier(&quot;*&quot;, pos());</span>
+<span class="nc bnc" id="L235" title="All 2 branches missed.">    } else if (ctx.getText().endsWith(&quot;.*&quot;)) {</span>
+<span class="nc" id="L236">      String tableName = ctx.tableName().getText();</span>
+<span class="nc" id="L237">      return new SqlIdentifier(Arrays.asList(tableName, &quot;*&quot;), pos());</span>
+    } else {
+<span class="nc" id="L239">      SqlNode expr = visit(ctx.expression());</span>
+
+<span class="nc bnc" id="L241" title="All 2 branches missed.">      if (ctx.columnAlias() != null) {</span>
+<span class="nc" id="L242">        SqlIdentifier alias = new SqlIdentifier(ctx.columnAlias().getText(), pos());</span>
+<span class="nc" id="L243">        return new SqlBasicCall(</span>
+            SqlStdOperatorTable.AS,
+            new SqlNode[]{expr, alias},
+<span class="nc" id="L246">            pos()</span>
+        );
+      }
+
+<span class="nc" id="L250">      return expr;</span>
+    }
+  }
+
+  @Override
+  public SqlNode visitFromClause(SnowflakeSqlParser.FromClauseContext ctx) {
+<span class="nc bnc" id="L256" title="All 2 branches missed.">    if (ctx.tableExpression().size() == 1) {</span>
+<span class="nc" id="L257">      return visit(ctx.tableExpression(0));</span>
+    } else {
+      // Multiple tables means we have implicit cross joins
+<span class="nc" id="L260">      List&lt;SqlNode&gt; joins = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L261">      SqlNode left = visit(ctx.tableExpression(0));</span>
+
+<span class="nc bnc" id="L263" title="All 2 branches missed.">      for (int i = 1; i &lt; ctx.tableExpression().size(); i++) {</span>
+<span class="nc" id="L264">        SqlNode right = visit(ctx.tableExpression(i));</span>
+<span class="nc" id="L265">        left = new SqlJoin(</span>
+<span class="nc" id="L266">            pos(),</span>
+            left,
+<span class="nc" id="L268">            SqlLiteral.createBoolean(false, pos()),</span>
+<span class="nc" id="L269">            JoinType.COMMA.symbol(pos()),</span>
+            right,
+<span class="nc" id="L271">            SqlLiteral.createBoolean(false, pos()),</span>
+            null
+        );
+      }
+
+<span class="nc" id="L276">      return left;</span>
+    }
+  }
+
+  @Override
+  public SqlNode visitTableExpression(SnowflakeSqlParser.TableExpressionContext ctx) {
+<span class="nc" id="L282">    SqlNode table = visit(ctx.tablePrimary());</span>
+
+    // Process JOINs
+<span class="nc bnc" id="L285" title="All 4 branches missed.">    if (ctx.joinClause() != null &amp;&amp; !ctx.joinClause().isEmpty()) {</span>
+<span class="nc bnc" id="L286" title="All 2 branches missed.">      for (SnowflakeSqlParser.JoinClauseContext joinCtx : ctx.joinClause()) {</span>
+<span class="nc" id="L287">        SqlNode right = visit(joinCtx.tableExpression());</span>
+<span class="nc" id="L288">        JoinType joinType = JoinType.INNER;</span>
+
+<span class="nc bnc" id="L290" title="All 2 branches missed.">        if (joinCtx.joinType() != null) {</span>
+<span class="nc bnc" id="L291" title="All 2 branches missed.">          if (joinCtx.joinType().CROSS() != null) {</span>
+<span class="nc" id="L292">            joinType = JoinType.CROSS;</span>
+<span class="nc bnc" id="L293" title="All 2 branches missed.">          } else if (joinCtx.joinType().LEFT() != null) {</span>
+<span class="nc" id="L294">            joinType = JoinType.LEFT;</span>
+<span class="nc bnc" id="L295" title="All 2 branches missed.">          } else if (joinCtx.joinType().RIGHT() != null) {</span>
+<span class="nc" id="L296">            joinType = JoinType.RIGHT;</span>
+<span class="nc bnc" id="L297" title="All 2 branches missed.">          } else if (joinCtx.joinType().FULL() != null) {</span>
+<span class="nc" id="L298">            joinType = JoinType.FULL;</span>
+          }
+<span class="nc bnc" id="L300" title="All 2 branches missed.">        } else if (joinCtx.getText().startsWith(&quot;,&quot;)) {</span>
+<span class="nc" id="L301">          joinType = JoinType.COMMA;</span>
+        }
+
+<span class="nc bnc" id="L304" title="All 2 branches missed.">        boolean natural = joinCtx.NATURAL() != null;</span>
+<span class="nc" id="L305">        SqlNode condition = null;</span>
+
+<span class="nc bnc" id="L307" title="All 2 branches missed.">        if (joinCtx.ON() != null) {</span>
+<span class="nc" id="L308">          condition = visit(joinCtx.expression());</span>
+<span class="nc bnc" id="L309" title="All 2 branches missed.">        } else if (joinCtx.USING() != null) {</span>
+<span class="nc" id="L310">          List&lt;SqlNode&gt; usingColumns = new ArrayList&lt;&gt;();</span>
+<span class="nc bnc" id="L311" title="All 2 branches missed.">          for (SnowflakeSqlParser.ColumnNameContext colName : joinCtx.columnName()) {</span>
+<span class="nc" id="L312">            usingColumns.add(new SqlIdentifier(colName.getText(), pos()));</span>
+<span class="nc" id="L313">          }</span>
+<span class="nc" id="L314">          condition = SqlNodeList.of(pos(), usingColumns);</span>
+        }
+
+<span class="nc" id="L317">        table = new SqlJoin(</span>
+<span class="nc" id="L318">            pos(),</span>
+            table,
+<span class="nc" id="L320">            SqlLiteral.createBoolean(natural, pos()),</span>
+<span class="nc" id="L321">            joinType.symbol(pos()),</span>
+            right,
+<span class="nc" id="L323">            SqlLiteral.createBoolean(false, pos()),</span>
+            condition
+        );
+<span class="nc" id="L326">      }</span>
+    }
+
+<span class="nc" id="L329">    return table;</span>
+  }
+
+  @Override
+  public SqlNode visitTablePrimary(SnowflakeSqlParser.TablePrimaryContext ctx) {
+    SqlNode table;
+
+<span class="nc bnc" id="L336" title="All 2 branches missed.">    if (ctx.tableName() != null) {</span>
+      // Simple table reference
+<span class="nc" id="L338">      String tableNameText = ctx.tableName().getText();</span>
+<span class="nc" id="L339">      List&lt;String&gt; parts = new ArrayList&lt;&gt;();</span>
+<span class="nc bnc" id="L340" title="All 2 branches missed.">      if (ctx.tableName().schemaName() != null) {</span>
+<span class="nc bnc" id="L341" title="All 2 branches missed.">        if (ctx.tableName().schemaName().databaseName() != null) {</span>
+<span class="nc" id="L342">          parts.add(ctx.tableName().schemaName().databaseName().identifier().getText());</span>
+        }
+<span class="nc" id="L344">        parts.add(ctx.tableName().schemaName().identifier().getText());</span>
+      }
+<span class="nc" id="L346">      parts.add(ctx.tableName().identifier().getText());</span>
+
+<span class="nc" id="L348">      table = new SqlIdentifier(parts, pos());</span>
+<span class="nc bnc" id="L349" title="All 2 branches missed.">    } else if (ctx.selectStatement() != null) {</span>
+      // Subquery
+<span class="nc" id="L351">      table = visit(ctx.selectStatement());</span>
+<span class="nc bnc" id="L352" title="All 2 branches missed.">    } else if (ctx.tableFunctionCall() != null) {</span>
+      // Table function
+<span class="nc" id="L354">      table = visit(ctx.tableFunctionCall());</span>
+<span class="nc bnc" id="L355" title="All 2 branches missed.">    } else if (ctx.tableExpression() != null) {</span>
+      // Parenthesized table expression
+<span class="nc" id="L357">      table = visit(ctx.tableExpression());</span>
+    } else {
+<span class="nc" id="L359">      throw new UnsupportedOperationException(&quot;Unsupported table primary type&quot;);</span>
+    }
+
+    // Apply alias if present
+<span class="nc bnc" id="L363" title="All 2 branches missed.">    if (ctx.tableAlias() != null) {</span>
+<span class="nc" id="L364">      String alias = ctx.tableAlias().getText();</span>
+
+      // Handle column aliases for table if present
+<span class="nc bnc" id="L367" title="All 2 branches missed.">      if (!ctx.columnAlias().isEmpty()) {</span>
+<span class="nc" id="L368">        List&lt;SqlNode&gt; columnAliases = new ArrayList&lt;&gt;();</span>
+<span class="nc bnc" id="L369" title="All 2 branches missed.">        for (SnowflakeSqlParser.ColumnAliasContext colAlias : ctx.columnAlias()) {</span>
+<span class="nc" id="L370">          columnAliases.add(new SqlIdentifier(colAlias.getText(), pos()));</span>
+<span class="nc" id="L371">        }</span>
+
+<span class="nc" id="L373">        return new SqlBasicCall(</span>
+            SqlStdOperatorTable.AS,
+            new SqlNode[]{
+                table,
+<span class="nc" id="L377">                new SqlIdentifier(alias, pos()),</span>
+<span class="nc" id="L378">                new SqlNodeList(columnAliases, pos())</span>
+            },
+<span class="nc" id="L380">            pos()</span>
+        );
+      } else {
+<span class="nc" id="L383">        return new SqlBasicCall(</span>
+            SqlStdOperatorTable.AS,
+<span class="nc" id="L385">            new SqlNode[]{table, new SqlIdentifier(alias, pos())},</span>
+<span class="nc" id="L386">            pos()</span>
+        );
+      }
+    }
+
+<span class="nc" id="L391">    return table;</span>
+  }
+
+  @Override
+  public SqlNode visitTableFunctionCall(SnowflakeSqlParser.TableFunctionCallContext ctx) {
+<span class="nc" id="L396">    String functionName = ctx.identifier().getText();</span>
+<span class="nc" id="L397">    List&lt;SqlNode&gt; args = new ArrayList&lt;&gt;();</span>
+
+<span class="nc bnc" id="L399" title="All 2 branches missed.">    if (ctx.functionArgument() != null) {</span>
+<span class="nc bnc" id="L400" title="All 2 branches missed.">      for (SnowflakeSqlParser.FunctionArgumentContext arg : ctx.functionArgument()) {</span>
+<span class="nc" id="L401">        args.add(visit(arg.expression()));</span>
+<span class="nc" id="L402">      }</span>
+    }
+
+<span class="nc" id="L405">    return new SqlBasicCall(</span>
+        null,
+//        new SqlIdentifier(functionName, pos()),
+<span class="nc" id="L408">        List.of(new SqlNode[0]),</span>
+<span class="nc" id="L409">        pos()</span>
+    );
+  }
+
+  @Override
+  public SqlNode visitWhereClause(SnowflakeSqlParser.WhereClauseContext ctx) {
+<span class="nc" id="L415">    return visit(ctx.expression());</span>
+  }
+
+  @Override
+  public SqlNode visitGroupByItem(SnowflakeSqlParser.GroupByItemContext ctx) {
+<span class="nc bnc" id="L420" title="All 4 branches missed.">    if (ctx.expression() != null &amp;&amp; ctx.expression().size() == 1) {</span>
+<span class="nc" id="L421">      return visit(ctx.expression(0));</span>
+<span class="nc bnc" id="L422" title="All 2 branches missed.">    } else if (ctx.ROLLUP() != null) {</span>
+<span class="nc" id="L423">      List&lt;SqlNode&gt; exprs = new ArrayList&lt;&gt;();</span>
+<span class="nc bnc" id="L424" title="All 2 branches missed.">      for (SnowflakeSqlParser.ExpressionContext expr : ctx.expression()) {</span>
+<span class="nc" id="L425">        exprs.add(visit(expr));</span>
+<span class="nc" id="L426">      }</span>
+<span class="nc" id="L427">      return new SqlBasicCall(</span>
+          SqlStdOperatorTable.ROLLUP,
+<span class="nc" id="L429">          exprs.toArray(new SqlNode[0]),</span>
+<span class="nc" id="L430">          pos()</span>
+      );
+<span class="nc bnc" id="L432" title="All 2 branches missed.">    } else if (ctx.CUBE() != null) {</span>
+<span class="nc" id="L433">      List&lt;SqlNode&gt; exprs = new ArrayList&lt;&gt;();</span>
+<span class="nc bnc" id="L434" title="All 2 branches missed.">      for (SnowflakeSqlParser.ExpressionContext expr : ctx.expression()) {</span>
+<span class="nc" id="L435">        exprs.add(visit(expr));</span>
+<span class="nc" id="L436">      }</span>
+<span class="nc" id="L437">      return new SqlBasicCall(</span>
+          SqlStdOperatorTable.CUBE,
+<span class="nc" id="L439">          exprs.toArray(new SqlNode[0]),</span>
+<span class="nc" id="L440">          pos()</span>
+      );
+<span class="nc bnc" id="L442" title="All 2 branches missed.">    } else if (ctx.GROUPING() != null) {</span>
+<span class="nc" id="L443">      List&lt;SqlNode&gt; sets = new ArrayList&lt;&gt;();</span>
+<span class="nc bnc" id="L444" title="All 2 branches missed.">      for (SnowflakeSqlParser.GroupingSetItemContext item : ctx.groupingSetItem()) {</span>
+<span class="nc" id="L445">        sets.add(visit(item));</span>
+<span class="nc" id="L446">      }</span>
+<span class="nc" id="L447">      return new SqlBasicCall(</span>
+          SqlStdOperatorTable.GROUPING_SETS,
+<span class="nc" id="L449">          sets.toArray(new SqlNode[0]),</span>
+<span class="nc" id="L450">          pos()</span>
+      );
+    }
+
+<span class="nc" id="L454">    return null;</span>
+  }
+
+  @Override
+  public SqlNode visitGroupingSetItem(SnowflakeSqlParser.GroupingSetItemContext ctx) {
+<span class="nc bnc" id="L459" title="All 4 branches missed.">    if (ctx.expression() != null &amp;&amp; ctx.expression().size() == 1) {</span>
+<span class="nc" id="L460">      return visit(ctx.expression(0));</span>
+    } else {
+<span class="nc" id="L462">      List&lt;SqlNode&gt; exprs = new ArrayList&lt;&gt;();</span>
+<span class="nc bnc" id="L463" title="All 2 branches missed.">      for (SnowflakeSqlParser.ExpressionContext expr : ctx.expression()) {</span>
+<span class="nc" id="L464">        exprs.add(visit(expr));</span>
+<span class="nc" id="L465">      }</span>
+<span class="nc" id="L466">      return SqlNodeList.of(pos(), exprs);</span>
+    }
+  }
+
+  @Override
+  public SqlNode visitHavingClause(SnowflakeSqlParser.HavingClauseContext ctx) {
+<span class="nc" id="L472">    return visit(ctx.expression());</span>
+  }
+
+  @Override
+  public SqlNode visitQualifyClause(SnowflakeSqlParser.QualifyClauseContext ctx) {
+<span class="nc" id="L477">    return visit(ctx.expression());</span>
+  }
+
+  @Override
+  public SqlNode visitNamedWindow(SnowflakeSqlParser.NamedWindowContext ctx) {
+<span class="nc" id="L482">    SqlIdentifier name = new SqlIdentifier(ctx.identifier().getText(), pos());</span>
+<span class="nc" id="L483">    SqlNode window = visit(ctx.windowSpecification());</span>
+
+<span class="nc" id="L485">    return new SqlBasicCall(</span>
+        SqlStdOperatorTable.AS,
+        new SqlNode[]{name, window},
+<span class="nc" id="L488">        pos()</span>
+    );
+  }
+
+  @Override
+  public SqlNode visitWindowSpecification(SnowflakeSqlParser.WindowSpecificationContext ctx) {
+<span class="nc" id="L494">    SqlNodeList partitionList = null;</span>
+<span class="nc" id="L495">    SqlNodeList orderList = null;</span>
+//    SqlWindow.FrameUnit frameUnit = null;
+<span class="nc" id="L497">    SqlNode lowerBound = null;</span>
+<span class="nc" id="L498">    SqlNode upperBound = null;</span>
+
+    // Process PARTITION BY
+<span class="nc bnc" id="L501" title="All 2 branches missed.">    if (ctx.partitionByClause() != null) {</span>
+<span class="nc" id="L502">      List&lt;SqlNode&gt; partitions = new ArrayList&lt;&gt;();</span>
+<span class="nc bnc" id="L503" title="All 2 branches missed.">      for (SnowflakeSqlParser.ExpressionContext expr : ctx.partitionByClause().expression()) {</span>
+<span class="nc" id="L504">        partitions.add(visit(expr));</span>
+<span class="nc" id="L505">      }</span>
+<span class="nc" id="L506">      partitionList = new SqlNodeList(partitions, pos());</span>
+    }
+
+    // Process ORDER BY
+<span class="nc bnc" id="L510" title="All 2 branches missed.">    if (ctx.orderByClause() != null) {</span>
+<span class="nc" id="L511">      List&lt;SqlNode&gt; orders = new ArrayList&lt;&gt;();</span>
+<span class="nc bnc" id="L512" title="All 2 branches missed.">      for (SnowflakeSqlParser.OrderByItemContext item : ctx.orderByClause().orderByItem()) {</span>
+<span class="nc" id="L513">        orders.add(visit(item));</span>
+<span class="nc" id="L514">      }</span>
+<span class="nc" id="L515">      orderList = new SqlNodeList(orders, pos());</span>
+    }
+
+    // Process frame clause
+<span class="nc bnc" id="L519" title="All 2 branches missed.">    if (ctx.frameClause() != null) {</span>
+//      frameUnit = ctx.frameClause().ROWS() != null ? SqlWindow.FrameUnit.ROW : SqlWindow.FrameUnit.RANGE;
+
+<span class="nc bnc" id="L522" title="All 2 branches missed.">      if (ctx.frameClause().BETWEEN() != null) {</span>
+<span class="nc" id="L523">        lowerBound = visitFrameBound(ctx.frameClause().frameStart());</span>
+<span class="nc" id="L524">        upperBound = visitFrameBound(ctx.frameClause().frameEnd());</span>
+      } else {
+<span class="nc" id="L526">        lowerBound = visitFrameBound(ctx.frameClause().frameStart());</span>
+<span class="nc" id="L527">        upperBound = SqlWindow.createCurrentRow(pos());</span>
+      }
+    }
+
+    // Create base window
+//    SqlWindow window = new SqlWindow(
+//        pos(),
+//        ctx.identifier() != null ? new SqlIdentifier(ctx.identifier().getText(), pos()) : null,
+//        partitionList,
+//        orderList,
+//        frameUnit,
+//        lowerBound,
+//        upperBound,
+//        null  // allowPartial
+//    );
+//
+//    return window;
+<span class="nc" id="L544">    throw new UnsupportedOperationException(&quot;Window specification not supported.&quot;);</span>
+  }
+
+  private SqlNode visitFrameBound(SnowflakeSqlParser.FrameStartContext ctx) {
+<span class="nc bnc" id="L548" title="All 2 branches missed.">    if (ctx.CURRENT() != null) {</span>
+<span class="nc" id="L549">      return SqlWindow.createCurrentRow(pos());</span>
+<span class="nc bnc" id="L550" title="All 2 branches missed.">    } else if (ctx.UNBOUNDED() != null) {</span>
+<span class="nc bnc" id="L551" title="All 2 branches missed.">      if (ctx.PRECEDING() != null) {</span>
+<span class="nc" id="L552">        return SqlWindow.createUnboundedPreceding(pos());</span>
+      } else {
+<span class="nc" id="L554">        return SqlWindow.createUnboundedFollowing(pos());</span>
+      }
+    } else {
+<span class="nc" id="L557">      SqlNode offset = visit(ctx.expression());</span>
+<span class="nc bnc" id="L558" title="All 2 branches missed.">      if (ctx.PRECEDING() != null) {</span>
+<span class="nc" id="L559">        return SqlWindow.createPreceding(offset, pos());</span>
+      } else {
+<span class="nc" id="L561">        return SqlWindow.createFollowing(offset, pos());</span>
+      }
+    }
+  }
+
+  private SqlNode visitFrameBound(SnowflakeSqlParser.FrameEndContext ctx) {
+<span class="nc bnc" id="L567" title="All 2 branches missed.">    if (ctx.CURRENT() != null) {</span>
+<span class="nc" id="L568">      return SqlWindow.createCurrentRow(pos());</span>
+<span class="nc bnc" id="L569" title="All 2 branches missed.">    } else if (ctx.UNBOUNDED() != null) {</span>
+<span class="nc bnc" id="L570" title="All 2 branches missed.">      if (ctx.PRECEDING() != null) {</span>
+<span class="nc" id="L571">        return SqlWindow.createUnboundedPreceding(pos());</span>
+      } else {
+<span class="nc" id="L573">        return SqlWindow.createUnboundedFollowing(pos());</span>
+      }
+    } else {
+<span class="nc" id="L576">      SqlNode offset = visit(ctx.expression());</span>
+<span class="nc bnc" id="L577" title="All 2 branches missed.">      if (ctx.PRECEDING() != null) {</span>
+<span class="nc" id="L578">        return SqlWindow.createPreceding(offset, pos());</span>
+      } else {
+<span class="nc" id="L580">        return SqlWindow.createFollowing(offset, pos());</span>
+      }
+    }
+  }
+
+  @Override
+  public SqlNode visitOrderByItem(SnowflakeSqlParser.OrderByItemContext ctx) {
+<span class="nc" id="L587">    SqlNode expr = visit(ctx.expression());</span>
+<span class="nc bnc" id="L588" title="All 2 branches missed.">    SqlNode direction = ctx.DESC() != null ? SqlStdOperatorTable.DESC.createCall(pos(), expr) : null;</span>
+
+<span class="nc bnc" id="L590" title="All 2 branches missed.">    if (ctx.NULLS() != null) {</span>
+<span class="nc bnc" id="L591" title="All 2 branches missed.">      boolean nullsFirst = ctx.FIRST() != null;</span>
+<span class="nc bnc" id="L592" title="All 2 branches missed.">      SqlNode nullsOrder = nullsFirst ?</span>
+<span class="nc" id="L593">          SqlStdOperatorTable.NULLS_FIRST.createCall(pos(), direction) :</span>
+<span class="nc" id="L594">          SqlStdOperatorTable.NULLS_LAST.createCall(pos(), direction);</span>
+<span class="nc" id="L595">      return nullsOrder;</span>
+    }
+
+<span class="nc" id="L598">    return direction;</span>
+  }
+
+  @Override
+  public SqlNode visitExpression(SnowflakeSqlParser.ExpressionContext ctx) {
+    // Handle literal expressions
+<span class="nc bnc" id="L604" title="All 2 branches missed.">    if (ctx.literal() != null) {</span>
+<span class="nc" id="L605">      return visit(ctx.literal());</span>
+    }
+
+    // Handle column references
+<span class="nc bnc" id="L609" title="All 2 branches missed.">    if (ctx.columnReference() != null) {</span>
+<span class="nc" id="L610">      return visit(ctx.columnReference());</span>
+    }
+
+    // Handle function calls
+<span class="nc bnc" id="L614" title="All 2 branches missed.">    if (ctx.functionCall() != null) {</span>
+<span class="nc" id="L615">      return visit(ctx.functionCall());</span>
+    }
+
+    // Handle CASE expressions
+<span class="nc bnc" id="L619" title="All 2 branches missed.">    if (ctx.caseExpression() != null) {</span>
+<span class="nc" id="L620">      return visit(ctx.caseExpression());</span>
+    }
+
+    // Handle parenthesized expressions
+<span class="nc bnc" id="L624" title="All 6 branches missed.">    if (ctx.getChildCount() == 3 &amp;&amp; ctx.getChild(0).getText().equals(&quot;(&quot;) &amp;&amp; ctx.getChild(2).getText().equals(&quot;)&quot;)) {</span>
+<span class="nc" id="L625">      return visit(ctx.expression(0));</span>
+    }
+
+    // Handle binary operations
+<span class="nc bnc" id="L629" title="All 2 branches missed.">    if (ctx.binaryOperator() != null) {</span>
+<span class="nc" id="L630">      SqlOperator operator = getOperatorForBinaryOp(ctx.binaryOperator().getText());</span>
+<span class="nc" id="L631">      SqlNode left = visit(ctx.expression(0));</span>
+<span class="nc" id="L632">      SqlNode right = visit(ctx.expression(1));</span>
+<span class="nc" id="L633">      return new SqlBasicCall(operator, new SqlNode[]{left, right}, pos());</span>
+    }
+
+    // Handle unary operations
+<span class="nc bnc" id="L637" title="All 2 branches missed.">    if (ctx.unaryOperator() != null) {</span>
+<span class="nc" id="L638">      SqlOperator operator = getOperatorForUnaryOp(ctx.unaryOperator().getText());</span>
+<span class="nc" id="L639">      SqlNode operand = visit(ctx.expression(0));</span>
+<span class="nc" id="L640">      return new SqlBasicCall(operator, new SqlNode[]{operand}, pos());</span>
+    }
+
+    // Handle IS NULL
+<span class="nc bnc" id="L644" title="All 4 branches missed.">    if (ctx.IS() != null &amp;&amp; ctx.NULL() != null) {</span>
+<span class="nc" id="L645">      SqlNode operand = visit(ctx.expression(0));</span>
+<span class="nc bnc" id="L646" title="All 2 branches missed.">      SqlOperator op = ctx.NOT() != null ? SqlStdOperatorTable.IS_NOT_NULL : SqlStdOperatorTable.IS_NULL;</span>
+<span class="nc" id="L647">      return new SqlBasicCall(op, new SqlNode[]{operand}, pos());</span>
+    }
+
+    // Handle BETWEEN
+<span class="nc bnc" id="L651" title="All 2 branches missed.">    if (ctx.BETWEEN() != null) {</span>
+<span class="nc" id="L652">      SqlNode value = visit(ctx.expression(0));</span>
+<span class="nc" id="L653">      SqlNode lower = visit(ctx.expression(1));</span>
+<span class="nc" id="L654">      SqlNode upper = visit(ctx.expression(2));</span>
+<span class="nc bnc" id="L655" title="All 2 branches missed.">      SqlOperator op = ctx.NOT() != null ? SqlStdOperatorTable.NOT_BETWEEN : SqlStdOperatorTable.BETWEEN;</span>
+<span class="nc" id="L656">      return new SqlBasicCall(op, new SqlNode[]{value, lower, upper}, pos());</span>
+    }
+
+    // Handle IN
+<span class="nc bnc" id="L660" title="All 2 branches missed.">    if (ctx.IN() != null) {</span>
+<span class="nc" id="L661">      SqlNode left = visit(ctx.expression(0));</span>
+<span class="nc bnc" id="L662" title="All 2 branches missed.">      SqlOperator op = ctx.NOT() != null ? SqlStdOperatorTable.NOT_IN : SqlStdOperatorTable.IN;</span>
+
+<span class="nc" id="L664">      List&lt;SqlNode&gt; rhs = new ArrayList&lt;&gt;();</span>
+<span class="nc bnc" id="L665" title="All 2 branches missed.">      if (ctx.selectStatement() != null) {</span>
+        // IN (subquery)
+<span class="nc" id="L667">        rhs.add(visit(ctx.selectStatement()));</span>
+<span class="nc bnc" id="L668" title="All 2 branches missed.">      } else if (ctx.tableName() != null) {</span>
+        // IN tableName
+<span class="nc" id="L670">        rhs.add(visit(ctx.tableName()));</span>
+      } else {
+        // IN (val1, val2, ...)
+<span class="nc bnc" id="L673" title="All 2 branches missed.">        for (int i = 1; i &lt; ctx.expression().size(); i++) {</span>
+<span class="nc" id="L674">          rhs.add(visit(ctx.expression(i)));</span>
+        }
+      }
+
+<span class="nc" id="L678">      return new SqlBasicCall(op, new SqlNode[]{left, new SqlNodeList(rhs, pos())}, pos());</span>
+    }
+
+    // Handle LIKE
+<span class="nc bnc" id="L682" title="All 8 branches missed.">    if (ctx.LIKE() != null || ctx.ILIKE() != null || ctx.SIMILAR() != null || ctx.RLIKE() != null) {</span>
+<span class="nc" id="L683">      SqlNode value = visit(ctx.expression(0));</span>
+<span class="nc" id="L684">      SqlNode pattern = visit(ctx.expression(1));</span>
+      SqlOperator op;
+
+<span class="nc bnc" id="L687" title="All 2 branches missed.">      if (ctx.LIKE() != null) {</span>
+<span class="nc bnc" id="L688" title="All 2 branches missed.">        op = ctx.NOT() != null ? SqlStdOperatorTable.NOT_LIKE : SqlStdOperatorTable.LIKE;</span>
+<span class="nc bnc" id="L689" title="All 2 branches missed.">      } else if (ctx.ILIKE() != null) {</span>
+<span class="nc bnc" id="L690" title="All 2 branches missed.">        op = ctx.NOT() != null ?</span>
+<span class="nc" id="L691">            new SqlPrefixOperator(&quot;NOT ILIKE&quot;, SqlKind.OTHER, 0, null, null, null) :</span>
+<span class="nc" id="L692">            new SqlPrefixOperator(&quot;ILIKE&quot;, SqlKind.OTHER, 0, null, null, null);</span>
+<span class="nc bnc" id="L693" title="All 2 branches missed.">      } else if (ctx.SIMILAR() != null) {</span>
+<span class="nc bnc" id="L694" title="All 2 branches missed.">        op = ctx.NOT() != null ?</span>
+<span class="nc" id="L695">            new SqlPrefixOperator(&quot;NOT SIMILAR TO&quot;, SqlKind.OTHER, 0, null, null, null) :</span>
+<span class="nc" id="L696">            new SqlPrefixOperator(&quot;SIMILAR TO&quot;, SqlKind.OTHER, 0, null, null, null);</span>
+      } else {
+<span class="nc bnc" id="L698" title="All 2 branches missed.">        op = ctx.NOT() != null ?</span>
+<span class="nc" id="L699">            new SqlPrefixOperator(&quot;NOT RLIKE&quot;, SqlKind.OTHER, 0, null, null, null) :</span>
+<span class="nc" id="L700">            new SqlPrefixOperator(&quot;RLIKE&quot;, SqlKind.OTHER, 0, null, null, null);</span>
+      }
+
+<span class="nc" id="L703">      List&lt;SqlNode&gt; operands = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L704">      operands.add(value);</span>
+<span class="nc" id="L705">      operands.add(pattern);</span>
+
+<span class="nc bnc" id="L707" title="All 2 branches missed.">      if (ctx.ESCAPE() != null) {</span>
+<span class="nc" id="L708">        operands.add(visit(ctx.expression(2)));</span>
+      }
+
+<span class="nc" id="L711">      return new SqlBasicCall(op, operands.toArray(new SqlNode[0]), pos());</span>
+    }
+
+    // Handle EXISTS
+<span class="nc bnc" id="L715" title="All 2 branches missed.">    if (ctx.EXISTS() != null) {</span>
+<span class="nc" id="L716">      SqlNode subquery = visit(ctx.selectStatement());</span>
+<span class="nc" id="L717">      return new SqlBasicCall(</span>
+          SqlStdOperatorTable.EXISTS,
+          new SqlNode[]{subquery},
+<span class="nc" id="L720">          pos()</span>
+      );
+    }
+
+    // Handle CAST
+<span class="nc bnc" id="L725" title="All 4 branches missed.">    if (ctx.CAST() != null || ctx.TRY_CAST() != null) {</span>
+<span class="nc" id="L726">      SqlNode value = visit(ctx.expression(0));</span>
+<span class="nc" id="L727">      SqlDataTypeSpec dataType = getDataTypeSpec(ctx.dataType());</span>
+<span class="nc bnc" id="L728" title="All 2 branches missed.">      SqlOperator op = ctx.TRY_CAST() != null ?</span>
+<span class="nc" id="L729">          new SqlPrefixOperator(&quot;TRY_CAST&quot;, SqlKind.CAST, 0, null, null, null) :</span>
+<span class="nc" id="L730">          SqlStdOperatorTable.CAST;</span>
+
+<span class="nc" id="L732">      return new SqlBasicCall(</span>
+          op,
+<span class="nc" id="L734">          new SqlNode[]{value, dataType.withNullable(true)},</span>
+<span class="nc" id="L735">          pos()</span>
+      );
+    }
+
+    // Handle COLLATE
+<span class="nc bnc" id="L740" title="All 2 branches missed.">    if (ctx.COLLATE() != null) {</span>
+<span class="nc" id="L741">      SqlNode value = visit(ctx.expression(0));</span>
+<span class="nc" id="L742">      String collationName = ctx.collationName().getText();</span>
+
+//      return new SqlBasicCall(
+//          SqlStdOperatorTable.COLLATE,
+//          new SqlNode[]{value, new SqlIdentifier(collationName, pos())},
+//          pos()
+//      );
+<span class="nc" id="L749">      throw new UnsupportedOperationException(&quot;COLLATE not supported.&quot;);</span>
+    }
+
+    // Handle type conversion with ::
+<span class="nc bnc" id="L753" title="All 2 branches missed.">    if (ctx.getText().contains(&quot;::&quot;)) {</span>
+<span class="nc" id="L754">      SqlNode value = visit(ctx.expression(0));</span>
+<span class="nc" id="L755">      SqlDataTypeSpec dataType = getDataTypeSpec(ctx.dataType());</span>
+
+<span class="nc" id="L757">      return new SqlBasicCall(</span>
+          SqlStdOperatorTable.CAST,
+<span class="nc" id="L759">          new SqlNode[]{value, dataType.withNullable(true)},</span>
+<span class="nc" id="L760">          pos()</span>
+      );
+    }
+
+    // Handle OVER for window functions
+<span class="nc bnc" id="L765" title="All 2 branches missed.">    if (ctx.OVER() != null) {</span>
+<span class="nc" id="L766">      SqlNode function = visit(ctx.expression(0));</span>
+      SqlNode window;
+
+<span class="nc bnc" id="L769" title="All 2 branches missed.">      if (ctx.windowName() != null) {</span>
+<span class="nc" id="L770">        window = new SqlIdentifier(ctx.windowName().getText(), pos());</span>
+      } else {
+<span class="nc" id="L772">        window = visit(ctx.windowSpecification());</span>
+      }
+
+<span class="nc" id="L775">      return new SqlBasicCall(</span>
+          SqlStdOperatorTable.OVER,
+          new SqlNode[]{function, window},
+<span class="nc" id="L778">          pos()</span>
+      );
+    }
+
+    // Unknown expression type
+<span class="nc" id="L783">    throw new UnsupportedOperationException(&quot;Unsupported expression type: &quot; + ctx.getText());</span>
+  }
+
+  private SqlOperator getOperatorForBinaryOp(String op) {
+<span class="nc bnc" id="L787" title="All 18 branches missed.">    return switch (op) {</span>
+<span class="nc" id="L788">      case &quot;||&quot; -&gt; SqlStdOperatorTable.CONCAT;</span>
+<span class="nc" id="L789">      case &quot;*&quot; -&gt; SqlStdOperatorTable.MULTIPLY;</span>
+<span class="nc" id="L790">      case &quot;/&quot; -&gt; SqlStdOperatorTable.DIVIDE;</span>
+<span class="nc" id="L791">      case &quot;%&quot; -&gt; SqlStdOperatorTable.MOD;</span>
+<span class="nc" id="L792">      case &quot;+&quot; -&gt; SqlStdOperatorTable.PLUS;</span>
+<span class="nc" id="L793">      case &quot;-&quot; -&gt; SqlStdOperatorTable.MINUS;</span>
+<span class="nc" id="L794">      case &quot;&amp;&quot; -&gt; SqlStdOperatorTable.BIT_AND;</span>
+<span class="nc" id="L795">      case &quot;|&quot; -&gt; SqlStdOperatorTable.BIT_OR;</span>
+<span class="nc" id="L796">      case &quot;^&quot; -&gt; SqlStdOperatorTable.BIT_XOR;</span>
+<span class="nc" id="L797">      case &quot;=&quot;, &quot;==&quot; -&gt; SqlStdOperatorTable.EQUALS;</span>
+<span class="nc" id="L798">      case &quot;!=&quot;, &quot;&lt;&gt;&quot; -&gt; SqlStdOperatorTable.NOT_EQUALS;</span>
+<span class="nc" id="L799">      case &quot;&lt;&quot; -&gt; SqlStdOperatorTable.LESS_THAN;</span>
+<span class="nc" id="L800">      case &quot;&lt;=&quot; -&gt; SqlStdOperatorTable.LESS_THAN_OR_EQUAL;</span>
+<span class="nc" id="L801">      case &quot;&gt;&quot; -&gt; SqlStdOperatorTable.GREATER_THAN;</span>
+<span class="nc" id="L802">      case &quot;&gt;=&quot; -&gt; SqlStdOperatorTable.GREATER_THAN_OR_EQUAL;</span>
+<span class="nc" id="L803">      case &quot;AND&quot; -&gt; SqlStdOperatorTable.AND;</span>
+<span class="nc" id="L804">      case &quot;OR&quot; -&gt; SqlStdOperatorTable.OR;</span>
+<span class="nc" id="L805">      default -&gt; throw new UnsupportedOperationException(&quot;Unsupported binary operator: &quot; + op);</span>
+    };
+  }
+
+  private SqlOperator getOperatorForUnaryOp(String op) {
+<span class="nc bnc" id="L810" title="All 4 branches missed.">    switch (op) {</span>
+      case &quot;+&quot;:
+<span class="nc" id="L812">        return SqlStdOperatorTable.UNARY_PLUS;</span>
+      case &quot;-&quot;:
+<span class="nc" id="L814">        return SqlStdOperatorTable.UNARY_MINUS;</span>
+//      case &quot;~&quot;:
+//        return SqlStdOperatorTable.BIT_NOT;
+      case &quot;NOT&quot;:
+<span class="nc" id="L818">        return SqlStdOperatorTable.NOT;</span>
+      default:
+<span class="nc" id="L820">        throw new UnsupportedOperationException(&quot;Unsupported unary operator: &quot; + op);</span>
+    }
+  }
+
+  @Override
+  public SqlNode visitColumnReference(SnowflakeSqlParser.ColumnReferenceContext ctx) {
+<span class="nc" id="L826">    List&lt;String&gt; parts = new ArrayList&lt;&gt;();</span>
+
+<span class="nc bnc" id="L828" title="All 2 branches missed.">    if (ctx.tableName() != null) {</span>
+<span class="nc" id="L829">      parts.add(ctx.tableName().getText());</span>
+    }
+
+<span class="nc" id="L832">    parts.add(ctx.columnName().getText());</span>
+
+<span class="nc" id="L834">    return new SqlIdentifier(parts, pos());</span>
+  }
+
+  @Override
+  public SqlNode visitCaseExpression(SnowflakeSqlParser.CaseExpressionContext ctx) {
+<span class="nc bnc" id="L839" title="All 2 branches missed.">    if (ctx.simpleCaseExpression() != null) {</span>
+<span class="nc" id="L840">      return visit(ctx.simpleCaseExpression());</span>
+    } else {
+<span class="nc" id="L842">      return visit(ctx.searchedCaseExpression());</span>
+    }
+  }
+
+  /*************************************************************************************************/
+
+  /**
+   * Extracts and converts a dataType context into a SqlDataTypeSpec object.
+   * Uses maps for type mapping instead of if/else statements.
+   *
+   * @param ctx The dataType context from the ANTLR parser
+   * @return A SqlDataTypeSpec object representing the data type
+   */
+  private SqlDataTypeSpec getDataTypeSpec(SnowflakeSqlParser.DataTypeContext ctx) {
+<span class="nc bnc" id="L856" title="All 2 branches missed.">    if (ctx == null) {</span>
+<span class="nc" id="L857">      return null;</span>
+    }
+
+    // Create position for the entire context
+<span class="nc" id="L861">    SqlParserPos pos = getParserPosition(ctx);</span>
+<span class="nc" id="L862">    List&lt;SqlNode&gt; parameters = new ArrayList&lt;&gt;();</span>
+
+    // Get the entire text to handle exact matches first
+<span class="nc" id="L865">    String fullText = ctx.getText().toUpperCase();</span>
+
+    // Try exact match first
+<span class="nc" id="L868">    SqlTypeName typeName = TYPE_MAPPING.get(fullText);</span>
+
+    // If no exact match, try prefix matching
+<span class="nc bnc" id="L871" title="All 2 branches missed.">    if (typeName == null) {</span>
+<span class="nc bnc" id="L872" title="All 2 branches missed.">      for (Map.Entry&lt;String, SqlTypeName&gt; entry : TYPE_PREFIX_MAPPING.entrySet()) {</span>
+<span class="nc bnc" id="L873" title="All 2 branches missed.">        if (fullText.startsWith(entry.getKey())) {</span>
+<span class="nc" id="L874">          typeName = entry.getValue();</span>
+
+          // Handle parameters based on type
+<span class="nc bnc" id="L877" title="All 2 branches missed.">          if (typeName == SqlTypeName.DECIMAL) {</span>
+            // Handle precision and scale for numeric types
+<span class="nc" id="L879">            addPrecisionScaleParameters(ctx, parameters);</span>
+<span class="nc bnc" id="L880" title="All 8 branches missed.">          } else if (typeName == SqlTypeName.VARCHAR || typeName == SqlTypeName.CHAR ||</span>
+              typeName == SqlTypeName.BINARY || typeName == SqlTypeName.VARBINARY) {
+            // Handle length for string and binary types
+<span class="nc" id="L883">            addLengthParameter(ctx, parameters);</span>
+<span class="nc bnc" id="L884" title="All 6 branches missed.">          } else if (typeName == SqlTypeName.TIME || typeName == SqlTypeName.TIMESTAMP ||</span>
+              typeName == SqlTypeName.TIMESTAMP_WITH_LOCAL_TIME_ZONE) {
+            // Handle precision for time/timestamp types
+<span class="nc" id="L887">            addLengthParameter(ctx, parameters);</span>
+          }
+
+          break;
+        }
+<span class="nc" id="L892">      }</span>
+    }
+
+    // If still no match, default to ANY
+<span class="nc bnc" id="L896" title="All 2 branches missed.">    if (typeName == null) {</span>
+<span class="nc" id="L897">      System.err.println(&quot;Unrecognized data type: &quot; + fullText);</span>
+<span class="nc" id="L898">      typeName = SqlTypeName.ANY;</span>
+    }
+
+    // Create and return the SqlDataTypeSpec
+<span class="nc" id="L902">    return new SqlDataTypeSpec(</span>
+        new SqlBasicTypeNameSpec(typeName, pos),
+        null,
+        pos);
+  }
+
+  /**
+   * Adds precision and scale parameters for numeric types
+   */
+  private void addPrecisionScaleParameters(SnowflakeSqlParser.DataTypeContext ctx, List&lt;SqlNode&gt; parameters) {
+<span class="nc bnc" id="L912" title="All 2 branches missed.">    if (!ctx.INTEGER_LITERAL().isEmpty()) {</span>
+      // Add precision
+<span class="nc" id="L914">      String precision = ctx.INTEGER_LITERAL(0).getText();</span>
+<span class="nc" id="L915">      parameters.add(SqlLiteral.createExactNumeric(precision, getParserPosition(ctx.INTEGER_LITERAL(0))));</span>
+
+      // Add scale if specified
+<span class="nc bnc" id="L918" title="All 2 branches missed.">      if (ctx.INTEGER_LITERAL().size() &gt;= 2) {</span>
+<span class="nc" id="L919">        String scale = ctx.INTEGER_LITERAL(1).getText();</span>
+<span class="nc" id="L920">        parameters.add(SqlLiteral.createExactNumeric(scale, getParserPosition(ctx.INTEGER_LITERAL(1))));</span>
+      }
+    }
+<span class="nc" id="L923">  }</span>
+
+  /**
+   * Adds length parameter for string, binary, and time types
+   */
+  private void addLengthParameter(SnowflakeSqlParser.DataTypeContext ctx, List&lt;SqlNode&gt; parameters) {
+<span class="nc bnc" id="L929" title="All 2 branches missed.">    if (ctx.INTEGER_LITERAL().size() &gt;= 1) {</span>
+<span class="nc" id="L930">      String length = ctx.INTEGER_LITERAL(0).getText();</span>
+<span class="nc" id="L931">      parameters.add(SqlLiteral.createExactNumeric(length, getParserPosition(ctx.INTEGER_LITERAL(0))));</span>
+    }
+<span class="nc" id="L933">  }</span>
+
+  /**
+   * Helper method to get parser position from a parse tree node
+   */
+  private SqlParserPos getParserPosition(ParserRuleContext ctx) {
+<span class="nc" id="L939">    return new SqlParserPos(</span>
+<span class="nc" id="L940">        ctx.getStart().getLine(),</span>
+<span class="nc" id="L941">        ctx.getStart().getCharPositionInLine(),</span>
+<span class="nc" id="L942">        ctx.getStop().getLine(),</span>
+<span class="nc" id="L943">        ctx.getStop().getCharPositionInLine() + ctx.getStop().getText().length());</span>
+  }
+
+  /**
+   * Helper method to get parser position from a terminal node
+   */
+  private SqlParserPos getParserPosition(TerminalNode node) {
+<span class="nc" id="L950">    return new SqlParserPos(</span>
+<span class="nc" id="L951">        node.getSymbol().getLine(),</span>
+<span class="nc" id="L952">        node.getSymbol().getCharPositionInLine(),</span>
+<span class="nc" id="L953">        node.getSymbol().getLine(),</span>
+<span class="nc" id="L954">        node.getSymbol().getCharPositionInLine() + node.getText().length());</span>
+  }
+
+  /*************************************************************************************************/
+
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

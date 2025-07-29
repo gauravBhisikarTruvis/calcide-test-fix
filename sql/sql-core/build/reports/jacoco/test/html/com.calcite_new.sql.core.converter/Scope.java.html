@@ -1,0 +1,509 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Scope.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">sql-core</a> &gt; <a href="index.source.html" class="el_package">com.calcite_new.sql.core.converter</a> &gt; <span class="el_source">Scope.java</span></div><h1>Scope.java</h1><pre class="source lang-java linenums">package com.calcite_new.sql.core.converter;
+
+import com.google.common.collect.ImmutableList;
+import org.apache.calcite.jdbc.JavaTypeFactoryImpl;
+import org.apache.calcite.plan.RelOptCluster;
+import org.apache.calcite.plan.volcano.VolcanoPlanner;
+import org.apache.calcite.rel.RelNode;
+import org.apache.calcite.rel.core.AggregateCall;
+import org.apache.calcite.rel.core.CorrelationId;
+import org.apache.calcite.rel.logical.LogicalValues;
+import org.apache.calcite.rel.type.RelDataType;
+import org.apache.calcite.rel.type.RelDataTypeField;
+import org.apache.calcite.rex.RexBuilder;
+import org.apache.calcite.rex.RexNode;
+import org.apache.calcite.sql.SqlCall;
+import org.apache.calcite.sql.SqlIdentifier;
+import org.apache.calcite.util.ImmutableBitSet;
+import org.apache.calcite.util.Pair;
+import org.checkerframework.checker.nullness.qual.Nullable;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.stream.Collectors;
+
+/**
+ * Manages the scope for identifier resolution during conversion.
+ * Tracks input relations (frames), CTEs, and context for aggregate/correlation.
+ * Each Scope primarily represents the output of a specific RelNode.
+ */
+public class Scope {
+  private final @Nullable Scope parent;
+  // Relations (frames) providing fields in this scope. Usually one after Project/Agg/Scan. Multiple during join condition resolution.
+  private final ImmutableList&lt;CustomSqlToRelConverter.Frame&gt; relations;
+  // CTEs available in this scope (inherited from parent, potentially added to in WITH)
+  private final @Nullable Map&lt;String, RelNode&gt; cteMap;
+  // Alias for the primary relation represented by this scope (if any)
+  private final @Nullable String alias;
+
+  // --- Context for Aggregate Resolution ---
+  private final boolean isAggregateContext; // True if scope represents output of Aggregate/Having
+  private final @Nullable RelNode aggregateNode; // The LogicalAggregate node (if isAggregateContext)
+  private final @Nullable ImmutableBitSet groupSet; // Indices of group keys in Aggregate *input*
+  private final @Nullable Map&lt;Integer, RexNode&gt; groupExprMap; // Map group key index (in input) -&gt; original RexNode
+  private final @Nullable List&lt;AggregateCall&gt; aggCalls; // Aggregate calls in the Aggregate node
+  private final @Nullable Map&lt;CustomSqlToRelConverter.AggregateCallInfo, Integer&gt; aggCallOutputIndexMap; // Map SqlCall info -&gt; index in aggCalls list
+
+  // --- Context for Correlation ---
+  // TODO: Add fields for correlation variables if implementing correlated subqueries
+  // private final @Nullable CorrelationId correlationId; // ID if this scope is correlated from parent
+  // private final @Nullable RelDataType correlationType; // Row type of the correlation source
+
+  // Private constructor, use factory methods
+  protected Scope(@Nullable Scope parent,
+                ImmutableList&lt;CustomSqlToRelConverter.Frame&gt; relations,
+                @Nullable Map&lt;String, RelNode&gt; cteMap,
+                @Nullable String alias,
+                boolean isAggregateContext,
+                @Nullable RelNode aggregateNode,
+                @Nullable ImmutableBitSet groupSet,
+                @Nullable Map&lt;Integer, RexNode&gt; groupExprMap,
+                @Nullable List&lt;AggregateCall&gt; aggCalls,
+<span class="nc" id="L64">                @Nullable Map&lt;CustomSqlToRelConverter.AggregateCallInfo, Integer&gt; aggCallOutputIndexMap) {</span>
+<span class="nc" id="L65">    this.parent = parent;</span>
+<span class="nc" id="L66">    this.relations = Objects.requireNonNull(relations, &quot;relations&quot;);</span>
+<span class="nc" id="L67">    this.cteMap = cteMap; // Can be null if root or not in WITH</span>
+<span class="nc" id="L68">    this.alias = alias;</span>
+<span class="nc" id="L69">    this.isAggregateContext = isAggregateContext;</span>
+<span class="nc" id="L70">    this.aggregateNode = aggregateNode;</span>
+<span class="nc" id="L71">    this.groupSet = groupSet;</span>
+<span class="nc" id="L72">    this.groupExprMap = groupExprMap;</span>
+<span class="nc" id="L73">    this.aggCalls = aggCalls;</span>
+<span class="nc" id="L74">    this.aggCallOutputIndexMap = aggCallOutputIndexMap;</span>
+
+    // Basic validation: If aggregate context, related fields should be non-null
+<span class="nc bnc" id="L77" title="All 12 branches missed.">    if (isAggregateContext &amp;&amp; (aggregateNode == null || groupSet == null || groupExprMap == null || aggCalls == null || aggCallOutputIndexMap == null)) {</span>
+      // Allow creation with nulls initially, maybe? Or enforce here?
+      // Let's allow it but be cautious. A fully constructed agg scope should have these.
+      // Consider adding checks in methods using these fields.
+    }
+<span class="nc" id="L82">  }</span>
+
+  // --- Factory Methods ---
+
+  public static Scope createRoot() {
+<span class="nc" id="L87">    return new Scope(null, ImmutableList.of(), null, null, false, null, null, null, null, null);</span>
+  }
+
+  /** Scope for processing WITH clause definitions. Inherits CTEs, allows adding new ones. */
+  public static Scope createWithScope(Scope parent) {
+    // Inherit parent's CTEs, but allow defining new ones at this level
+<span class="nc bnc" id="L93" title="All 2 branches missed.">    Map&lt;String, RelNode&gt; parentCtes = (parent != null) ? parent.cteMap : null;</span>
+<span class="nc bnc" id="L94" title="All 2 branches missed.">    Map&lt;String, RelNode&gt; newCteMap = (parentCtes != null) ? new HashMap&lt;&gt;(parentCtes) : new HashMap&lt;&gt;();</span>
+    // Relations are typically empty until the WITH body's FROM is processed.
+    // Alias is not applicable here.
+<span class="nc" id="L97">    return new Scope(parent, ImmutableList.of(), newCteMap, null, false, null, null, null, null, null);</span>
+  }
+
+  /** Scope representing a single RelNode source (Scan, Values, Subquery result) with an alias. */
+  public static Scope createScopeForRelNode(Scope parent, RelNode relNode, @Nullable String alias) {
+<span class="nc" id="L102">    CustomSqlToRelConverter.Frame frame = new CustomSqlToRelConverter.Frame(alias, 0, relNode); // Single frame, offset 0</span>
+<span class="nc bnc" id="L103" title="All 2 branches missed.">    return new Scope(parent, ImmutableList.of(frame), parent != null ? parent.cteMap : null, alias,</span>
+        false, null, null, null, null, null);
+  }
+
+  /** Creates a scope identical to an existing one but with a new alias. */
+  public static Scope createScopeWithAlias(Scope parent, RelNode relNode, String alias) {
+    // Assumes the input relNode corresponds to a single conceptual source.
+<span class="nc" id="L110">    CustomSqlToRelConverter.Frame frame = new CustomSqlToRelConverter.Frame(alias, 0, relNode);</span>
+<span class="nc bnc" id="L111" title="All 2 branches missed.">    return new Scope(parent, ImmutableList.of(frame), parent != null ? parent.cteMap : null, alias,</span>
+        false, null, null, null, null, null);
+  }
+
+
+  /** Scope for resolving JOIN conditions. Contains frames for both left and right inputs. */
+  public static Scope createJoinInputScope(Scope parent, Scope leftScope, Scope rightScope) {
+<span class="nc" id="L118">    RelNode leftRel = leftScope.getRelNode();</span>
+//    RelNode rightRel = rightScope.getRelNode();
+<span class="nc" id="L120">    int leftFieldCount = leftRel.getRowType().getFieldCount();</span>
+
+    // Create frames preserving original aliases and calculating offsets
+<span class="nc" id="L123">    List&lt;CustomSqlToRelConverter.Frame&gt; leftFrames = getNewFrames(leftScope, 0);</span>
+<span class="nc" id="L124">    List&lt;CustomSqlToRelConverter.Frame&gt; rightFrames = getNewFrames(rightScope, leftFieldCount);</span>
+<span class="nc" id="L125">    ImmutableList&lt;CustomSqlToRelConverter.Frame&gt; childFrames = ImmutableList.&lt;CustomSqlToRelConverter.Frame&gt;builder()</span>
+<span class="nc" id="L126">        .addAll(leftFrames)</span>
+<span class="nc" id="L127">        .addAll(rightFrames)</span>
+<span class="nc" id="L128">        .build();</span>
+//    SqlToRelConverter.Frame leftFrame = new SqlToRelConverter.Frame(leftScope.getAlias(), 0, leftRel);
+//    SqlToRelConverter.Frame rightFrame = new SqlToRelConverter.Frame(rightScope.getAlias(), leftFieldCount, rightRel);
+
+    // Inherit CTE map from parent
+<span class="nc bnc" id="L133" title="All 2 branches missed.">    Map&lt;String, RelNode&gt; cteMap = (parent != null) ? parent.cteMap : null;</span>
+
+<span class="nc" id="L135">    return new Scope(parent, childFrames, cteMap, null, // No single alias for join input</span>
+        false, null, null, null, null, null);
+  }
+
+  private static List&lt;CustomSqlToRelConverter.Frame&gt; getNewFrames(Scope scope, int offset) {
+    // Check if it's a JOIN scope
+    // TODO not a right way to check join scope
+    List&lt;CustomSqlToRelConverter.Frame&gt; frames;
+<span class="nc bnc" id="L143" title="All 2 branches missed.">    if (scope.relations.size() &gt; 1) {</span>
+<span class="nc" id="L144">      frames = scope.relations.stream()</span>
+<span class="nc" id="L145">          .map(f -&gt; new CustomSqlToRelConverter.Frame(f.alias, f.offset + offset, f.relNode))</span>
+<span class="nc" id="L146">          .toList();</span>
+    } else {
+<span class="nc" id="L148">      frames = List.of(new CustomSqlToRelConverter.Frame(scope.alias, offset, scope.getRelNode()));</span>
+    }
+<span class="nc" id="L150">    return frames;</span>
+  }
+
+  /** Scope representing the output of a JOIN. Contains frames reflecting the joined structure. */
+  public static Scope createJoinOutputScope(Scope parent, RelNode joinRel, Scope leftScope, Scope rightScope) {
+    // The output scope conceptually has fields from left then right.
+    // We can represent this with multiple frames (like input scope) or a single frame
+    // wrapping the joinRel. Single frame is simpler for subsequent steps.
+<span class="nc" id="L158">    int leftFieldCount = leftScope.getRelNode().getRowType().getFieldCount();</span>
+
+    // Option 1: Multiple frames (mirrors input structure) - useful if needing left/right distinction later
+//    SqlToRelConverter.Frame leftFrame = new SqlToRelConverter.Frame(leftScope.getAlias(), 0, leftScope.getRelNode()); // Offset 0, but wraps the whole joinRel
+//    SqlToRelConverter.Frame rightFrame = new SqlToRelConverter.Frame(rightScope.getAlias(), leftFieldCount, rightScope.getRelNode()); // Offset leftCount, wraps whole joinRel
+<span class="nc" id="L163">    List&lt;CustomSqlToRelConverter.Frame&gt; leftFrames = getNewFrames(leftScope, 0);</span>
+<span class="nc" id="L164">    List&lt;CustomSqlToRelConverter.Frame&gt; rightFrames = getNewFrames(rightScope, leftFieldCount);</span>
+<span class="nc" id="L165">    ImmutableList&lt;CustomSqlToRelConverter.Frame&gt; childFrames = ImmutableList.&lt;CustomSqlToRelConverter.Frame&gt;builder()</span>
+<span class="nc" id="L166">        .addAll(leftFrames)</span>
+<span class="nc" id="L167">        .addAll(rightFrames)</span>
+<span class="nc" id="L168">        .build();</span>
+
+//      // Option 2: Single frame wrapping the joinRel. Simpler.
+//      // The alias for the join result itself is usually null unless aliased via AS.
+//      Frame joinFrame = new Frame(null, 0, joinRel); // Alias null, offset 0
+
+<span class="nc bnc" id="L174" title="All 2 branches missed.">    Map&lt;String, RelNode&gt; cteMap = (parent != null) ? parent.cteMap : null;</span>
+<span class="nc" id="L175">    return new JoinScope(parent, childFrames, joinRel, cteMap);</span>
+    // Note: If NATURAL or USING requires projection, this scope might be intermediate,
+    // followed by a project scope.
+  }
+
+  /** Scope representing the output of a Project. Single frame with specified aliases. */
+  public static Scope createProjectScope(Scope parent, RelNode projectNode, List&lt;String&gt; aliases) {
+    // Projection scope replaces the previous relations with a single one.
+<span class="nc" id="L183">    CustomSqlToRelConverter.Frame relation = new CustomSqlToRelConverter.Frame(null, 0, projectNode, aliases); // Project itself usually has no alias</span>
+<span class="nc bnc" id="L184" title="All 2 branches missed.">    Map&lt;String, RelNode&gt; cteMap = (parent != null) ? parent.cteMap : null;</span>
+<span class="nc" id="L185">    return new Scope(parent, ImmutableList.of(relation), cteMap, null,</span>
+        false, null, null, null, null, null);
+  }
+
+  /** Scope representing the output of LogicalAggregate (or subsequent Filter for HAVING). */
+  public static Scope createAggregateOutputScope(Scope parent, RelNode aggregateOrFilterNode,
+                                                 ImmutableBitSet groupSet, Map&lt;Integer, RexNode&gt; groupExprMap,
+                                                 List&lt;AggregateCall&gt; aggCalls, Map&lt;CustomSqlToRelConverter.AggregateCallInfo, Integer&gt; aggCallOutputIndexMap) {
+    // Scope representing the output of LogicalAggregate, used for HAVING/ORDER BY
+<span class="nc" id="L194">    CustomSqlToRelConverter.Frame relation = new CustomSqlToRelConverter.Frame(null, 0, aggregateOrFilterNode); // Output fields are 0..N-1</span>
+<span class="nc bnc" id="L195" title="All 2 branches missed.">    Map&lt;String, RelNode&gt; cteMap = (parent != null) ? parent.cteMap : null;</span>
+<span class="nc" id="L196">    return new Scope(parent, ImmutableList.of(relation), cteMap, null, true, // isAggregateContext = true</span>
+        aggregateOrFilterNode, // Store the node itself for reference
+        groupSet, groupExprMap, aggCalls, aggCallOutputIndexMap);
+  }
+
+
+  // --- Accessor Methods ---
+
+  /** Returns the primary RelNode represented by this scope. */
+  public RelNode getRelNode() {
+<span class="nc bnc" id="L206" title="All 2 branches missed.">    if (relations.isEmpty()) {</span>
+      // Should happen only for root scope before conversion or intermediate WITH scope?
+      // Or FROM-less select? Handle FROM-less case.
+<span class="nc" id="L209">      VolcanoPlanner planner = new VolcanoPlanner();</span>
+<span class="nc" id="L210">      RexBuilder rexBuilder = new RexBuilder(new JavaTypeFactoryImpl());</span>
+<span class="nc" id="L211">      RelOptCluster cluster = RelOptCluster.create(planner, rexBuilder);</span>
+<span class="nc bnc" id="L212" title="All 4 branches missed.">      if (parent == null &amp;&amp; cteMap == null) return LogicalValues.createOneRow(cluster); // Hack for root/empty</span>
+<span class="nc" id="L213">      throw new IllegalStateException(&quot;Scope has no relations, cannot get RelNode. Scope: &quot; + this);</span>
+    }
+<span class="nc bnc" id="L215" title="All 2 branches missed.">    if (relations.size() == 1) {</span>
+<span class="nc" id="L216">      return relations.get(0).relNode;</span>
+    }
+    // If multiple relations (e.g., join input scope), which node to return?
+    // This method assumes the scope represents *one* logical output node.
+    // Join *input* scope should perhaps not expose a single RelNode this way.
+    // Let's assume callers only call getRelNode on scopes representing a single output node.
+<span class="nc" id="L222">    throw new IllegalStateException(&quot;Scope has multiple relations (&quot; + relations.size() + &quot;), ambiguous to get single RelNode. Scope: &quot; + this);</span>
+    // Alternative: Return the node associated with the *last* frame? Or the *first*? Unclear.
+    // Best practice: Ensure scopes passed around represent single logical outputs.
+  }
+
+  /** Returns the parent scope, or null if root. */
+  public @Nullable Scope getParent() {
+<span class="nc" id="L229">    return parent;</span>
+  }
+
+  /** Returns the alias of the primary relation in this scope, if any. */
+  public @Nullable String getAlias() {
+    // If there's an explicit alias for the scope itself (e.g., from AS)
+<span class="nc bnc" id="L235" title="All 2 branches missed.">    if (this.alias != null) return this.alias;</span>
+    // If single relation, return its alias
+<span class="nc bnc" id="L237" title="All 2 branches missed.">    if (relations.size() == 1) return relations.get(0).alias;</span>
+    // Otherwise, no single alias applies
+<span class="nc" id="L239">    return null;</span>
+  }
+
+  /** Returns the list of frames (relations) in this scope. */
+  public ImmutableList&lt;CustomSqlToRelConverter.Frame&gt; getRelations() {
+<span class="nc" id="L244">    return relations;</span>
+  }
+
+  /** Returns the number of fields in the output represented by this scope. */
+  public int getFieldCount() {
+<span class="nc bnc" id="L249" title="All 2 branches missed.">    if (relations.isEmpty()) return 0;</span>
+    // Assumes scope represents a single logical output node.
+<span class="nc" id="L251">    return getRelNode().getRowType().getFieldCount();</span>
+  }
+
+  /** Returns the names of the fields in the output represented by this scope. */
+  public List&lt;String&gt; getFieldNames() {
+<span class="nc bnc" id="L256" title="All 2 branches missed.">    if (relations.isEmpty()) return ImmutableList.of();</span>
+    // Assumes scope represents a single logical output node.
+<span class="nc" id="L258">    return getRelNode().getRowType().getFieldNames();</span>
+  }
+
+
+  // --- CTE Methods ---
+
+  /** Adds a CTE definition to this scope's context. */
+  public void addCte(String name, RelNode rel) {
+<span class="nc bnc" id="L266" title="All 2 branches missed.">    if (cteMap == null) {</span>
+<span class="nc" id="L267">      throw new IllegalStateException(&quot;Cannot add CTE to this scope type (cteMap is null)&quot;);</span>
+    }
+<span class="nc bnc" id="L269" title="All 2 branches missed.">    if (cteMap.containsKey(name)) {</span>
+<span class="nc" id="L270">      throw new IllegalArgumentException(&quot;Duplicate CTE name defined: &quot; + name);</span>
+    }
+<span class="nc" id="L272">    cteMap.put(name, rel);</span>
+<span class="nc" id="L273">  }</span>
+
+  /** Checks if a CTE name is defined in this scope or accessible parents. */
+  public boolean isCteDefined(String name) {
+<span class="nc bnc" id="L277" title="All 2 branches missed.">    return findCte(name) != null;</span>
+  }
+
+  /** Finds a CTE by name, searching current scope then parents recursively. */
+  public @Nullable RelNode findCte(String name) {
+<span class="nc bnc" id="L282" title="All 2 branches missed.">    if (cteMap != null) {</span>
+<span class="nc" id="L283">      RelNode cte = cteMap.get(name);</span>
+<span class="nc bnc" id="L284" title="All 2 branches missed.">      if (cte != null) {</span>
+<span class="nc" id="L285">        return cte;</span>
+      }
+    }
+    // Standard SQL: CTEs are generally visible only within their defining WITH clause
+    // and subsequent sibling CTEs/main query body. They don't leak &quot;up&quot; to parent scopes.
+    // However, nested WITH clauses can reference CTEs from outer WITH clauses.
+    // So, search parent *if* parent also has a CTE map (meaning it's part of a WITH).
+<span class="nc bnc" id="L292" title="All 4 branches missed.">    if (parent != null &amp;&amp; parent.cteMap != null) {</span>
+<span class="nc" id="L293">      return parent.findCte(name);</span>
+    }
+<span class="nc" id="L295">    return null;</span>
+  }
+
+  // --- Aggregate Context Methods ---
+
+  public boolean isAggregateContext() {
+<span class="nc" id="L301">    return isAggregateContext;</span>
+  }
+
+<span class="nc" id="L304">  public @Nullable ImmutableBitSet getGroupSet() { return groupSet; }</span>
+<span class="nc" id="L305">  public @Nullable Map&lt;Integer, RexNode&gt; getGroupExprMap() { return groupExprMap; }</span>
+<span class="nc" id="L306">  public @Nullable List&lt;AggregateCall&gt; getAggCalls() { return aggCalls; }</span>
+
+
+  /**
+   * Finds an aggregate call result by matching the SqlCall node.
+   * Used for resolving aggregates in HAVING/ORDER BY.
+   */
+  public @Nullable Pair&lt;Integer, AggregateCall&gt; findAggregateCallResult(SqlCall sqlCall) {
+<span class="nc bnc" id="L314" title="All 8 branches missed.">    if (!isAggregateContext || aggCalls == null || aggCallOutputIndexMap == null || groupSet == null) {</span>
+<span class="nc" id="L315">      return null; // Not in the right context or context is incomplete</span>
+    }
+
+    // Need to match sqlCall to one of the AggregateCallInfos used to create the Aggregate node.
+    // Use the temporary AggregateCallInfo for matching (based on SqlNode structure/string).
+<span class="nc" id="L320">    CustomSqlToRelConverter.AggregateCallInfo targetInfo = new CustomSqlToRelConverter.AggregateCallInfo(sqlCall, null); // Alias doesn't matter for matching call structure</span>
+<span class="nc" id="L321">    Integer aggCallIndex = aggCallOutputIndexMap.get(targetInfo); // Index within the aggCalls list (0-based)</span>
+
+<span class="nc bnc" id="L323" title="All 2 branches missed.">    if (aggCallIndex != null) {</span>
+      // Found the aggregate call. Its index in the *output* row type of the Aggregate node
+      // is groupSet.cardinality() + aggCallIndex.
+<span class="nc" id="L326">      int outputIndex = groupSet.cardinality() + aggCallIndex;</span>
+<span class="nc bnc" id="L327" title="All 2 branches missed.">      if (outputIndex &lt; aggregateNode.getRowType().getFieldCount()) {</span>
+<span class="nc" id="L328">        return Pair.of(outputIndex, aggCalls.get(aggCallIndex));</span>
+      } else {
+        // Should not happen if indices are correct
+<span class="nc" id="L331">        throw new IllegalStateException(&quot;Calculated aggregate output index &quot; + outputIndex + &quot; is out of bounds for node &quot; + aggregateNode);</span>
+      }
+    }
+
+<span class="nc" id="L335">    return null; // Not found</span>
+  }
+
+  /**
+   * Finds a GROUP BY expression result by matching the SqlCall node against original group expressions.
+   * Used for resolving group keys referenced in HAVING/ORDER BY.
+   */
+  public @Nullable RexNode findGroupByExpression(SqlCall sqlCall) {
+<span class="nc bnc" id="L343" title="All 6 branches missed.">    if (!isAggregateContext || groupSet == null || groupExprMap == null) {</span>
+<span class="nc" id="L344">      return null;</span>
+    }
+
+    // Convert the sqlCall to a RexNode using the *input* scope of the aggregate
+    // This requires access to the scope *before* aggregation. Store it? Or assume parent?
+    // Let's assume the parent scope is the input scope to the aggregation. Risky assumption.
+    // A better way: Store the input scope within the AggregateOutputScope?
+
+    // Workaround: Convert sqlCall using a temporary root scope if it's simple (e.g., identifier)
+    // This is very limited. Proper solution needs the aggregate input scope.
+    // Let's assume for now that references in HAVING/ORDER BY are simple identifiers or aliases
+    // matching the output field names of the aggregate node.
+
+    // Try matching sqlCall string against the groupExprMap values (original RexNodes)
+<span class="nc" id="L358">    String targetDigest = sqlCall.toString(); // Use string as digest proxy</span>
+<span class="nc" id="L359">    int groupKeyIndex = 0;</span>
+<span class="nc bnc" id="L360" title="All 2 branches missed.">    for (int inputIndex : groupSet) {</span>
+<span class="nc" id="L361">      RexNode originalGroupRex = groupExprMap.get(inputIndex);</span>
+<span class="nc bnc" id="L362" title="All 4 branches missed.">      if (originalGroupRex != null &amp;&amp; originalGroupRex.toString().equals(targetDigest)) {</span>
+        // Found match. Return a RexInputRef pointing to the group key in the *output* row type.
+<span class="nc" id="L364">        RelDataTypeField outputField = aggregateNode.getRowType().getFieldList().get(groupKeyIndex);</span>
+<span class="nc" id="L365">        RexBuilder rexBuilder = new RexBuilder(new JavaTypeFactoryImpl());</span>
+<span class="nc" id="L366">        return rexBuilder.makeInputRef(outputField.getType(), groupKeyIndex);</span>
+      }
+<span class="nc" id="L368">      groupKeyIndex++;</span>
+<span class="nc" id="L369">    }</span>
+
+    // If not found by matching original expression, try resolving sqlCall as an identifier
+    // against the output fields of the aggregate node.
+//      if (sqlCall instanceof SqlIdentifier) {
+//        Pair&lt;Frame, RelDataTypeField&gt; fieldInfo = findField((SqlIdentifier) sqlCall);
+//        if (fieldInfo != null) {
+//          // Check if this field corresponds to a group key position
+//          int outputIndex = fieldInfo.left.offset + fieldInfo.right.getIndex();
+//          if (outputIndex &lt; groupSet.cardinality()) { // Check if it's within the group key part
+//            RexBuilder rexBuilder = new RexBuilder(new JavaTypeFactoryImpl());
+//            return rexBuilder.makeInputRef(fieldInfo.right.getType(), outputIndex);
+//          }
+//        }
+//      }
+
+
+<span class="nc" id="L386">    return null; // Not found or not identifiable as a group key reference</span>
+  }
+
+
+  // --- Identifier Resolution Methods ---
+
+  /** Find relation frame by alias (e.g., table alias in FROM). Searches current scope only. */
+  public CustomSqlToRelConverter.Frame findRelationByAlias(String alias) {
+<span class="nc bnc" id="L394" title="All 2 branches missed.">    for (CustomSqlToRelConverter.Frame frame : relations) {</span>
+<span class="nc bnc" id="L395" title="All 4 branches missed.">      if (frame.alias != null &amp;&amp; frame.alias.equalsIgnoreCase(alias)) {</span>
+<span class="nc" id="L396">        return frame;</span>
+      }
+<span class="nc" id="L398">    }</span>
+<span class="nc" id="L399">    return null;</span>
+  }
+
+  /**
+   * Find a field by identifier, searching current scope's frames.
+   * Does NOT search parent scope (use findField searching parents separately if needed).
+   */
+  public @Nullable Pair&lt;CustomSqlToRelConverter.Frame, RelDataTypeField&gt; findFieldInScope(SqlIdentifier id) {
+<span class="nc bnc" id="L407" title="All 2 branches missed.">    String simpleName = id.isSimple() ? id.getSimple() : id.names.get(id.names.size() - 1);</span>
+    // Qualifier is the first part if multipart, otherwise null.
+<span class="nc bnc" id="L409" title="All 2 branches missed.">    String qualifier = id.names.size() &gt; 1 ? id.names.get(0) : null;</span>
+
+<span class="nc" id="L411">    CustomSqlToRelConverter.Frame foundFrame = null;</span>
+<span class="nc" id="L412">    RelDataTypeField foundField = null;</span>
+<span class="nc" id="L413">    int matchCount = 0;</span>
+
+<span class="nc bnc" id="L415" title="All 2 branches missed.">    for (CustomSqlToRelConverter.Frame frame : relations) {</span>
+<span class="nc bnc" id="L416" title="All 4 branches missed.">      boolean qualifierMatch = (qualifier == null) // Unqualified name might match any frame</span>
+<span class="nc bnc" id="L417" title="All 2 branches missed.">          || (frame.alias != null &amp;&amp; frame.alias.equalsIgnoreCase(qualifier)); // Qualified name must match frame alias</span>
+
+<span class="nc bnc" id="L419" title="All 2 branches missed.">      if (qualifierMatch) {</span>
+        // Look for field name within this frame's row type (case-insensitive)
+<span class="nc" id="L421">        RelDataTypeField field = frame.rowType.getField(simpleName, false, false);</span>
+<span class="nc bnc" id="L422" title="All 2 branches missed.">        if (field != null) {</span>
+          // If qualifier was specified, this is our match.
+<span class="nc bnc" id="L424" title="All 2 branches missed.">          if (qualifier != null) {</span>
+<span class="nc" id="L425">            return Pair.of(frame, field);</span>
+          }
+          // If qualifier was null, we need to check for ambiguity.
+<span class="nc" id="L428">          matchCount++;</span>
+<span class="nc" id="L429">          foundFrame = frame;</span>
+<span class="nc" id="L430">          foundField = field;</span>
+          // If we find more than one match for an unqualified name, it's ambiguous.
+<span class="nc bnc" id="L432" title="All 2 branches missed.">          if (matchCount &gt; 1) {</span>
+<span class="nc" id="L433">            throw new RuntimeException(&quot;Ambiguous identifier '&quot; + simpleName + &quot;' found in multiple relations in scope: &quot; + relations.stream().map(f -&gt; f.alias).collect(Collectors.toList()));</span>
+          }
+        }
+      }
+<span class="nc" id="L437">    }</span>
+
+    // If exactly one match was found for an unqualified name
+<span class="nc bnc" id="L440" title="All 2 branches missed.">    if (matchCount == 1) {</span>
+<span class="nc" id="L441">      return Pair.of(foundFrame, foundField);</span>
+    }
+
+    // No match found in this scope's frames
+<span class="nc" id="L445">    return null;</span>
+  }
+
+  /** Find a field by identifier, searching current scope then parents recursively. */
+  public @Nullable Pair&lt;CustomSqlToRelConverter.Frame, RelDataTypeField&gt; findField(SqlIdentifier id) {
+    // Search current scope first
+<span class="nc" id="L451">    Pair&lt;CustomSqlToRelConverter.Frame, RelDataTypeField&gt; fieldInfo = findFieldInScope(id);</span>
+<span class="nc bnc" id="L452" title="All 2 branches missed.">    if (fieldInfo != null) {</span>
+<span class="nc" id="L453">      return fieldInfo;</span>
+    }
+    // If not found, delegate to parent scope (for correlation or outer query access)
+<span class="nc bnc" id="L456" title="All 2 branches missed.">    if (parent != null) {</span>
+<span class="nc" id="L457">      return parent.findField(id);</span>
+    }
+    // Not found anywhere up the chain
+<span class="nc" id="L460">    return null;</span>
+  }
+
+  // --- Correlation Methods (Placeholders) ---
+
+  /** Finds a correlation variable by name. Requires Scope to manage CorrelationIds. */
+  public @Nullable Pair&lt;Scope, RelDataTypeField&gt; findCorrelationVariable(SqlIdentifier id) {
+    // TODO: Implement correlation lookup logic
+    // 1. Check if 'id' refers to a correlation defined in a parent scope.
+    // 2. Requires scopes to register CorrelationIds when entering subqueries.
+<span class="nc" id="L470">    return null; // Placeholder</span>
+  }
+
+  /** Gets the CorrelationId if this scope represents a correlated subquery input. */
+  public @Nullable CorrelationId getCorrelationId() {
+    // TODO: Return correlationId field if implemented
+<span class="nc" id="L476">    return null; // Placeholder</span>
+  }
+
+  /** Gets the row type of the correlation source. */
+  public @Nullable RelDataType getCorrelationType() {
+    // TODO: Return correlationType field if implemented
+<span class="nc" id="L482">    return null; // Placeholder</span>
+  }
+
+  /**
+   * Creates a new CorrelationId for a subquery. Needs context.
+   */
+  public CorrelationId createCorrelationId(String alias) {
+    // TODO: Implement correlation ID management, likely needs cluster access or a counter.
+    // return cluster.createCorrel(); // Example if cluster provides it
+<span class="nc bnc" id="L491" title="All 2 branches missed.">    String idName = alias != null ? alias : &quot;$cor1&quot;;</span>
+<span class="nc" id="L492">    return new CorrelationId(idName);</span>
+//    throw new UnsupportedOperationException(&quot;Correlation ID creation not implemented.&quot;);
+  }
+
+
+  @Override
+  public String toString() {
+<span class="nc" id="L499">    StringBuilder sb = new StringBuilder(&quot;Scope{&quot;);</span>
+<span class="nc" id="L500">    sb.append(&quot;alias=&quot;).append(alias);</span>
+<span class="nc" id="L501">    sb.append(&quot;, relations=&quot;).append(relations.stream().map(f -&gt; f.alias + &quot;:&quot; + f.relNode.getClass().getSimpleName()).collect(Collectors.toList()));</span>
+<span class="nc" id="L502">    sb.append(&quot;, isAgg=&quot;).append(isAggregateContext);</span>
+<span class="nc bnc" id="L503" title="All 2 branches missed.">    sb.append(&quot;, parent=&quot;).append(parent != null ? parent.hashCode() : &quot;null&quot;); // Use hashcode to avoid recursion</span>
+<span class="nc bnc" id="L504" title="All 2 branches missed.">    sb.append(&quot;, cteKeys=&quot;).append(cteMap != null ? cteMap.keySet() : &quot;N/A&quot;);</span>
+<span class="nc" id="L505">    sb.append('}');</span>
+<span class="nc" id="L506">    return sb.toString();</span>
+  }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

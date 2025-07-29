@@ -1,0 +1,23 @@
+o18:51:02,030 |-INFO in ch.qos.logback.classic.LoggerContext[default] - This is logback-classic version 1.5.17
+l18:51:02,030 |-INFO in ch.qos.logback.classic.LoggerContext[default] - This is logback-core version 1.4.14
+„18:51:02,031 |-WARN in ch.qos.logback.classic.LoggerContext[default] - Versions of logback-core and logback-classic are different!
+•18:51:02,038 |-INFO in ch.qos.logback.classic.util.ContextInitializer@7df3da0b - Here is a list of configurators discovered as a service, by rank: 
+–18:51:02,039 |-INFO in ch.qos.logback.classic.util.ContextInitializer@7df3da0b -   org.springframework.boot.logging.logback.RootLogLevelConfigurator
+­18:51:02,039 |-INFO in ch.qos.logback.classic.util.ContextInitializer@7df3da0b - They will be invoked in order until ExecutionStatus.DO_NOT_INVOKE_NEXT_IF_ANY is returned.
+»18:51:02,039 |-INFO in ch.qos.logback.classic.util.ContextInitializer@7df3da0b - Constructed configurator of type class org.springframework.boot.logging.logback.RootLogLevelConfigurator
+ß18:51:02,048 |-INFO in ch.qos.logback.classic.util.ContextInitializer@7df3da0b - org.springframework.boot.logging.logback.RootLogLevelConfigurator.configure() call lasted 1 milliseconds. ExecutionStatus=INVOKE_NEXT_IF_ANY
+¤18:51:02,048 |-INFO in ch.qos.logback.classic.util.ContextInitializer@7df3da0b - Trying to configure with ch.qos.logback.classic.joran.SerializedModelConfigurator
+²18:51:02,051 |-INFO in ch.qos.logback.classic.util.ContextInitializer@7df3da0b - Constructed configurator of type class ch.qos.logback.classic.joran.SerializedModelConfigurator
+t18:51:02,055 |-INFO in ch.qos.logback.classic.LoggerContext[default] - Could NOT find resource [logback-test.scmo]
+o18:51:02,055 |-INFO in ch.qos.logback.classic.LoggerContext[default] - Could NOT find resource [logback.scmo]
+Ö18:51:02,055 |-INFO in ch.qos.logback.classic.util.ContextInitializer@7df3da0b - ch.qos.logback.classic.joran.SerializedModelConfigurator.configure() call lasted 4 milliseconds. ExecutionStatus=INVOKE_NEXT_IF_ANY
+ 18:51:02,055 |-INFO in ch.qos.logback.classic.util.ContextInitializer@7df3da0b - Trying to configure with ch.qos.logback.classic.util.DefaultJoranConfigurator
+®18:51:02,057 |-INFO in ch.qos.logback.classic.util.ContextInitializer@7df3da0b - Constructed configurator of type class ch.qos.logback.classic.util.DefaultJoranConfigurator
+s18:51:02,058 |-INFO in ch.qos.logback.classic.LoggerContext[default] - Could NOT find resource [logback-test.xml]
+n18:51:02,058 |-INFO in ch.qos.logback.classic.LoggerContext[default] - Could NOT find resource [logback.xml]
+Ò18:51:02,058 |-INFO in ch.qos.logback.classic.util.ContextInitializer@7df3da0b - ch.qos.logback.classic.util.DefaultJoranConfigurator.configure() call lasted 1 milliseconds. ExecutionStatus=INVOKE_NEXT_IF_ANY
+”18:51:02,058 |-INFO in ch.qos.logback.classic.util.ContextInitializer@7df3da0b - Trying to configure with ch.qos.logback.classic.BasicConfigurator
+¢18:51:02,060 |-INFO in ch.qos.logback.classic.util.ContextInitializer@7df3da0b - Constructed configurator of type class ch.qos.logback.classic.BasicConfigurator
+n18:51:02,060 |-INFO in ch.qos.logback.classic.BasicConfigurator@4e5d5ac1 - Setting up default configuration.
+¼18:51:02,097 |-INFO in ch.qos.logback.classic.util.ContextInitializer@7df3da0b - ch.qos.logback.classic.BasicConfigurator.configure() call lasted 37 milliseconds. ExecutionStatus=NEUTRAL
+

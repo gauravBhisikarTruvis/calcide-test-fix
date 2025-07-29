@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>EntityCatalogReader.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">sql-core</a> &gt; <a href="index.source.html" class="el_package">com.calcite_new.sql.core.converter</a> &gt; <span class="el_source">EntityCatalogReader.java</span></div><h1>EntityCatalogReader.java</h1><pre class="source lang-java linenums">package com.calcite_new.sql.core.converter;
+
+import com.calcite_new.core.dialect.sql.SqlDialect;
+import com.calcite_new.core.model.EntityQualifier;
+import com.calcite_new.core.model.Identifier;
+import com.calcite_new.core.model.ScannableTable;
+import com.calcite_new.core.model.entity.Table;
+import com.calcite_new.core.resolver.EntityResolver;
+import com.google.common.collect.ImmutableList;
+import org.apache.calcite.config.CalciteConnectionConfig;
+import org.apache.calcite.jdbc.CalciteSchema;
+import org.apache.calcite.plan.RelOptCluster;
+import org.apache.calcite.prepare.CalciteCatalogReader;
+import org.apache.calcite.prepare.RelOptTableImpl;
+import org.apache.calcite.rel.type.RelDataType;
+import org.apache.calcite.rel.type.RelDataTypeFactory;
+import org.apache.calcite.sql.validate.SqlNameMatcher;
+import org.apache.calcite.sql.validate.SqlNameMatchers;
+
+import java.util.List;
+
+public class EntityCatalogReader extends CalciteCatalogReader {
+  private final RelOptCluster cluster;
+  private final EntityResolver resolver;
+  private final SqlDialect dialect;
+  private final List&lt;String&gt; defaultQualifiers;
+
+  private EntityCatalogReader(
+      RelOptCluster cluster,
+      EntityResolver resolver,
+      SqlDialect dialect,
+      List&lt;String&gt; defaultQualifiers,
+      CalciteSchema rootSchema, RelDataTypeFactory typeFactory,
+      CalciteConnectionConfig config) {
+<span class="nc" id="L35">    super(rootSchema,</span>
+        defaultQualifiers, typeFactory,
+        config);
+<span class="nc" id="L38">    this.cluster = cluster;</span>
+<span class="nc" id="L39">    this.resolver = resolver;</span>
+<span class="nc" id="L40">    this.dialect = dialect;</span>
+<span class="nc" id="L41">    this.defaultQualifiers = defaultQualifiers;</span>
+<span class="nc" id="L42">  }</span>
+
+  public static EntityCatalogReader create(
+      RelOptCluster cluster,
+      EntityResolver resolver,
+      SqlDialect dialect,
+      List&lt;String&gt; defaultQualifiers) {
+<span class="nc" id="L49">    return new EntityCatalogReader(cluster, resolver, dialect,</span>
+<span class="nc" id="L50">        defaultQualifiers, resolver.getSchema(), cluster.getTypeFactory(), CalciteConnectionConfig.DEFAULT);</span>
+  }
+
+
+  @Override
+  public RelOptTableImpl getTable(List&lt;String&gt; names) {
+<span class="nc" id="L56">    String tableName = names.get(names.size() - 1);</span>
+<span class="nc" id="L57">    EntityQualifier qualifier = new EntityQualifier(names, defaultQualifiers, dialect);</span>
+    // Regular table scan
+<span class="nc" id="L59">    Table table = (Table) resolver.resolve(qualifier);</span>
+<span class="nc" id="L60">    return createRelOptTable(table);</span>
+  }
+
+  private RelOptTableImpl createRelOptTable(Table table) {
+<span class="nc" id="L64">    ImmutableList&lt;String&gt; qualifiedName = getQualifiedName(table);</span>
+<span class="nc" id="L65">    ScannableTable scannableTable = ScannableTable.create(table);</span>
+<span class="nc" id="L66">    RelDataType rowType = scannableTable.getRowType(cluster.getTypeFactory());</span>
+<span class="nc" id="L67">    return RelOptTableImpl.create(null, rowType, scannableTable, qualifiedName);</span>
+  }
+
+  private static ImmutableList&lt;String&gt; getQualifiedName(Table table) {
+<span class="nc" id="L71">    List&lt;String&gt; namespace = table.getNamespace().stream().map(Identifier::getNormalizedName).toList();</span>
+<span class="nc" id="L72">    return ImmutableList.&lt;String&gt;builder()</span>
+<span class="nc" id="L73">        .addAll(namespace)</span>
+<span class="nc" id="L74">        .add(table.getName().getNormalizedName())</span>
+<span class="nc" id="L75">        .build();</span>
+  }
+
+//  @Override
+//  public RelDataType getNamedType(SqlIdentifier typeName) {
+//    throw new UnsupportedOperationException(&quot;Not implemented&quot;);
+//  }
+//
+//  @Override
+//  public List&lt;SqlMoniker&gt; getAllSchemaObjectNames(List&lt;String&gt; names) {
+//    throw new UnsupportedOperationException(&quot;Not implemented&quot;);
+//  }
+
+  @Override
+  public List&lt;List&lt;String&gt;&gt; getSchemaPaths() {
+<span class="nc" id="L90">    return List.of(defaultQualifiers);</span>
+  }
+//
+//  @Override
+//  public @Nullable RelDataTypeField field(RelDataType rowType, String alias) {
+//    throw new UnsupportedOperationException(&quot;Not implemented&quot;);
+//  }
+
+  @Override
+  public SqlNameMatcher nameMatcher() {
+<span class="nc" id="L100">    return SqlNameMatchers.withCaseSensitive(false);</span>
+  }
+
+//  @Override
+//  public boolean matches(String string, String name) {
+//    throw new UnsupportedOperationException(&quot;Not implemented&quot;);
+//  }
+//
+//  @Override
+//  public RelDataType createTypeFromProjection(RelDataType type, List&lt;String&gt; columnNameList) {
+//    throw new UnsupportedOperationException(&quot;Not implemented&quot;);
+//  }
+//
+//  @Override
+//  public boolean isCaseSensitive() {
+//    throw new UnsupportedOperationException(&quot;Not implemented&quot;);
+//  }
+
+  @Override
+  public CalciteSchema getRootSchema() {
+<span class="nc" id="L120">    return resolver.getSchema();</span>
+  }
+//
+//  @Override
+//  public CalciteConnectionConfig getConfig() {
+//    throw new UnsupportedOperationException(&quot;Not implemented&quot;);
+//  }
+//
+//  @Override
+//  public &lt;C&gt; @Nullable C unwrap(Class&lt;C&gt; aClass) {
+//    return null;
+//  }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

@@ -1,0 +1,205 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>CustomRexOver.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">sql-core</a> &gt; <a href="index.source.html" class="el_package">com.calcite_new.sql.core.converter</a> &gt; <span class="el_source">CustomRexOver.java</span></div><h1>CustomRexOver.java</h1><pre class="source lang-java linenums">package com.calcite_new.sql.core.converter;
+
+import org.apache.calcite.rel.type.RelDataType;
+import org.apache.calcite.rex.*;
+import org.apache.calcite.sql.SqlAggFunction;
+import org.apache.calcite.sql.SqlWindow;
+import org.apache.calcite.util.ControlFlowException;
+import org.apache.calcite.util.Util;
+import org.checkerframework.checker.nullness.qual.Nullable;
+
+import java.util.List;
+import java.util.Objects;
+
+import static com.google.common.base.Preconditions.checkArgument;
+import static java.util.Objects.requireNonNull;
+
+public class CustomRexOver extends RexCall {
+<span class="nc" id="L18">  private static final Finder FINDER = new Finder();</span>
+
+  //~ Instance fields --------------------------------------------------------
+
+  private final RexWindow window;
+  private final boolean distinct;
+  private final boolean ignoreNulls;
+
+  //~ Constructors -----------------------------------------------------------
+
+  /**
+   * Creates a RexOver.
+   *
+   * &lt;p&gt;For example, &quot;SUM(DISTINCT x) OVER (ROWS 3 PRECEDING)&quot; is represented
+   * as:
+   *
+   * &lt;ul&gt;
+   * &lt;li&gt;type = Integer,
+   * &lt;li&gt;op = {@link org.apache.calcite.sql.fun.SqlStdOperatorTable#SUM},
+   * &lt;li&gt;operands = { {@link RexFieldAccess}(&quot;x&quot;) }
+   * &lt;li&gt;window = {@link SqlWindow}(ROWS 3 PRECEDING)
+   * &lt;/ul&gt;
+   *
+   * @param type     Result type
+   * @param op       Aggregate operator
+   * @param operands Operands list
+   * @param window   Window specification
+   * @param distinct Aggregate operator is applied on distinct elements
+   */
+  public CustomRexOver(
+      RelDataType type,
+      SqlAggFunction op,
+      List&lt;RexNode&gt; operands,
+      RexWindow window,
+      boolean distinct,
+      boolean ignoreNulls) {
+<span class="nc" id="L54">    super(type, op, operands);</span>
+<span class="nc" id="L55">    checkArgument(op.isAggregator());</span>
+<span class="nc" id="L56">    this.window = requireNonNull(window, &quot;window&quot;);</span>
+<span class="nc" id="L57">    this.distinct = distinct;</span>
+<span class="nc" id="L58">    this.ignoreNulls = ignoreNulls;</span>
+<span class="nc" id="L59">  }</span>
+
+  //~ Methods ----------------------------------------------------------------
+
+  /**
+   * Returns the aggregate operator for this expression.
+   */
+  public SqlAggFunction getAggOperator() {
+<span class="nc" id="L67">    return (SqlAggFunction) getOperator();</span>
+  }
+
+  public RexWindow getWindow() {
+<span class="nc" id="L71">    return window;</span>
+  }
+
+  public boolean isDistinct() {
+<span class="nc" id="L75">    return distinct;</span>
+  }
+
+  public boolean ignoreNulls() {
+<span class="nc" id="L79">    return ignoreNulls;</span>
+  }
+
+  @Override protected String computeDigest(boolean withType) {
+<span class="nc" id="L83">    final StringBuilder sb = new StringBuilder(op.getName());</span>
+<span class="nc" id="L84">    sb.append(&quot;(&quot;);</span>
+<span class="nc bnc" id="L85" title="All 2 branches missed.">    if (distinct) {</span>
+<span class="nc" id="L86">      sb.append(&quot;DISTINCT &quot;);</span>
+    }
+<span class="nc" id="L88">    appendOperands(sb);</span>
+<span class="nc" id="L89">    sb.append(&quot;)&quot;);</span>
+<span class="nc bnc" id="L90" title="All 2 branches missed.">    if (ignoreNulls) {</span>
+<span class="nc" id="L91">      sb.append(&quot; IGNORE NULLS&quot;);</span>
+    }
+<span class="nc bnc" id="L93" title="All 2 branches missed.">    if (withType) {</span>
+<span class="nc" id="L94">      sb.append(&quot;:&quot;);</span>
+<span class="nc" id="L95">      sb.append(type.getFullTypeString());</span>
+    }
+<span class="nc" id="L97">    sb.append(&quot; OVER (&quot;)</span>
+<span class="nc" id="L98">        .append(window.toString())</span>
+<span class="nc" id="L99">        .append(&quot;)&quot;);</span>
+<span class="nc" id="L100">    return sb.toString();</span>
+  }
+
+  @Override public int nodeCount() {
+<span class="nc" id="L104">    return super.nodeCount() + window.nodeCount;</span>
+  }
+
+  /**
+   * Returns whether an expression contains an OVER clause.
+   */
+  public static boolean containsOver(RexNode expr) {
+    try {
+<span class="nc" id="L112">      expr.accept(FINDER);</span>
+<span class="nc" id="L113">      return false;</span>
+<span class="nc" id="L114">    } catch (OverFound e) {</span>
+<span class="nc" id="L115">      Util.swallow(e, null);</span>
+<span class="nc" id="L116">      return true;</span>
+    }
+  }
+
+  /**
+   * Returns whether a program contains an OVER clause.
+   */
+  public static boolean containsOver(RexProgram program) {
+    try {
+<span class="nc" id="L125">      RexUtil.apply(FINDER, program.getExprList(), null);</span>
+<span class="nc" id="L126">      return false;</span>
+<span class="nc" id="L127">    } catch (OverFound e) {</span>
+<span class="nc" id="L128">      Util.swallow(e, null);</span>
+<span class="nc" id="L129">      return true;</span>
+    }
+  }
+
+  /**
+   * Returns whether an expression list contains an OVER clause.
+   */
+  public static boolean containsOver(List&lt;? extends RexNode&gt; exprs,
+                                     @Nullable RexNode condition) {
+    try {
+<span class="nc" id="L139">      RexUtil.apply(FINDER, exprs, condition);</span>
+<span class="nc" id="L140">      return false;</span>
+<span class="nc" id="L141">    } catch (OverFound e) {</span>
+<span class="nc" id="L142">      Util.swallow(e, null);</span>
+<span class="nc" id="L143">      return true;</span>
+    }
+  }
+
+  @Override public RexCall clone(RelDataType type, List&lt;RexNode&gt; operands) {
+<span class="nc" id="L148">    throw new UnsupportedOperationException();</span>
+  }
+
+  //~ Inner Classes ----------------------------------------------------------
+
+  /** Exception thrown when an OVER is found. */
+  private static class OverFound extends ControlFlowException {
+<span class="nc" id="L155">    public static final OverFound INSTANCE = new OverFound();</span>
+  }
+
+  /**
+   * Visitor which detects a {@link org.apache.calcite.rex.RexOver} inside a {@link RexNode}
+   * expression.
+   *
+   * &lt;p&gt;It is re-entrant (two threads can use an instance at the same time)
+   * and it can be re-used for multiple visits.
+   */
+  private static class Finder extends RexVisitorImpl&lt;Void&gt; {
+    Finder() {
+<span class="nc" id="L167">      super(true);</span>
+<span class="nc" id="L168">    }</span>
+
+    @Override
+    public Void visitCall(RexCall call) {
+<span class="nc bnc" id="L172" title="All 2 branches missed.">      if (call instanceof CustomRexOver) {</span>
+<span class="nc" id="L173">        throw OverFound.INSTANCE;</span>
+      }
+<span class="nc" id="L175">      return super.visitCall(call);</span>
+    }
+  }
+
+  @Override public boolean equals(@Nullable Object o) {
+<span class="nc bnc" id="L180" title="All 2 branches missed.">    if (this == o) {</span>
+<span class="nc" id="L181">      return true;</span>
+    }
+<span class="nc bnc" id="L183" title="All 4 branches missed.">    if (o == null || getClass() != o.getClass()) {</span>
+<span class="nc" id="L184">      return false;</span>
+    }
+<span class="nc bnc" id="L186" title="All 2 branches missed.">    if (!super.equals(o)) {</span>
+<span class="nc" id="L187">      return false;</span>
+    }
+<span class="nc" id="L189">    CustomRexOver rexOver = (CustomRexOver) o;</span>
+<span class="nc bnc" id="L190" title="All 4 branches missed.">    return distinct == rexOver.distinct</span>
+        &amp;&amp; ignoreNulls == rexOver.ignoreNulls
+<span class="nc bnc" id="L192" title="All 2 branches missed.">        &amp;&amp; window.equals(rexOver.window)</span>
+<span class="nc bnc" id="L193" title="All 2 branches missed.">        &amp;&amp; op.allowsFraming() == rexOver.op.allowsFraming();</span>
+  }
+
+  @Override public int hashCode() {
+<span class="nc bnc" id="L197" title="All 2 branches missed.">    if (hash == 0) {</span>
+<span class="nc" id="L198">      hash =</span>
+<span class="nc" id="L199">          Objects.hash(super.hashCode(), window, distinct, ignoreNulls,</span>
+<span class="nc" id="L200">              op.allowsFraming());</span>
+    }
+<span class="nc" id="L202">    return hash;</span>
+  }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

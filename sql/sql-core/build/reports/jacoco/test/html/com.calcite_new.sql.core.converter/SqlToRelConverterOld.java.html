@@ -1,0 +1,994 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>SqlToRelConverterOld.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">sql-core</a> &gt; <a href="index.source.html" class="el_package">com.calcite_new.sql.core.converter</a> &gt; <span class="el_source">SqlToRelConverterOld.java</span></div><h1>SqlToRelConverterOld.java</h1><pre class="source lang-java linenums">package com.calcite_new.sql.core.converter;
+
+import com.calcite_new.core.dialect.sql.SqlDialect;
+import com.calcite_new.core.model.EntityQualifier;
+import com.calcite_new.core.model.Identifier;
+import com.calcite_new.core.model.ScannableTable;
+import com.calcite_new.core.model.entity.Table;
+import com.calcite_new.core.resolver.EntityResolver;
+import com.google.common.collect.ImmutableList;
+import org.apache.calcite.plan.RelOptCluster;
+import org.apache.calcite.plan.RelOptTable;
+import org.apache.calcite.prepare.RelOptTableImpl;
+import org.apache.calcite.rel.RelCollations;
+import org.apache.calcite.rel.RelFieldCollation;
+import org.apache.calcite.rel.RelNode;
+import org.apache.calcite.rel.core.AggregateCall;
+import org.apache.calcite.rel.logical.*;
+import org.apache.calcite.rel.type.RelDataType;
+import org.apache.calcite.rel.type.RelDataTypeFactory;
+import org.apache.calcite.rex.*;
+import org.apache.calcite.sql.*;
+import org.apache.calcite.sql.fun.SqlStdOperatorTable;
+import org.apache.calcite.sql.type.SqlTypeName;
+import org.apache.calcite.sql.util.SqlBasicVisitor;
+import org.apache.calcite.util.ImmutableBitSet;
+
+import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
+
+public class SqlToRelConverterOld {
+  private final RelOptCluster cluster;
+  private final EntityResolver resolver;
+  private final SqlDialect dialect;
+  private final List&lt;String&gt; defaultQualifiers;
+  private final RexBuilder rexBuilder;
+  private final RelDataTypeFactory typeFactory;
+  private final Map&lt;String, RelNode&gt; cteMap;
+  private final Map&lt;String, RexCorrelVariable&gt; correlationMap;
+
+  public SqlToRelConverterOld(RelOptCluster cluster,
+                           EntityResolver resolver,
+                           SqlDialect dialect,
+<span class="nc" id="L43">                           List&lt;String&gt; defaultQualifiers) {</span>
+<span class="nc" id="L44">    this.cluster = cluster;</span>
+<span class="nc" id="L45">    this.resolver = resolver;</span>
+<span class="nc" id="L46">    this.dialect = dialect;</span>
+<span class="nc" id="L47">    this.defaultQualifiers = defaultQualifiers;</span>
+<span class="nc" id="L48">    this.rexBuilder = cluster.getRexBuilder();</span>
+<span class="nc" id="L49">    this.typeFactory = cluster.getTypeFactory();</span>
+<span class="nc" id="L50">    this.cteMap = new HashMap&lt;&gt;();</span>
+<span class="nc" id="L51">    this.correlationMap = new HashMap&lt;&gt;();</span>
+<span class="nc" id="L52">  }</span>
+
+  public RelNode convert(SqlNode sqlNode) {
+    // Reset correlation and CTE maps for each conversion
+<span class="nc" id="L56">    correlationMap.clear();</span>
+<span class="nc" id="L57">    cteMap.clear();</span>
+
+<span class="nc" id="L59">    return convertSqlNodeRecursive(sqlNode, null);</span>
+  }
+
+  private RelNode convertSqlNodeRecursive(SqlNode sqlNode, RelNode parentRel) {
+<span class="nc bnc" id="L63" title="All 2 branches missed.">    if (sqlNode instanceof SqlSelect) {</span>
+<span class="nc" id="L64">      return convertSqlSelect((SqlSelect) sqlNode, parentRel);</span>
+    }
+<span class="nc bnc" id="L66" title="All 2 branches missed.">    if (sqlNode instanceof SqlWith) {</span>
+<span class="nc" id="L67">      return convertSqlWith((SqlWith) sqlNode);</span>
+    }
+<span class="nc bnc" id="L69" title="All 2 branches missed.">    if (sqlNode instanceof SqlOrderBy) {</span>
+<span class="nc" id="L70">      return convertSqlOrderBy((SqlOrderBy) sqlNode, parentRel);</span>
+    }
+<span class="nc" id="L72">    throw new UnsupportedOperationException(&quot;Unsupported SQL node type: &quot; + sqlNode.getClass());</span>
+  }
+
+  private RelNode convertSqlWith(SqlWith sqlWith) {
+    // Process CTE definitions first
+<span class="nc bnc" id="L77" title="All 2 branches missed.">    for (SqlNode withItem : sqlWith.withList) {</span>
+<span class="nc bnc" id="L78" title="All 2 branches missed.">      if (withItem instanceof SqlWithItem) {</span>
+<span class="nc" id="L79">        SqlWithItem cteItem = (SqlWithItem) withItem;</span>
+<span class="nc" id="L80">        String cteName = cteItem.name.getSimple();</span>
+<span class="nc" id="L81">        RelNode cteRel = convertSqlNodeRecursive(cteItem.query, null);</span>
+<span class="nc" id="L82">        cteMap.put(cteName, cteRel);</span>
+      }
+<span class="nc" id="L84">    }</span>
+
+    // Convert main query
+<span class="nc" id="L87">    return convertSqlNodeRecursive(sqlWith.body, null);</span>
+  }
+
+  private RelNode convertSqlSelect(SqlSelect sqlSelect, RelNode parentRel) {
+    // Handle DISTINCT
+<span class="nc" id="L92">    boolean isDistinct = sqlSelect.isDistinct();</span>
+
+    // Handle FROM clause (table scan or join)
+<span class="nc bnc" id="L95" title="All 2 branches missed.">    RelNode fromRel = sqlSelect.getFrom() != null</span>
+<span class="nc" id="L96">        ? convertFromClause(sqlSelect.getFrom(), parentRel)</span>
+<span class="nc" id="L97">        : LogicalValues.createOneRow(cluster); // For queries without FROM</span>
+
+    // Set up correlation context for subqueries
+//    setupCorrelationForSubqueries(sqlSelect, fromRel);
+
+    // Handle WHERE clause (filter)
+<span class="nc" id="L103">    RelNode filterRel = convertWhereClause(sqlSelect.getWhere(), fromRel);</span>
+
+    // Handle GROUP BY clause
+<span class="nc" id="L106">    RelNode groupByRel = convertAggregation(sqlSelect, filterRel);//convertGroupByClause(sqlSelect.getGroup(), filterRel);</span>
+
+    // Handle HAVING clause
+<span class="nc" id="L109">    RelNode havingRel = convertHavingClause(sqlSelect.getHaving(), groupByRel);</span>
+
+    // Handle SELECT clause (project)
+<span class="nc" id="L112">    RelNode projectRel = convertSelectClause(sqlSelect.getSelectList(), havingRel);</span>
+
+    // Handle DISTINCT if present
+<span class="nc bnc" id="L115" title="All 2 branches missed.">    if (isDistinct) {</span>
+//      projectRel = convertDistinct(projectRel);
+    }
+
+    // Handle WINDOW clause
+//    RelNode windowRel = convertWindowClause(sqlSelect.getWindowList(), projectRel);
+
+    // Handle OFFSET and FETCH (LIMIT)
+//    RelNode limitRel = convertOffsetFetch(sqlSelect.getOffset(), sqlSelect.getFetch(), windowRel);
+
+//    return limitRel;
+<span class="nc" id="L126">    return projectRel;</span>
+  }
+
+  /**
+   * Given a SqlSelect, identify if it's an aggregate call or not.
+   */
+  public boolean isAggregateCall(SqlSelect sqlSelect) {
+<span class="nc" id="L133">    Objects.requireNonNull(sqlSelect, &quot;sqlSelect cannot be null&quot;);</span>
+
+    // 1. Check for HAVING clause
+    // HAVING clause is only allowed in aggregate queries.
+<span class="nc bnc" id="L137" title="All 2 branches missed.">    if (sqlSelect.getHaving() != null) {</span>
+<span class="nc" id="L138">      return true;</span>
+    }
+
+    // 2. Check for GROUP BY clause
+    // GROUP BY clause explicitly indicates aggregation.
+    // getGroup() returns null if no GROUP BY. It returns a (possibly empty)
+    // SqlNodeList if GROUP BY is present (e.g., GROUP BY () ).
+<span class="nc bnc" id="L145" title="All 2 branches missed.">    if (sqlSelect.getGroup() != null) {</span>
+<span class="nc" id="L146">      return true;</span>
+    }
+
+    // 3. Check SELECT list for aggregate functions (excluding those within OVER)
+    // If there's no GROUP BY or HAVING, aggregation occurs if an aggregate
+    // function is used on the entire input (implicit global aggregation).
+<span class="nc bnc" id="L152" title="All 2 branches missed.">    if (sqlSelect.getSelectList() != null) {</span>
+<span class="nc bnc" id="L153" title="All 2 branches missed.">      for (SqlNode selectItem : sqlSelect.getSelectList()) {</span>
+        // We need to check if the select item *contains* an aggregate function
+        // that is NOT part of an OVER clause. SqlUtil.containsAgg is perfect for this.
+        // It uses a visitor internally to traverse the expression tree.
+<span class="nc bnc" id="L157" title="All 2 branches missed.">        if (SqlUtil.containsAgg(selectItem)) {</span>
+          // Found a non-windowed aggregate function in the select list.
+<span class="nc" id="L159">          return true;</span>
+        }
+                 /*
+                 // Alternative Manual Visitor approach (more complex, less recommended than SqlValidatorUtil.containsAggregate)
+                 if (containsNonWindowedAggregate(selectItem)) {
+                     return true;
+                 }
+                 */
+<span class="nc" id="L167">      }</span>
+    }
+
+    // If none of the above conditions are met, it's not an aggregate query.
+<span class="nc" id="L171">    return false;</span>
+  }
+
+
+//  private void setupCorrelationForSubqueries(SqlSelect sqlSelect, RelNode fromRel) {
+//    // Set up correlation variables for subqueries in where, having, and select list
+//    if (sqlSelect.getWhere() != null) {
+//      extractCorrelationVariables(sqlSelect.getWhere(), fromRel);
+//    }
+//
+//    if (sqlSelect.getHaving() != null) {
+//      extractCorrelationVariables(sqlSelect.getHaving(), fromRel);
+//    }
+//
+//    if (sqlSelect.getSelectList() != null) {
+//      for (SqlNode node : sqlSelect.getSelectList().getList()) {
+//        extractCorrelationVariables(node, fromRel);
+//      }
+//    }
+//  }
+
+//  private void extractCorrelationVariables(SqlNode node, RelNode fromRel) {
+//    if (node instanceof SqlBasicCall) {
+//      SqlBasicCall call = (SqlBasicCall) node;
+//
+//      for (SqlNode operand : call.getOperandList()) {
+//        extractCorrelationVariables(operand, fromRel);
+//      }
+//
+//      // Handle CORRELATE operator specially
+//      if (call.getOperator().getKind() == SqlKind.CORRELATE) {
+//        SqlNode left = call.operands[0];
+//        SqlNode alias = call.operands[1];
+//
+//        if (alias instanceof SqlIdentifier) {
+//          String correlName = ((SqlIdentifier) alias).getSimple();
+//          RexCorrelVariable correlVar = rexBuilder.makeCorrel(
+//              fromRel.getRowType(),
+//              correlName
+//          );
+//          correlationMap.put(correlName, correlVar);
+//        }
+//      }
+//    } else if (node instanceof SqlSelect) {
+//      // Handle subqueries recursively
+//      SqlSelect subquery = (SqlSelect) node;
+//      if (subquery.getWhere() != null) {
+//        extractCorrelationVariables(subquery.getWhere(), fromRel);
+//      }
+//    }
+//  }
+
+//  private RelNode convertDistinct(RelNode input) {
+//    return LogicalAggregate.create(
+//        input,
+//        input.getRowType().getFieldList().stream()
+//            .map(field -&gt; rexBuilder.makeInputRef(input, field.getIndex()))
+//            .collect(Collectors.toList()),
+//        Collections.emptyList() // No aggregate functions
+//    );
+//  }
+
+//  private RelNode convertWindowClause(SqlNodeList windowList, RelNode input) {
+//    if (windowList == null || windowList.isEmpty()) {
+//      return input;
+//    }
+//
+//    // Convert window definitions to window specs
+//    List&lt;Window.Group&gt; windowGroups = new ArrayList&lt;&gt;();
+//
+//    for (SqlNode windowNode : windowList.getList()) {
+//      if (windowNode instanceof SqlWindow) {
+//        SqlWindow window = (SqlWindow) windowNode;
+//
+//        // Create partition keys
+//        List&lt;RexNode&gt; partitionKeys = new ArrayList&lt;&gt;();
+//        if (window.getPartitionList() != null) {
+//          for (SqlNode partitionItem : window.getPartitionList()) {
+//            partitionKeys.add(convertSqlToRexNode(partitionItem, input));
+//          }
+//        }
+//
+//        // Create order keys
+//        List&lt;RelFieldCollation&gt; orderKeys = new ArrayList&lt;&gt;();
+//        if (window.getOrderList() != null) {
+//          for (SqlNode orderItem : window.getOrderList()) {
+//            SqlBasicCall call = (SqlBasicCall) orderItem;
+//            RexNode sortExpr = convertSqlToRexNode(call.operands[0], input);
+//            RelFieldCollation.Direction direction =
+//                call.getOperator() == SqlStdOperatorTable.DESC
+//                    ? RelFieldCollation.Direction.DESCENDING
+//                    : RelFieldCollation.Direction.ASCENDING;
+//
+//            orderKeys.add(new RelFieldCollation(
+//                input.getRowType().getFieldNames().indexOf(sortExpr.toString()),
+//                direction
+//            ));
+//          }
+//        }
+//
+//        // Create window spec
+//        Window.Group windowGroup = new Window.Group(
+//            partitionKeys,
+//            orderKeys,
+//            SqlWindow.createWindowBound(window.getLowerBound()),
+//            SqlWindow.createWindowBound(window.getUpperBound()),
+//            null // No RexWindowFunctions yet
+//        );
+//
+//        windowGroups.add(windowGroup);
+//      }
+//    }
+//
+//    return LogicalWindow.create(
+//        input,
+//        windowGroups
+//    );
+//  }
+
+//  private RelNode convertOffsetFetch(SqlNode offsetNode, SqlNode fetchNode, RelNode input) {
+//    if (offsetNode == null &amp;&amp; fetchNode == null) {
+//      return input;
+//    }
+//
+//    // Convert OFFSET
+//    RexNode offset = offsetNode != null
+//        ? convertSqlToRexNode(offsetNode, input)
+//        : rexBuilder.makeExactLiteral(BigDecimal.ZERO);
+//
+//    // Convert FETCH/LIMIT
+//    RexNode fetch = fetchNode != null
+//        ? convertSqlToRexNode(fetchNode, input)
+//        : rexBuilder.makeExactLiteral(new BigDecimal(-1)); // -1 means no limit
+//
+//    return LogicalSort.create(
+//        input,
+//        input.getTraitSet(),
+//        Collections.emptyList(), // No ordering
+//        offset,
+//        fetch
+//    );
+//  }
+
+  private RelNode convertSelectClause(SqlNodeList selectList, RelNode inputRel) {
+<span class="nc" id="L315">    List&lt;RexNode&gt; projects = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L316">    List&lt;String&gt; fieldNames = new ArrayList&lt;&gt;();</span>
+
+    // Handle '*' case
+<span class="nc bnc" id="L319" title="All 4 branches missed.">    if (selectList.size() == 1 &amp;&amp; selectList.get(0) instanceof SqlIdentifier</span>
+<span class="nc bnc" id="L320" title="All 2 branches missed.">        &amp;&amp; ((SqlIdentifier) selectList.get(0)).isStar()) {</span>
+      // For *, include all columns from input
+<span class="nc bnc" id="L322" title="All 2 branches missed.">      for (int i = 0; i &lt; inputRel.getRowType().getFieldCount(); i++) {</span>
+<span class="nc" id="L323">        projects.add(rexBuilder.makeInputRef(inputRel, i));</span>
+<span class="nc" id="L324">        fieldNames.add(inputRel.getRowType().getFieldNames().get(i));</span>
+      }
+    } else {
+      // Process each item in SELECT list
+<span class="nc bnc" id="L328" title="All 2 branches missed.">      for (SqlNode selectItem : selectList.getList()) {</span>
+<span class="nc bnc" id="L329" title="All 4 branches missed.">        if (selectItem instanceof SqlIdentifier &amp;&amp; ((SqlIdentifier) selectItem).isStar()) {</span>
+          // Handle table qualified star: table.*
+<span class="nc" id="L331">          String tableAlias = ((SqlIdentifier) selectItem).names.get(0);</span>
+<span class="nc" id="L332">          addColumnsForTableAlias(tableAlias, inputRel, projects, fieldNames);</span>
+<span class="nc" id="L333">        } else {</span>
+          // Regular column or expression
+<span class="nc" id="L335">          RexNode rexProject = convertSqlToRexNode(selectItem, inputRel);</span>
+<span class="nc" id="L336">          projects.add(rexProject);</span>
+
+          // Handle column aliases in AS expressions
+<span class="nc" id="L339">          String columnName = deriveColumnName(selectItem);</span>
+<span class="nc" id="L340">          fieldNames.add(columnName);</span>
+
+          // Handle aggregation functions
+<span class="nc bnc" id="L343" title="All 2 branches missed.">          if (isAggregateCall(selectItem)) {</span>
+<span class="nc" id="L344">            inputRel = addAggregateFunction(selectItem, inputRel, projects.size() - 1);</span>
+          }
+        }
+<span class="nc" id="L347">      }</span>
+    }
+
+//    RelDataType rowType = typeFactory.createStructType(
+//        projects.stream()
+//            .map(RexNode::getType)
+//            .collect(ArrayList::new, ArrayList::add, ArrayList::addAll),
+//        fieldNames
+//    );
+
+<span class="nc" id="L357">    return LogicalProject.create(</span>
+        inputRel,
+<span class="nc" id="L359">        List.of(),</span>
+        projects,
+        fieldNames,
+//        rowType,
+<span class="nc" id="L363">        Set.of()</span>
+    );
+  }
+
+//  private RelNode convertSelectClause(SqlNodeList selectList, RelNode inputRel) {
+//    List&lt;RexNode&gt; projects = new ArrayList&lt;&gt;();
+//    List&lt;String&gt; fieldNames = new ArrayList&lt;&gt;();
+//
+//    for (SqlNode selectItem : selectList.getList()) {
+//      RexNode rexProject = convertSqlToRexNode(selectItem, inputRel);
+//      projects.add(rexProject);
+//
+//      // Derive column names
+//      String columnName = deriveColumnName(selectItem);
+//      fieldNames.add(columnName);
+//    }
+//
+//    RelDataType rowType = typeFactory.createStructType(
+//        projects.stream()
+//            .map(RexNode::getType)
+//            .collect(ArrayList::new, ArrayList::add, ArrayList::addAll),
+//        fieldNames
+//    );
+//
+//    return LogicalProject.create(
+//        inputRel,
+//        projects,
+//        rowType
+//    );
+//  }
+
+  private void addColumnsForTableAlias(String tableAlias, RelNode inputRel,
+                                       List&lt;RexNode&gt; projects, List&lt;String&gt; fieldNames) {
+    // Find all columns from the specified table
+<span class="nc" id="L397">    RelDataType rowType = inputRel.getRowType();</span>
+<span class="nc bnc" id="L398" title="All 2 branches missed.">    for (int i = 0; i &lt; rowType.getFieldCount(); i++) {</span>
+<span class="nc" id="L399">      String fullName = rowType.getFieldNames().get(i);</span>
+<span class="nc bnc" id="L400" title="All 4 branches missed.">      if (fullName.startsWith(tableAlias + &quot;.&quot;) || tableAlias.equals(&quot;*&quot;)) {</span>
+<span class="nc" id="L401">        projects.add(rexBuilder.makeInputRef(inputRel, i));</span>
+<span class="nc" id="L402">        fieldNames.add(rowType.getFieldNames().get(i));</span>
+      }
+    }
+<span class="nc" id="L405">  }</span>
+
+  private boolean isAggregateCall(SqlNode node) {
+<span class="nc bnc" id="L408" title="All 2 branches missed.">    if (node instanceof SqlBasicCall) {</span>
+<span class="nc" id="L409">      SqlBasicCall call = (SqlBasicCall) node;</span>
+<span class="nc" id="L410">      SqlOperator operator = call.getOperator();</span>
+<span class="nc bnc" id="L411" title="All 2 branches missed.">      return operator.getKind() == SqlKind.SUM ||</span>
+<span class="nc bnc" id="L412" title="All 2 branches missed.">          operator.getKind() == SqlKind.COUNT ||</span>
+<span class="nc bnc" id="L413" title="All 2 branches missed.">          operator.getKind() == SqlKind.MIN ||</span>
+<span class="nc bnc" id="L414" title="All 2 branches missed.">          operator.getKind() == SqlKind.MAX ||</span>
+<span class="nc bnc" id="L415" title="All 2 branches missed.">          operator.getKind() == SqlKind.AVG;</span>
+    }
+<span class="nc" id="L417">    return false;</span>
+  }
+
+  private RelNode addAggregateFunction(SqlNode aggNode, RelNode input, int projIndex) {
+<span class="nc bnc" id="L421" title="All 2 branches missed.">    if (aggNode instanceof SqlBasicCall) {</span>
+<span class="nc" id="L422">      SqlBasicCall call = (SqlBasicCall) aggNode;</span>
+
+      // Create AggregateCall
+<span class="nc" id="L425">      SqlAggFunction aggFunction = (SqlAggFunction) call.getOperator();</span>
+<span class="nc" id="L426">      List&lt;Integer&gt; argList = new ArrayList&lt;&gt;();</span>
+
+      // For COUNT(*), use empty arg list
+<span class="nc bnc" id="L429" title="All 2 branches missed.">      if (aggFunction.getKind() == SqlKind.COUNT &amp;&amp;</span>
+<span class="nc bnc" id="L430" title="All 2 branches missed.">          call.getOperandList().size() == 1 &amp;&amp;</span>
+<span class="nc bnc" id="L431" title="All 2 branches missed.">          call.getOperandList().get(0) instanceof SqlIdentifier &amp;&amp;</span>
+<span class="nc bnc" id="L432" title="All 2 branches missed.">          ((SqlIdentifier) call.getOperandList().get(0)).isStar()) {</span>
+        // COUNT(*) - empty arg list
+      } else {
+        // Other agg functions - add arguments
+<span class="nc bnc" id="L436" title="All 2 branches missed.">        for (SqlNode operand : call.getOperandList()) {</span>
+<span class="nc bnc" id="L437" title="All 2 branches missed.">          if (operand instanceof SqlIdentifier) {</span>
+<span class="nc" id="L438">            argList.add(findColumnIndex(input, ((SqlIdentifier) operand).getSimple()));</span>
+          }
+<span class="nc" id="L440">        }</span>
+      }
+
+<span class="nc" id="L443">      AggregateCall aggregateCall = AggregateCall.create(</span>
+          aggFunction,
+          false, // not distinct
+          false, // not approximate
+          argList,
+          -1, // no filter
+          null, // no distinctKeys
+<span class="nc" id="L450">          call.getOperator().getName()</span>
+      );
+
+      // Create an Aggregate node
+//      return LogicalAggregate.create(
+//          input,
+//          Collections.emptyList(), // No group keys for simple agg
+//          Collections.singletonList(aggregateCall)
+//      );
+<span class="nc" id="L459">      throw new UnsupportedOperationException(&quot;Aggregate functions are not supported yet&quot;);</span>
+    }
+
+<span class="nc" id="L462">    return input;</span>
+  }
+
+  private RelNode convertFromClause(SqlNode fromNode, RelNode parentRel) {
+<span class="nc bnc" id="L466" title="All 2 branches missed.">    if (fromNode.getKind() == SqlKind.IDENTIFIER) {</span>
+      // Simple table reference
+<span class="nc" id="L468">      List&lt;String&gt; tableNames = ((SqlIdentifier) fromNode).names;</span>
+<span class="nc" id="L469">      return convertTableScan(tableNames);</span>
+    }
+<span class="nc bnc" id="L471" title="All 2 branches missed.">    if (fromNode instanceof SqlBasicCall) {</span>
+<span class="nc" id="L472">      SqlBasicCall fromCall = (SqlBasicCall) fromNode;</span>
+
+      // Handle JOIN
+<span class="nc bnc" id="L475" title="All 2 branches missed.">      if (fromCall.getKind() == SqlKind.JOIN) {</span>
+<span class="nc" id="L476">        return convertJoinClause(fromCall, parentRel);</span>
+      }
+
+      // Handle subquery
+<span class="nc bnc" id="L480" title="All 2 branches missed.">      if (fromCall.getOperator() == SqlStdOperatorTable.AS) {</span>
+<span class="nc" id="L481">        throw new UnsupportedOperationException(&quot;Subquery aliasing is not supported yet&quot;);</span>
+//        return convertSubqueryAlias(fromCall, parentRel);
+      }
+    }
+<span class="nc bnc" id="L485" title="All 2 branches missed.">    if (fromNode instanceof SqlSelect) {</span>
+      // Subquery in FROM clause
+<span class="nc" id="L487">      return convertSqlNodeRecursive(fromNode, parentRel);</span>
+    }
+<span class="nc" id="L489">    throw new UnsupportedOperationException(&quot;Unsupported FROM clause type: &quot; + fromNode.getClass());</span>
+  }
+
+  private RelNode convertTableScan(List&lt;String&gt; tableQualifiers) {
+<span class="nc" id="L493">    String tableName = tableQualifiers.get(tableQualifiers.size() - 1);</span>
+    // Check if it's a CTE
+<span class="nc bnc" id="L495" title="All 2 branches missed.">    if (cteMap.containsKey(tableName)) {</span>
+<span class="nc" id="L496">      return cteMap.get(tableName);</span>
+    }
+
+<span class="nc" id="L499">    EntityQualifier qualifier = new EntityQualifier(tableQualifiers, defaultQualifiers, dialect);</span>
+    // Regular table scan
+<span class="nc" id="L501">    Table table = (Table) resolver.resolve(qualifier);</span>
+<span class="nc" id="L502">    RelOptTable relOptTable = createRelOptTable(table);</span>
+<span class="nc" id="L503">    return LogicalTableScan.create(</span>
+        cluster,
+        relOptTable,
+<span class="nc" id="L506">        List.of()</span>
+    );
+  }
+
+  private RelOptTable createRelOptTable(Table table) {
+<span class="nc" id="L511">    ImmutableList&lt;String&gt; qualifiedName = getQualifiedName(table);</span>
+<span class="nc" id="L512">    ScannableTable scannableTable = ScannableTable.create(table);</span>
+<span class="nc" id="L513">    RelDataType rowType = scannableTable.getRowType(cluster.getTypeFactory());</span>
+<span class="nc" id="L514">    return RelOptTableImpl.create(null, rowType, scannableTable, qualifiedName);</span>
+  }
+
+  private static ImmutableList&lt;String&gt; getQualifiedName(Table table) {
+<span class="nc" id="L518">    List&lt;String&gt; namespace = table.getNamespace().stream().map(Identifier::getNormalizedName).toList();</span>
+<span class="nc" id="L519">    return ImmutableList.&lt;String&gt;builder()</span>
+<span class="nc" id="L520">        .addAll(namespace)</span>
+<span class="nc" id="L521">        .add(table.getName().getNormalizedName())</span>
+<span class="nc" id="L522">        .build();</span>
+  }
+
+  private RelNode convertJoinClause(SqlBasicCall joinCall, RelNode parentRel) {
+<span class="nc" id="L526">    SqlNode left = joinCall.getOperandList().get(0);</span>
+<span class="nc" id="L527">    SqlNode right = joinCall.getOperandList().get(1);</span>
+<span class="nc" id="L528">    SqlNode condition = joinCall.getOperandList().get(2);</span>
+
+<span class="nc" id="L530">    RelNode leftRel = convertFromClause(left, parentRel);</span>
+<span class="nc" id="L531">    RelNode rightRel = convertFromClause(right, parentRel);</span>
+
+    // Convert join condition to RexNode
+<span class="nc" id="L534">    RexNode joinCondition = convertSqlToRexNode(condition, leftRel, rightRel);</span>
+
+    // Determine join type
+//    JoinRelType joinType = determineJoinType(joinCall.getOperator());
+
+//    return LogicalJoin.create(
+//        leftRel,
+//        rightRel,
+//        joinCondition,
+//        joinType
+//    );
+<span class="nc" id="L545">    throw new UnsupportedOperationException(&quot;Join operations are not supported yet&quot;);</span>
+  }
+
+//  private RelNode convertSubqueryAlias(SqlBasicCall aliasCall, RelNode parentRel) {
+//    SqlNode subquery = aliasCall.operands[0];
+//    SqlIdentifier alias = (SqlIdentifier) aliasCall.operands[1];
+//
+//    RelNode subqueryRel = convertSqlNodeRecursive(subquery, parentRel);
+//
+//    // Add correlation for subquery alias
+//    RexCorrelVariable correlVar = rexBuilder.makeCorrel(
+//        subqueryRel.getRowType(),
+//        alias.getSimple()
+//    );
+//    correlationMap.put(alias.getSimple(), correlVar);
+//
+//    return subqueryRel;
+//  }
+
+  private RelNode convertWhereClause(SqlNode whereNode, RelNode inputRel) {
+<span class="nc bnc" id="L565" title="All 2 branches missed.">    if (whereNode == null) {</span>
+<span class="nc" id="L566">      return inputRel;</span>
+    }
+
+<span class="nc" id="L569">    RexNode condition = convertSqlToRexNode(whereNode, inputRel);</span>
+<span class="nc" id="L570">    return LogicalFilter.create(inputRel, condition);</span>
+  }
+
+  private RelNode convertAggregation(SqlSelect sqlSelect, RelNode inputRel) {
+<span class="nc" id="L574">    SqlNodeList groupList = sqlSelect.getGroup();</span>
+<span class="nc" id="L575">    SqlNode havingNode = sqlSelect.getHaving();</span>
+
+    // If there's no GROUP BY or aggregate functions in the SELECT list or HAVING clause,
+    // then we don't need an aggregation node
+<span class="nc bnc" id="L579" title="All 4 branches missed.">    if ((groupList == null || groupList.isEmpty()) &amp;&amp;</span>
+<span class="nc bnc" id="L580" title="All 4 branches missed.">        !containsAggregates(sqlSelect.getSelectList()) &amp;&amp;</span>
+<span class="nc bnc" id="L581" title="All 2 branches missed.">        (havingNode == null || !containsAggregates(havingNode))) {</span>
+<span class="nc" id="L582">      return inputRel;</span>
+    }
+
+    // Build the GROUP BY bit set
+<span class="nc" id="L586">    ImmutableBitSet.Builder groupSetBuilder = ImmutableBitSet.builder();</span>
+
+    // Process GROUP BY expressions
+<span class="nc bnc" id="L589" title="All 4 branches missed.">    if (groupList != null &amp;&amp; !groupList.isEmpty()) {</span>
+<span class="nc bnc" id="L590" title="All 2 branches missed.">      for (SqlNode groupItem : groupList.getList()) {</span>
+<span class="nc" id="L591">        RexNode rex = convertSqlToRexNode(groupItem, inputRel);</span>
+<span class="nc bnc" id="L592" title="All 2 branches missed.">        if (rex instanceof RexInputRef) {</span>
+<span class="nc" id="L593">          groupSetBuilder.set(((RexInputRef) rex).getIndex());</span>
+        } else {
+          // For expressions in GROUP BY, we need to add them to project list first
+          // and then reference the projected expression
+<span class="nc" id="L597">          LogicalProject projectWithGroupExpr = LogicalProject.create(</span>
+              inputRel,
+<span class="nc" id="L599">              List.of(),</span>
+<span class="nc" id="L600">              List.of(rex),</span>
+<span class="nc" id="L601">              List.of(&quot;group_expr_&quot; + inputRel.getRowType().getFieldCount()),</span>
+<span class="nc" id="L602">              Set.of()</span>
+          );
+<span class="nc" id="L604">          inputRel = projectWithGroupExpr;</span>
+<span class="nc" id="L605">          groupSetBuilder.set(inputRel.getRowType().getFieldCount() - 1);</span>
+        }
+<span class="nc" id="L607">      }</span>
+    }
+
+    // Build the aggregate calls list
+<span class="nc" id="L611">    List&lt;AggregateCall&gt; aggCalls = new ArrayList&lt;&gt;();</span>
+
+    // Process aggregate functions in SELECT list
+<span class="nc bnc" id="L614" title="All 2 branches missed.">    if (sqlSelect.getSelectList() != null) {</span>
+<span class="nc" id="L615">      processAggregatesInNodeList(sqlSelect.getSelectList(), inputRel, aggCalls);</span>
+    }
+
+    // Process aggregate functions in HAVING clause
+<span class="nc bnc" id="L619" title="All 2 branches missed.">    if (havingNode != null) {</span>
+<span class="nc" id="L620">      processAggregatesInNode(havingNode, inputRel, aggCalls);</span>
+    }
+
+    // Create the Aggregate node
+<span class="nc" id="L624">    ImmutableBitSet groupSet = groupSetBuilder.build();</span>
+<span class="nc" id="L625">    return LogicalAggregate.create(</span>
+        inputRel,
+<span class="nc" id="L627">        ImmutableList.of(), // No hints</span>
+        groupSet,
+        null, // No additional grouping sets
+        aggCalls
+    );
+  }
+
+  private boolean containsAggregates(SqlNode node) {
+<span class="nc bnc" id="L635" title="All 2 branches missed.">    if (node == null) return false;</span>
+
+<span class="nc" id="L637">    final AtomicBoolean hasAggregates = new AtomicBoolean(false);</span>
+
+<span class="nc" id="L639">    node.accept(new SqlBasicVisitor&lt;Void&gt;() {</span>
+      @Override
+      public Void visit(SqlCall call) {
+<span class="nc bnc" id="L642" title="All 2 branches missed.">        if (call.getOperator() instanceof SqlAggFunction) {</span>
+<span class="nc" id="L643">          hasAggregates.set(true);</span>
+<span class="nc" id="L644">          return null;</span>
+        }
+<span class="nc" id="L646">        return super.visit(call);</span>
+      }
+    });
+
+<span class="nc" id="L650">    return hasAggregates.get();</span>
+  }
+
+  private void processAggregatesInNodeList(SqlNodeList nodeList, RelNode inputRel, List&lt;AggregateCall&gt; aggCalls) {
+<span class="nc bnc" id="L654" title="All 2 branches missed.">    for (SqlNode node : nodeList.getList()) {</span>
+<span class="nc" id="L655">      processAggregatesInNode(node, inputRel, aggCalls);</span>
+<span class="nc" id="L656">    }</span>
+<span class="nc" id="L657">  }</span>
+
+  private void processAggregatesInNode(SqlNode node, RelNode inputRel, List&lt;AggregateCall&gt; aggCalls) {
+<span class="nc bnc" id="L660" title="All 2 branches missed.">    if (node instanceof SqlBasicCall) {</span>
+<span class="nc" id="L661">      SqlBasicCall call = (SqlBasicCall) node;</span>
+
+<span class="nc bnc" id="L663" title="All 2 branches missed.">      if (call.getOperator() instanceof SqlAggFunction) {</span>
+        // Process aggregate function
+<span class="nc" id="L665">        SqlAggFunction aggFunction = (SqlAggFunction) call.getOperator();</span>
+<span class="nc" id="L666">        List&lt;Integer&gt; argList = new ArrayList&lt;&gt;();</span>
+<span class="nc bnc" id="L667" title="All 2 branches missed.">        boolean isDistinct = call.getFunctionQuantifier() != null &amp;&amp;</span>
+<span class="nc bnc" id="L668" title="All 2 branches missed.">                call.getFunctionQuantifier().toString().equalsIgnoreCase(&quot;DISTINCT&quot;);</span>
+
+        // For COUNT(*), use empty arg list
+<span class="nc bnc" id="L671" title="All 2 branches missed.">        if (aggFunction.getKind() == SqlKind.COUNT &amp;&amp;</span>
+<span class="nc bnc" id="L672" title="All 2 branches missed.">                call.getOperandList().size() == 1 &amp;&amp;</span>
+<span class="nc bnc" id="L673" title="All 2 branches missed.">                call.getOperandList().get(0) instanceof SqlIdentifier &amp;&amp;</span>
+<span class="nc bnc" id="L674" title="All 2 branches missed.">                ((SqlIdentifier) call.getOperandList().get(0)).isStar()) {</span>
+          // COUNT(*) - empty arg list remains empty
+        } else {
+          // Other agg functions - add arguments
+<span class="nc bnc" id="L678" title="All 2 branches missed.">          for (SqlNode operand : call.getOperandList()) {</span>
+<span class="nc" id="L679">            RexNode rexNode = convertSqlToRexNode(operand, inputRel);</span>
+<span class="nc bnc" id="L680" title="All 2 branches missed.">            if (rexNode instanceof RexInputRef) {</span>
+<span class="nc" id="L681">              argList.add(((RexInputRef) rexNode).getIndex());</span>
+            } else {
+              // For complex expressions, we need to project them first
+<span class="nc" id="L684">              LogicalProject projectWithAggExpr = LogicalProject.create(</span>
+                      inputRel,
+<span class="nc" id="L686">                      ImmutableList.of(),</span>
+<span class="nc" id="L687">                      ImmutableList.of(rexNode),</span>
+<span class="nc" id="L688">                      ImmutableList.of(&quot;agg_expr_&quot; + inputRel.getRowType().getFieldCount()),</span>
+<span class="nc" id="L689">                      java.util.Set.of()</span>
+              );
+<span class="nc" id="L691">              inputRel = projectWithAggExpr;</span>
+<span class="nc" id="L692">              argList.add(inputRel.getRowType().getFieldCount() - 1);</span>
+            }
+<span class="nc" id="L694">          }</span>
+        }
+
+<span class="nc" id="L697">        AggregateCall aggregateCall = AggregateCall.create(</span>
+                aggFunction,
+                isDistinct,
+                false, // not approximate
+<span class="nc bnc" id="L701" title="All 4 branches missed.">                aggFunction.allowsNullTreatment() &amp;&amp; aggFunction.getKind() != SqlKind.COUNT, // ignoreNulls - typically true except for count</span>
+<span class="nc" id="L702">                ImmutableList.of(), // empty rexList</span>
+                argList,
+                -1, // no filter
+                null, // no distinctKeys
+                RelCollations.EMPTY, // no collation
+<span class="nc" id="L707">                typeFactory.createSqlType(SqlTypeName.ANY), // type will be inferred</span>
+<span class="nc" id="L708">                deriveAggCallName(call, aggCalls.size())</span>
+        );
+
+<span class="nc" id="L711">        aggCalls.add(aggregateCall);</span>
+<span class="nc" id="L712">      } else {</span>
+        // Process operands recursively
+<span class="nc bnc" id="L714" title="All 2 branches missed.">        for (SqlNode operand : call.getOperandList()) {</span>
+<span class="nc" id="L715">          processAggregatesInNode(operand, inputRel, aggCalls);</span>
+<span class="nc" id="L716">        }</span>
+      }
+<span class="nc bnc" id="L718" title="All 2 branches missed.">    } else if (node instanceof SqlSelect) {</span>
+      // Check for aggregates in subquery
+<span class="nc" id="L720">      SqlSelect subSelect = (SqlSelect) node;</span>
+<span class="nc bnc" id="L721" title="All 2 branches missed.">      if (subSelect.getSelectList() != null) {</span>
+<span class="nc bnc" id="L722" title="All 2 branches missed.">        for (SqlNode item : subSelect.getSelectList().getList()) {</span>
+<span class="nc" id="L723">          processAggregatesInNode(item, inputRel, aggCalls);</span>
+<span class="nc" id="L724">        }</span>
+      }
+<span class="nc bnc" id="L726" title="All 2 branches missed.">      if (subSelect.getHaving() != null) {</span>
+<span class="nc" id="L727">        processAggregatesInNode(subSelect.getHaving(), inputRel, aggCalls);</span>
+      }
+<span class="nc bnc" id="L729" title="All 2 branches missed.">    } else if (node instanceof SqlNodeList) {</span>
+      // Process each node in the list
+<span class="nc" id="L731">      SqlNodeList nodeList = (SqlNodeList) node;</span>
+<span class="nc bnc" id="L732" title="All 2 branches missed.">      for (SqlNode item : nodeList.getList()) {</span>
+<span class="nc" id="L733">        processAggregatesInNode(item, inputRel, aggCalls);</span>
+<span class="nc" id="L734">      }</span>
+    }
+    // Other types of SqlNodes don't contain aggregates
+<span class="nc" id="L737">  }</span>
+
+//  private void processAggregatesInNode(SqlNode node, RelNode inputRel, List&lt;AggregateCall&gt; aggCalls) {
+//    if (node instanceof SqlBasicCall) {
+//      SqlBasicCall call = (SqlBasicCall) node;
+//
+//      if (call.getOperator() instanceof SqlAggFunction) {
+//        // Process aggregate function
+//        SqlAggFunction aggFunction = (SqlAggFunction) call.getOperator();
+//        List&lt;Integer&gt; argList = new ArrayList&lt;&gt;();
+//        boolean isDistinct = call.getFunctionQuantifier() != null &amp;&amp;
+//                call.getFunctionQuantifier().toString().equalsIgnoreCase(&quot;DISTINCT&quot;);
+//
+//        // For COUNT(*), use empty arg list
+//        if (aggFunction.getKind() == SqlKind.COUNT &amp;&amp;
+//            call.getOperandList().size() == 1 &amp;&amp;
+//            call.getOperandList().get(0) instanceof SqlIdentifier &amp;&amp;
+//            ((SqlIdentifier) call.getOperandList().get(0)).isStar()) {
+//          // COUNT(*) - empty arg list
+//        } else {
+//          // Other agg functions - add arguments
+//          for (SqlNode operand : call.getOperandList()) {
+//            RexNode rexNode = convertSqlToRexNode(operand, inputRel);
+//            if (rexNode instanceof RexInputRef) {
+//              argList.add(((RexInputRef) rexNode).getIndex());
+//            } else {
+//              // For complex expressions, we need to project them first
+//              LogicalProject projectWithAggExpr = LogicalProject.create(
+//                  inputRel,
+//                  List.of(),
+//                  List.of(rexNode),
+//                  List.of(&quot;agg_expr_&quot; + inputRel.getRowType().getFieldCount()),
+//                  Set.of()
+//              );
+//              inputRel = projectWithAggExpr;
+//              argList.add(inputRel.getRowType().getFieldCount() - 1);
+//            }
+//          }
+//        }
+//
+////        SqlAggFunction aggFunction,
+////        boolean distinct, boolean approximate, boolean ignoreNulls,
+////        List&lt;RexNode&gt; rexList, List&lt;Integer&gt; argList, int filterArg,
+////        @Nullable ImmutableBitSet distinctKeys, RelCollation collation,
+////        int groupCount,
+////        RelNode input, @Nullable RelDataType type, @Nullable String name
+//        AggregateCall aggregateCall = AggregateCall.create(
+//            aggFunction,
+//            isDistinct,
+//            false, // not approximate
+//                true, // ignore nulls
+//            argList,
+//            -1, // no filter
+//            null, // no distinctKeys
+//            null, // no sort
+//            false, // ignore nulls
+//            List.of(), // no collations
+//            deriveAggCallName(call, aggCalls.size())
+//        );
+//
+//        aggCalls.add(aggregateCall);
+//      } else {
+//        // Process operands recursively
+//        for (SqlNode operand : call.getOperandList()) {
+//          processAggregatesInNode(operand, inputRel, aggCalls);
+//        }
+//      }
+//    }
+//  }
+
+  private String deriveAggCallName(SqlBasicCall aggCall, int index) {
+<span class="nc bnc" id="L808" title="All 2 branches missed.">    if (aggCall.getOperator() instanceof SqlAggFunction) {</span>
+<span class="nc" id="L809">      return aggCall.getOperator().getName().toLowerCase() + &quot;$&quot; + index;</span>
+    }
+<span class="nc" id="L811">    return &quot;agg$&quot; + index;</span>
+  }
+
+  private RelNode convertGroupByClause(SqlNodeList groupList, RelNode inputRel) {
+<span class="nc bnc" id="L815" title="All 4 branches missed.">    if (groupList == null || groupList.size() == 0) {</span>
+<span class="nc" id="L816">      return inputRel;</span>
+    }
+
+//    List&lt;RexNode&gt; groupExprs = new ArrayList&lt;&gt;();
+<span class="nc" id="L820">    ImmutableBitSet.Builder groupSetBuilder = ImmutableBitSet.builder();</span>
+<span class="nc bnc" id="L821" title="All 2 branches missed.">    for (SqlNode groupItem : groupList.getList()) {</span>
+<span class="nc" id="L822">      RexNode rex = convertSqlToRexNode(groupItem, inputRel);</span>
+<span class="nc" id="L823">      groupSetBuilder.set(((RexInputRef) rex).getIndex());</span>
+<span class="nc" id="L824">    }</span>
+
+//    for (int i = 0; i &lt; groupExprs.size(); i++) {
+//      groupSetBuilder.set(i);
+//    }
+<span class="nc" id="L829">    ImmutableBitSet groupSet = groupSetBuilder.build();</span>
+
+<span class="nc" id="L831">    return LogicalAggregate.create(</span>
+        inputRel,
+<span class="nc" id="L833">        ImmutableList.of(), // No hints</span>
+        groupSet,
+        null, // No additional grouping sets
+<span class="nc" id="L836">        Collections.emptyList() // No aggregation functions for now</span>
+    );
+  }
+
+  private RelNode convertHavingClause(SqlNode havingNode, RelNode inputRel) {
+<span class="nc bnc" id="L841" title="All 2 branches missed.">    if (havingNode == null) {</span>
+<span class="nc" id="L842">      return inputRel;</span>
+    }
+
+<span class="nc" id="L845">    RexNode condition = convertSqlToRexNode(havingNode, inputRel);</span>
+<span class="nc" id="L846">    return LogicalFilter.create(inputRel, condition);</span>
+  }
+
+  private RelNode convertSqlOrderBy(SqlOrderBy orderByNode, RelNode parentRel) {
+<span class="nc" id="L850">    RelNode inputRel = convertSqlNodeRecursive(orderByNode.query, parentRel);</span>
+
+<span class="nc" id="L852">    List&lt;RexNode&gt; sortExprs = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L853">    List&lt;RelFieldCollation&gt; collations = new ArrayList&lt;&gt;();</span>
+
+<span class="nc bnc" id="L855" title="All 2 branches missed.">    for (SqlNode orderItem : orderByNode.orderList.getList()) {</span>
+<span class="nc bnc" id="L856" title="All 2 branches missed.">      if (orderItem instanceof SqlBasicCall) {</span>
+<span class="nc" id="L857">        SqlBasicCall call = (SqlBasicCall) orderItem;</span>
+<span class="nc" id="L858">        RexNode sortExpr = convertSqlToRexNode(call.getOperandList().get(0), inputRel);</span>
+<span class="nc" id="L859">        sortExprs.add(sortExpr);</span>
+
+        // Determine sort direction
+        RelFieldCollation.Direction direction =
+<span class="nc bnc" id="L863" title="All 2 branches missed.">            call.getOperator() == SqlStdOperatorTable.DESC</span>
+<span class="nc" id="L864">                ? RelFieldCollation.Direction.DESCENDING</span>
+<span class="nc" id="L865">                : RelFieldCollation.Direction.ASCENDING;</span>
+
+<span class="nc" id="L867">        collations.add(</span>
+            new RelFieldCollation(
+<span class="nc" id="L869">                sortExprs.size() - 1,</span>
+                direction
+            )
+        );
+      }
+<span class="nc" id="L874">    }</span>
+
+//    return LogicalSort.create(
+//        inputRel,
+//        collations
+//    );
+<span class="nc" id="L880">    throw new UnsupportedOperationException(&quot;ORDER BY is not supported yet&quot;);</span>
+  }
+
+  private RexNode convertSqlToRexNode(SqlNode sqlNode, RelNode... inputRels) {
+    // Merge multiple input rels if provided
+<span class="nc bnc" id="L885" title="All 2 branches missed.">    RelNode inputRel = inputRels.length &gt; 0 ? mergeRelNodes(inputRels) : null;</span>
+
+<span class="nc bnc" id="L887" title="All 2 branches missed.">    if (sqlNode.getKind() == SqlKind.IDENTIFIER) {</span>
+<span class="nc" id="L888">      return convertSqlIdentifier((SqlIdentifier) sqlNode, inputRel);</span>
+    }
+
+<span class="nc bnc" id="L891" title="All 2 branches missed.">    if (sqlNode instanceof SqlBasicCall) {</span>
+<span class="nc" id="L892">      return convertSqlBasicCall((SqlBasicCall) sqlNode, inputRel);</span>
+    }
+
+<span class="nc bnc" id="L895" title="All 2 branches missed.">    if (sqlNode.getKind() == SqlKind.LITERAL) {</span>
+<span class="nc" id="L896">      return convertSqlLiteral((SqlLiteral) sqlNode);</span>
+    }
+
+<span class="nc bnc" id="L899" title="All 2 branches missed.">    if (sqlNode.getKind() == SqlKind.SELECT) {</span>
+<span class="nc" id="L900">      return convertSubqueryToRexNode((SqlSelect) sqlNode, inputRel);</span>
+    }
+
+<span class="nc" id="L903">    throw new UnsupportedOperationException(&quot;Unsupported SQL node type for Rex conversion: &quot; + sqlNode.getClass());</span>
+  }
+
+  private RexNode convertSqlIdentifier(SqlIdentifier identifier, RelNode inputRel) {
+    // Check for correlation variable
+<span class="nc bnc" id="L908" title="All 2 branches missed.">    if (correlationMap.containsKey(identifier.names.get(0))) {</span>
+<span class="nc" id="L909">      return correlationMap.get(identifier.names.get(0));</span>
+    }
+
+    // Find column index in input rel
+<span class="nc" id="L913">    String columnName = identifier.names.get(0);</span>
+<span class="nc" id="L914">    int columnIndex = findColumnIndex(inputRel, columnName);</span>
+
+<span class="nc" id="L916">    return rexBuilder.makeInputRef(inputRel, columnIndex);</span>
+  }
+
+  private RexNode convertSqlBasicCall(SqlBasicCall call, RelNode inputRel) {
+<span class="nc" id="L920">    List&lt;RexNode&gt; operands = new ArrayList&lt;&gt;();</span>
+
+<span class="nc bnc" id="L922" title="All 2 branches missed.">    for (SqlNode operand : call.getOperandList()) {</span>
+<span class="nc" id="L923">      operands.add(convertSqlToRexNode(operand, inputRel));</span>
+<span class="nc" id="L924">    }</span>
+
+<span class="nc" id="L926">    SqlTypeName returnType = SqlTypeName.ANY;//call.getOperator().getReturnType();</span>
+<span class="nc" id="L927">    return rexBuilder.makeCall(</span>
+<span class="nc" id="L928">        typeFactory.createSqlType(returnType),</span>
+<span class="nc" id="L929">        call.getOperator(),</span>
+        operands
+    );
+  }
+
+  private RexNode convertSqlLiteral(SqlLiteral literal) {
+    // Convert SQL literal to RexLiteral
+<span class="nc" id="L936">    return rexBuilder.makeLiteral(</span>
+<span class="nc" id="L937">        literal.getValue(),</span>
+<span class="nc" id="L938">        typeFactory.createSqlType(literal.getTypeName()),</span>
+        false
+    );
+  }
+
+  private RexNode convertSubqueryToRexNode(SqlSelect subquery, RelNode correlatedRel) {
+    // Handle correlated subquery
+<span class="nc" id="L945">    RelNode subqueryRel = convertSqlNodeRecursive(subquery, correlatedRel);</span>
+
+    // Convert subquery to a scalar subquery
+<span class="nc" id="L948">    return RexSubQuery.scalar(</span>
+//        subqueryRel.getRowType(),
+        subqueryRel
+    );
+  }
+
+  private RelNode mergeRelNodes(RelNode... inputRels) {
+<span class="nc bnc" id="L955" title="All 2 branches missed.">    if (inputRels.length == 1) {</span>
+<span class="nc" id="L956">      return inputRels[0];</span>
+    }
+
+    // Create a logical union of input rels
+<span class="nc" id="L960">    return LogicalUnion.create(</span>
+<span class="nc" id="L961">        Arrays.asList(inputRels),</span>
+        true // all inputs must have same row type
+    );
+  }
+
+//  private JoinRelType determineJoinType(SqlOperator operator) {
+//    if (operator == SqlStdOperatorTable.INNER_JOIN) return JoinRelType.INNER;
+//    if (operator == SqlStdOperatorTable.LEFT_JOIN) return JoinRelType.LEFT;
+//    if (operator == SqlStdOperatorTable.RIGHT_JOIN) return JoinRelType.RIGHT;
+//    if (operator == SqlStdOperatorTable.FULL_JOIN) return JoinRelType.FULL;
+//    throw new UnsupportedOperationException(&quot;Unsupported join type: &quot; + operator);
+//  }
+
+  private String deriveColumnName(SqlNode selectItem) {
+<span class="nc bnc" id="L975" title="All 2 branches missed.">    if (selectItem instanceof SqlIdentifier) {</span>
+<span class="nc" id="L976">      return ((SqlIdentifier) selectItem).names.get(0);</span>
+    }
+<span class="nc bnc" id="L978" title="All 2 branches missed.">    if (selectItem instanceof SqlBasicCall) {</span>
+<span class="nc" id="L979">      return selectItem.toString();</span>
+    }
+<span class="nc" id="L981">    return &quot;expr&quot;;</span>
+  }
+
+  private int findColumnIndex(RelNode inputRel, String columnName) {
+<span class="nc" id="L985">    RelDataType rowType = inputRel.getRowType();</span>
+<span class="nc bnc" id="L986" title="All 2 branches missed.">    for (int i = 0; i &lt; rowType.getFieldCount(); i++) {</span>
+<span class="nc bnc" id="L987" title="All 2 branches missed.">      if (rowType.getFieldNames().get(i).equalsIgnoreCase(columnName)) {</span>
+<span class="nc" id="L988">        return i;</span>
+      }
+    }
+<span class="nc" id="L991">    throw new IllegalArgumentException(&quot;Column not found: &quot; + columnName + &quot;, rowType:&quot; + rowType);</span>
+  }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

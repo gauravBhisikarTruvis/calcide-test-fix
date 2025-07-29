@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.calcite_new.sql.parser.bigquery.BigQueryDeleteParserSpec" tests="10" skipped="0" failures="0" errors="0" timestamp="2025-07-28T06:14:43" hostname="LAPTOP-A36VV8FB" time="0.089">
+  <properties/>
+  <testcase name="Simple DELETE should parse" classname="com.calcite_new.sql.parser.bigquery.BigQueryDeleteParserSpec" time="0.004"/>
+  <testcase name="DELETE with complex predicate should parse" classname="com.calcite_new.sql.parser.bigquery.BigQueryDeleteParserSpec" time="0.004"/>
+  <testcase name="DELETE with IN clause should parse" classname="com.calcite_new.sql.parser.bigquery.BigQueryDeleteParserSpec" time="0.004"/>
+  <testcase name="DELETE with JOIN condition should parse" classname="com.calcite_new.sql.parser.bigquery.BigQueryDeleteParserSpec" time="0.018"/>
+  <testcase name="DELETE with BETWEEN clause should parse" classname="com.calcite_new.sql.parser.bigquery.BigQueryDeleteParserSpec" time="0.006"/>
+  <testcase name="DELETE with multiple conditions using OR should parse" classname="com.calcite_new.sql.parser.bigquery.BigQueryDeleteParserSpec" time="0.005"/>
+  <testcase name="DELETE with NOT EXISTS condition should parse" classname="com.calcite_new.sql.parser.bigquery.BigQueryDeleteParserSpec" time="0.008"/>
+  <testcase name="DELETE with DATE functions should parse" classname="com.calcite_new.sql.parser.bigquery.BigQueryDeleteParserSpec" time="0.005"/>
+  <testcase name="DELETE with complex nested subquery should parse" classname="com.calcite_new.sql.parser.bigquery.BigQueryDeleteParserSpec" time="0.023"/>
+  <testcase name="DELETE with complex CASE expression should parse" classname="com.calcite_new.sql.parser.bigquery.BigQueryDeleteParserSpec" time="0.007"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

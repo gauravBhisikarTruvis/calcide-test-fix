@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>StatementType.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">sql-core</a> &gt; <a href="index.source.html" class="el_package">com.calcite_new.sql.model.enums</a> &gt; <span class="el_source">StatementType.java</span></div><h1>StatementType.java</h1><pre class="source lang-java linenums">package com.calcite_new.sql.model.enums;
+
+import java.util.List;
+
+/**
+ * Enum representing different types of SQL statements.
+ */
+<span class="nc" id="L8">public enum StatementType {</span>
+<span class="nc" id="L9">    INSERT(StatementTypeFamily.DML),</span>
+<span class="nc" id="L10">    UPDATE(StatementTypeFamily.DML),</span>
+<span class="nc" id="L11">    DELETE(StatementTypeFamily.DML),</span>
+<span class="nc" id="L12">    MERGE(StatementTypeFamily.DML),</span>
+<span class="nc" id="L13">    SELECT(StatementTypeFamily.DRL),</span>
+<span class="nc" id="L14">    CTAS(StatementTypeFamily.DDL),</span>
+<span class="nc" id="L15">    CVAS(StatementTypeFamily.DDL),</span>
+<span class="nc" id="L16">    CREATE_TABLE(StatementTypeFamily.DDL),</span>
+<span class="nc" id="L17">    CREATE_VIEW(StatementTypeFamily.DDL),</span>
+<span class="nc" id="L18">    IGNORE(StatementTypeFamily.OTHER);</span>
+
+<span class="nc" id="L20">    public static List&lt;StatementType&gt; DMLS = List.of(INSERT, UPDATE, DELETE, MERGE);</span>
+<span class="nc" id="L21">    public static List&lt;StatementType&gt; DDLS = List.of(CTAS, CVAS, CREATE_TABLE, CREATE_VIEW);</span>
+
+    public final StatementTypeFamily family;
+
+<span class="nc" id="L25">    StatementType(StatementTypeFamily family) {</span>
+<span class="nc" id="L26">        this.family = family;</span>
+<span class="nc" id="L27">    }</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

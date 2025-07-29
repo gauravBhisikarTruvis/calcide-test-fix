@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.calcite_new.sql.parser.bigquery.BigQueryUpdateParserSpec" tests="36" skipped="0" failures="0" errors="0" timestamp="2025-07-28T06:14:43" hostname="LAPTOP-A36VV8FB" time="0.323">
+  <properties/>
+  <testcase name="Simple UPDATE should parse" classname="com.calcite_new.sql.parser.bigquery.BigQueryUpdateParserSpec" time="0.006"/>
+  <testcase name="Simple UPDATE should parse" classname="com.calcite_new.sql.parser.bigquery.BigQueryUpdateParserSpec" time="0.002"/>
+  <testcase name="UPDATE with multiple SET clauses should parse" classname="com.calcite_new.sql.parser.bigquery.BigQueryUpdateParserSpec" time="0.002"/>
+  <testcase name="UPDATE with expression in SET clause should parse" classname="com.calcite_new.sql.parser.bigquery.BigQueryUpdateParserSpec" time="0.002"/>
+  <testcase name="UPDATE setting a column to NULL should parse" classname="com.calcite_new.sql.parser.bigquery.BigQueryUpdateParserSpec" time="0.003"/>
+  <testcase name="UPDATE with a subquery in WHERE clause should parse" classname="com.calcite_new.sql.parser.bigquery.BigQueryUpdateParserSpec" time="0.005"/>
+  <testcase name="UPDATE with FROM clause (JOIN) should parse" classname="com.calcite_new.sql.parser.bigquery.BigQueryUpdateParserSpec" time="0.003"/>
+  <testcase name="UPDATE with CASE expression in SET clause should parse" classname="com.calcite_new.sql.parser.bigquery.BigQueryUpdateParserSpec" time="0.004"/>
+  <testcase name="UPDATE hypothetical STRUCT field should parse" classname="com.calcite_new.sql.parser.bigquery.BigQueryUpdateParserSpec" time="0.001"/>
+  <testcase name="UPDATE hypothetical ARRAY element should parse" classname="com.calcite_new.sql.parser.bigquery.BigQueryUpdateParserSpec" time="0.01"/>
+  <testcase name="UPDATE with complex WHERE clause (AND/OR) should parse" classname="com.calcite_new.sql.parser.bigquery.BigQueryUpdateParserSpec" time="0.009"/>
+  <testcase name="UPDATE with alias for the target table should parse" classname="com.calcite_new.sql.parser.bigquery.BigQueryUpdateParserSpec" time="0.004"/>
+  <testcase name="UPDATE with scalar subquery in SET clause should parse" classname="com.calcite_new.sql.parser.bigquery.BigQueryUpdateParserSpec" time="0.024"/>
+  <testcase name="UPDATE with CAST in SET clause should parse" classname="com.calcite_new.sql.parser.bigquery.BigQueryUpdateParserSpec" time="0.018"/>
+  <testcase name="UPDATE with DEFAULT keyword in SET clause should parse" classname="com.calcite_new.sql.parser.bigquery.BigQueryUpdateParserSpec" time="0.001"/>
+  <testcase name="UPDATE with FROM clause and multiple JOINs should parse" classname="com.calcite_new.sql.parser.bigquery.BigQueryUpdateParserSpec" time="0.012"/>
+  <testcase name="UPDATE with aggregate function from subquery in SET clause should parse" classname="com.calcite_new.sql.parser.bigquery.BigQueryUpdateParserSpec" time="0.024"/>
+  <testcase name="UPDATE with NOT IN subquery in WHERE clause should parse" classname="com.calcite_new.sql.parser.bigquery.BigQueryUpdateParserSpec" time="0.011"/>
+  <testcase name="UPDATE with EXISTS subquery in WHERE clause should parse" classname="com.calcite_new.sql.parser.bigquery.BigQueryUpdateParserSpec" time="0.011"/>
+  <testcase name="UPDATE using values from other columns in the same table in SET clause should parse" classname="com.calcite_new.sql.parser.bigquery.BigQueryUpdateParserSpec" time="0.003"/>
+  <testcase name="UPDATE with SAFE_CAST in SET clause should parse" classname="com.calcite_new.sql.parser.bigquery.BigQueryUpdateParserSpec" time="0.014"/>
+  <testcase name="UPDATE with parameterized query placeholders should parse" classname="com.calcite_new.sql.parser.bigquery.BigQueryUpdateParserSpec" time="0.004"/>
+  <testcase name="UPDATE hypothetical ARRAY of STRUCTs field should parse" classname="com.calcite_new.sql.parser.bigquery.BigQueryUpdateParserSpec" time="0.009"/>
+  <testcase name="UPDATE with FROM clause using a subquery as source should parse" classname="com.calcite_new.sql.parser.bigquery.BigQueryUpdateParserSpec" time="0.007"/>
+  <testcase name="UPDATE with Date/Time functions in SET clause should parse" classname="com.calcite_new.sql.parser.bigquery.BigQueryUpdateParserSpec" time="0.006"/>
+  <testcase name="UPDATE all rows using WHERE TRUE should parse" classname="com.calcite_new.sql.parser.bigquery.BigQueryUpdateParserSpec" time="0.002"/>
+  <testcase name="UPDATE with arithmetic in WHERE clause should parse" classname="com.calcite_new.sql.parser.bigquery.BigQueryUpdateParserSpec" time="0.005"/>
+  <testcase name="UPDATE setting a field to another field's transformed value should parse" classname="com.calcite_new.sql.parser.bigquery.BigQueryUpdateParserSpec" time="0.009"/>
+  <testcase name="UPDATE using a window function in FROM subquery for conditional update should parse" classname="com.calcite_new.sql.parser.bigquery.BigQueryUpdateParserSpec" time="0.009"/>
+  <testcase name="UPDATE rebuilding an entire ARRAY of STRUCTs conditionally should parse" classname="com.calcite_new.sql.parser.bigquery.BigQueryUpdateParserSpec" time="0.032"/>
+  <testcase name="UPDATE boolean field using CASE expression should parse" classname="com.calcite_new.sql.parser.bigquery.BigQueryUpdateParserSpec" time="0.013"/>
+  <testcase name="UPDATE with a subquery in SET clause returning a STRUCT should parse" classname="com.calcite_new.sql.parser.bigquery.BigQueryUpdateParserSpec" time="0.017"/>
+  <testcase name="UPDATE with multiple aliased tables in FROM clause should parse" classname="com.calcite_new.sql.parser.bigquery.BigQueryUpdateParserSpec" time="0.007"/>
+  <testcase name="UPDATE using STRING functions in SET clause should parse" classname="com.calcite_new.sql.parser.bigquery.BigQueryUpdateParserSpec" time="0.006"/>
+  <testcase name="UPDATE with WHERE clause referencing columns from joined table in FROM clause should parse" classname="com.calcite_new.sql.parser.bigquery.BigQueryUpdateParserSpec" time="0.005"/>
+  <testcase name="UPDATE target table using its own values in a subquery in FROM clause should parse" classname="com.calcite_new.sql.parser.bigquery.BigQueryUpdateParserSpec" time="0.005"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

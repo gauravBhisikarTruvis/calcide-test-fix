@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.calcite_new.sql.parser.bigquery.BigQuerySelectParserSpec" tests="25" skipped="0" failures="0" errors="0" timestamp="2025-07-28T06:14:41" hostname="LAPTOP-A36VV8FB" time="1.828">
+  <properties/>
+  <testcase name="Simple SELECT should parse" classname="com.calcite_new.sql.parser.bigquery.BigQuerySelectParserSpec" time="1.154"/>
+  <testcase name="Simple SELECT with all columns should parse" classname="com.calcite_new.sql.parser.bigquery.BigQuerySelectParserSpec" time="0.002"/>
+  <testcase name="SELECT with column selection should parse" classname="com.calcite_new.sql.parser.bigquery.BigQuerySelectParserSpec" time="0.119"/>
+  <testcase name="SELECT with WHERE clause should parse" classname="com.calcite_new.sql.parser.bigquery.BigQuerySelectParserSpec" time="0.031"/>
+  <testcase name="SELECT with GROUP BY and aggregation should parse" classname="com.calcite_new.sql.parser.bigquery.BigQuerySelectParserSpec" time="0.02"/>
+  <testcase name="SELECT with ORDER BY should parse" classname="com.calcite_new.sql.parser.bigquery.BigQuerySelectParserSpec" time="0.021"/>
+  <testcase name="SELECT with LIMIT clause should parse" classname="com.calcite_new.sql.parser.bigquery.BigQuerySelectParserSpec" time="0.027"/>
+  <testcase name="SELECT with JOIN should parse" classname="com.calcite_new.sql.parser.bigquery.BigQuerySelectParserSpec" time="0.04"/>
+  <testcase name="SELECT with LEFT JOIN should parse" classname="com.calcite_new.sql.parser.bigquery.BigQuerySelectParserSpec" time="0.011"/>
+  <testcase name="SELECT with multiple JOINs should parse" classname="com.calcite_new.sql.parser.bigquery.BigQuerySelectParserSpec" time="0.012"/>
+  <testcase name="SELECT with HAVING clause should parse" classname="com.calcite_new.sql.parser.bigquery.BigQuerySelectParserSpec" time="0.012"/>
+  <testcase name="SELECT with subquery should parse" classname="com.calcite_new.sql.parser.bigquery.BigQuerySelectParserSpec" time="0.029"/>
+  <testcase name="SELECT with date functions should parse" classname="com.calcite_new.sql.parser.bigquery.BigQuerySelectParserSpec" time="0.129"/>
+  <testcase name="SELECT with CASE expression should parse" classname="com.calcite_new.sql.parser.bigquery.BigQuerySelectParserSpec" time="0.03"/>
+  <testcase name="SELECT with UNION should parse" classname="com.calcite_new.sql.parser.bigquery.BigQuerySelectParserSpec" time="0.02"/>
+  <testcase name="SELECT with complex WHERE conditions should parse" classname="com.calcite_new.sql.parser.bigquery.BigQuerySelectParserSpec" time="0.015"/>
+  <testcase name="SELECT with window functions should parse" classname="com.calcite_new.sql.parser.bigquery.BigQuerySelectParserSpec" time="0.015"/>
+  <testcase name="SELECT with IN clause subquery" classname="com.calcite_new.sql.parser.bigquery.BigQuerySelectParserSpec" time="0.008"/>
+  <testcase name="SELECT with aggregations and math operations should parse" classname="com.calcite_new.sql.parser.bigquery.BigQuerySelectParserSpec" time="0.003"/>
+  <testcase name="SELECT with subquery should parse" classname="com.calcite_new.sql.parser.bigquery.BigQuerySelectParserSpec" time="0.0"/>
+  <testcase name="SELECT with common table expression (CTE) should parse" classname="com.calcite_new.sql.parser.bigquery.BigQuerySelectParserSpec" time="0.015"/>
+  <testcase name="SELECT with DISTINCT should parse" classname="com.calcite_new.sql.parser.bigquery.BigQuerySelectParserSpec" time="0.013"/>
+  <testcase name="SELECT with GROUP BY and ORDER BY in subquery" classname="com.calcite_new.sql.parser.bigquery.BigQuerySelectParserSpec" time="0.001"/>
+  <testcase name="SELECT with timestamp operations should parse" classname="com.calcite_new.sql.parser.bigquery.BigQuerySelectParserSpec" time="0.031"/>
+  <testcase name="SELECT with ARRAY function" classname="com.calcite_new.sql.parser.bigquery.BigQuerySelectParserSpec" time="0.059"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[line 25:5 token recognition error at: ';'
+]]></system-err>
+</testsuite>

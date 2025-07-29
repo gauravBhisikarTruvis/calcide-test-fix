@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>DataType.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">core</a> &gt; <a href="index.source.html" class="el_package">com.calcite_new.core.model.entity</a> &gt; <span class="el_source">DataType.java</span></div><h1>DataType.java</h1><pre class="source lang-java linenums">package com.calcite_new.core.model.entity;
+
+import org.apache.calcite.sql.type.SqlTypeName;
+
+/**
+ * Represents a data type in the system, encapsulating its SQL type name,
+ * precision, scale, and nullability.
+ */
+<span class="nc" id="L9">public class DataType {</span>
+  private final SqlTypeName name;
+  private final int precision;
+  private final int scale;
+  private final boolean nullable;
+
+<span class="nc" id="L15">  private DataType(SqlTypeName name, int precision, int scale, boolean nullable) {</span>
+<span class="nc" id="L16">    this.name = name;</span>
+<span class="nc bnc" id="L17" title="All 2 branches missed.">    this.precision = name.allowsPrec() ? precision : -1;</span>
+<span class="nc bnc" id="L18" title="All 2 branches missed.">    this.scale = name.allowsScale() ? scale : -1;</span>
+<span class="nc" id="L19">    this.nullable = nullable;</span>
+<span class="nc" id="L20">  }</span>
+
+  public SqlTypeName getName() {
+<span class="nc" id="L23">    return name;</span>
+  }
+
+  public int getPrecision() {
+<span class="nc" id="L27">    return precision;</span>
+  }
+
+  public int getScale() {
+<span class="nc" id="L31">    return scale;</span>
+  }
+
+  public boolean isNullable() {
+<span class="nc" id="L35">    return nullable;</span>
+  }
+
+  public static DataType create(SqlTypeName name, int precision, int scale) {
+<span class="nc" id="L39">    return create(name, precision, scale, true);</span>
+  }
+
+  public static DataType create(SqlTypeName name, int precision, int scale, boolean nullable) {
+<span class="nc bnc" id="L43" title="All 4 branches missed.">    assert name.allowsPrec() &amp;&amp; name.allowsScale() : &quot;Expected DataType with precision and scale&quot;;</span>
+<span class="nc" id="L44">    return new DataType(name, precision, scale, nullable);</span>
+  }
+
+  public static DataType create(SqlTypeName name, int precision) {
+<span class="nc" id="L48">    return create(name, precision, true);</span>
+  }
+
+  public static DataType create(SqlTypeName name, int precision, boolean nullable) {
+<span class="nc bnc" id="L52" title="All 4 branches missed.">    assert name.allowsPrec() &amp;&amp; !name.allowsScale() : &quot;Expected DataType with precision but no scale&quot;;</span>
+<span class="nc" id="L53">    return new DataType(name, precision, -1, nullable);</span>
+  }
+
+  public static DataType create(SqlTypeName name) {
+<span class="nc" id="L57">    return create(name, true);</span>
+  }
+
+  public static DataType create(SqlTypeName name, boolean nullable) {
+<span class="nc bnc" id="L61" title="All 4 branches missed.">    assert !name.allowsPrec() &amp;&amp; !name.allowsScale() : &quot;Expected DataType without precision or scale&quot;;</span>
+<span class="nc" id="L62">    return new DataType(name, -1, -1, nullable);</span>
+  }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

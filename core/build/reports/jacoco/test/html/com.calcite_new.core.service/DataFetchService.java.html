@@ -1,0 +1,371 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>DataFetchService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">core</a> &gt; <a href="index.source.html" class="el_package">com.calcite_new.core.service</a> &gt; <span class="el_source">DataFetchService.java</span></div><h1>DataFetchService.java</h1><pre class="source lang-java linenums">package com.calcite_new.core.service;
+
+
+import com.calcite_new.core.entity.*;
+import com.calcite_new.core.repository.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+
+@Service
+public final class DataFetchService {
+<span class="nc" id="L14">    private static final Logger logger = LoggerFactory.getLogger(DataFetchService.class);</span>
+    
+    private final QueryLogRepository queryLogRepository;
+    private final TableRepository tableRepository;
+    private final ColumnRepository columnRepository;
+    private final ViewRepository viewRepository;
+    private final ExternalTableRepository externalTableRepository;
+    private final FunctionRepository functionRepository;
+    private final IndicesRepository indicesRepository;
+    private final MacroRepository macroRepository;
+    private final PartitionRepository partitionRepository;
+    private final ProcedureRepository procedureRepository;
+
+    public DataFetchService(
+            QueryLogRepository queryLogRepository,
+            TableRepository tableRepository,
+            ColumnRepository columnRepository,
+            ViewRepository viewRepository,
+            ExternalTableRepository externalTableRepository,
+            FunctionRepository functionRepository,
+            IndicesRepository indicesRepository,
+            MacroRepository macroRepository,
+            PartitionRepository partitionRepository,
+<span class="nc" id="L37">            ProcedureRepository procedureRepository) {</span>
+<span class="nc" id="L38">        this.queryLogRepository = queryLogRepository;</span>
+<span class="nc" id="L39">        this.tableRepository = tableRepository;</span>
+<span class="nc" id="L40">        this.columnRepository = columnRepository;</span>
+<span class="nc" id="L41">        this.viewRepository = viewRepository;</span>
+<span class="nc" id="L42">        this.externalTableRepository = externalTableRepository;</span>
+<span class="nc" id="L43">        this.functionRepository = functionRepository;</span>
+<span class="nc" id="L44">        this.indicesRepository = indicesRepository;</span>
+<span class="nc" id="L45">        this.macroRepository = macroRepository;</span>
+<span class="nc" id="L46">        this.partitionRepository = partitionRepository;</span>
+<span class="nc" id="L47">        this.procedureRepository = procedureRepository;</span>
+<span class="nc" id="L48">    }</span>
+
+    /**
+     * Retrieves all query logs from the database.
+     *
+     * @return List&lt; of QueryExecutionLog objects
+     */
+    public List&lt;QueryLog&gt; getAllQueryLogs() {
+<span class="nc" id="L56">        return queryLogRepository.fetchAllLogs();</span>
+    }
+
+    /**
+     * Retrieves query logs by specific query text.
+     *
+     * @param queryText the text to search for
+     * @return List&lt; of matching QueryExecutionLog objects
+     */
+    public List&lt;QueryLog&gt; getQueryLogsByText(String queryText) {
+<span class="nc" id="L66">        logger.info(&quot;Fetching query logs containing text: {}&quot;, queryText);</span>
+<span class="nc" id="L67">        return queryLogRepository.findByQueryText(queryText);</span>
+    }
+
+    /**
+     * Saves a new query log entry.
+     *
+     * @param queryLog the QueryExecutionLog to save
+     * @return the saved QueryExecutionLog with generated ID
+     */
+    public QueryLog saveQueryLog(QueryLog queryLog) {
+<span class="nc" id="L77">        logger.info(&quot;Saving new query log entry&quot;);</span>
+<span class="nc" id="L78">        return queryLogRepository.save(queryLog);</span>
+    }
+
+    /**
+     * Retrieves all tables from the database.
+     *
+     * @return List of TableEntity objects
+     */
+    public List&lt;TableEntity&gt; getAllTables() {
+<span class="nc" id="L87">        return tableRepository.fetchAllTables();</span>
+    }
+
+    /**
+     * Retrieves tables for a specific schema.
+     *
+     * @param schema the name of the schema
+     * @return List&lt; of TableEntity objects for the specified schema
+     */
+    public List&lt;TableEntity&gt; getTablesForSchema(String schema) {
+<span class="nc" id="L97">        logger.info(&quot;Fetching tables for schema: {}&quot;, schema);</span>
+<span class="nc" id="L98">        return tableRepository.findBySchema(schema);</span>
+    }
+
+    /**
+     * Retrieves all columns from the database.
+     *
+     * @return List&lt; of ColumnEntity objects
+     */
+    public List&lt;ColumnEntity&gt; getAllColumns() {
+<span class="nc" id="L107">        return columnRepository.fetchAllColumns();</span>
+    }
+
+    /**
+     * Retrieves columns for a specific table.
+     *
+     * @param tableName the name of the table
+     * @return List&lt; of ColumnEntity objects for the specified table
+     */
+    public List&lt;ColumnEntity&gt; getColumnsForTable(String tableName) {
+<span class="nc" id="L117">        logger.info(&quot;Fetching columns for table: {}&quot;, tableName);</span>
+<span class="nc" id="L118">        return columnRepository.findByTableName(tableName);</span>
+    }
+
+    /**
+     * Retrieves all views from the database.
+     *
+     * @return List&lt; of ViewEntity objects
+     */
+    public List&lt;ViewEntity&gt; getAllViews() {
+<span class="nc" id="L127">        return viewRepository.fetchAllViews();</span>
+    }
+
+    /**
+     * Retrieves views for a specific schema.
+     *
+     * @param schema the name of the schema
+     * @return List&lt; of ViewEntity objects for the specified schema
+     */
+    public List&lt;ViewEntity&gt; getViewsBySchema(String schema) {
+<span class="nc" id="L137">        logger.info(&quot;Fetching views for schema: {}&quot;, schema);</span>
+<span class="nc" id="L138">        return viewRepository.findBySchema(schema);</span>
+    }
+
+    /**
+     * Retrieves views for a specific database.
+     *
+     * @param database the name of the database
+     * @return List&lt; of ViewEntity objects for the specified database
+     */
+    public List&lt;ViewEntity&gt; getViewsByDatabase(String database) {
+<span class="nc" id="L148">        logger.info(&quot;Fetching views for database: {}&quot;, database);</span>
+<span class="nc" id="L149">        return viewRepository.findByDatabase(database);</span>
+    }
+
+    /**
+     * Retrieves all external tables from the database.
+     *
+     * @return List&lt; of ExternalTableEntity objects
+     */
+    public List&lt;ExternalTableEntity&gt; getAllExternalTables() {
+<span class="nc" id="L158">        return externalTableRepository.fetchAllExternalTables();</span>
+    }
+
+    /**
+     * Retrieves external tables by specific schema.
+     *
+     * @param schema the schema name to search for
+     * @return List&lt; of matching ExternalTableEntity objects
+     */
+    public List&lt;ExternalTableEntity&gt; getExternalTablesBySchema(String schema) {
+<span class="nc" id="L168">        logger.info(&quot;Fetching external tables for schema: {}&quot;, schema);</span>
+<span class="nc" id="L169">        return externalTableRepository.findBySchema(schema);</span>
+    }
+
+    /**
+     * Retrieves external tables by specific database.
+     *
+     * @param database the database name to search for
+     * @return List&lt; of matching ExternalTableEntity objects
+     */
+    public List&lt;ExternalTableEntity&gt; getExternalTablesByDatabase(String database) {
+<span class="nc" id="L179">        logger.info(&quot;Fetching external tables for database: {}&quot;, database);</span>
+<span class="nc" id="L180">        return externalTableRepository.findByDatabase(database);</span>
+    }
+
+    /**
+     * Retrieves external tables by specific product.
+     *
+     * @param product the product name to search for
+     * @return List&lt; of matching ExternalTableEntity objects
+     */
+    public List&lt;ExternalTableEntity&gt; getExternalTablesByProduct(String product) {
+<span class="nc" id="L190">        logger.info(&quot;Fetching external tables for product: {}&quot;, product);</span>
+<span class="nc" id="L191">        return externalTableRepository.findByProduct(product);</span>
+    }
+
+    /**
+     * Retrieves external tables by specific type.
+     *
+     * @param type the type to search for
+     * @return List&lt; of matching ExternalTableEntity objects
+     */
+    public List&lt;ExternalTableEntity&gt; getExternalTablesByType(String type) {
+<span class="nc" id="L201">        logger.info(&quot;Fetching external tables by type: {}&quot;, type);</span>
+<span class="nc" id="L202">        return externalTableRepository.findByType(type);</span>
+    }
+
+    /**
+     * Retrieves all functions from the database.
+     *
+     * @return List&lt; of FunctionEntity objects
+     */
+    public List&lt;FunctionEntity&gt; getAllFunctions() {
+<span class="nc" id="L211">        return functionRepository.fetchAllFunctions();</span>
+    }
+
+    /**
+     * Retrieves functions for a specific schema.
+     *
+     * @param schema the name of the schema
+     * @return List&lt; of FunctionEntity objects for the specified schema
+     */
+    public List&lt;FunctionEntity&gt; getFunctionsBySchema(String schema) {
+<span class="nc" id="L221">        logger.info(&quot;Fetching functions for schema: {}&quot;, schema);</span>
+<span class="nc" id="L222">        return functionRepository.findBySchema(schema);</span>
+    }
+
+    /**
+     * Retrieves functions for a specific database.
+     *
+     * @param database the name of the database
+     * @return List&lt; of FunctionEntity objects for the specified database
+     */
+    public List&lt;FunctionEntity&gt; getFunctionsByDatabase(String database) {
+<span class="nc" id="L232">        logger.info(&quot;Fetching functions for database: {}&quot;, database);</span>
+<span class="nc" id="L233">        return functionRepository.findByDatabase(database);</span>
+    }
+
+    /**
+     * Retrieves all indices from the database.
+     *
+     * @return List&lt; of IndicesEntity objects
+     */
+    public List&lt;IndicesEntity&gt; getAllIndices() {
+<span class="nc" id="L242">        return indicesRepository.fetchAllIndices();</span>
+    }
+
+    /**
+     * Retrieves indices for a specific schema.
+     *
+     * @param schema the name of the schema
+     * @return List&lt; of IndicesEntity objects for the specified schema
+     */
+    public List&lt;IndicesEntity&gt; getIndicesBySchema(String schema) {
+<span class="nc" id="L252">        logger.info(&quot;Fetching indices for schema: {}&quot;, schema);</span>
+<span class="nc" id="L253">        return indicesRepository.findBySchema(schema);</span>
+    }
+
+    /**
+     * Retrieves indices for a specific database.
+     *
+     * @param database the name of the database
+     * @return List&lt; of IndicesEntity objects for the specified database
+     */
+    public List&lt;IndicesEntity&gt; getIndicesByDatabase(String database) {
+<span class="nc" id="L263">        logger.info(&quot;Fetching indices for database: {}&quot;, database);</span>
+<span class="nc" id="L264">        return indicesRepository.findByDatabase(database);</span>
+    }
+
+    /**
+     * Retrieves all macros from the database.
+     *
+     * @return List&lt; of MacroEntity objects
+     */
+    public List&lt;MacroEntity&gt; getAllMacros() {
+<span class="nc" id="L273">        return macroRepository.fetchAllMacros();</span>
+    }
+
+    /**
+     * Retrieves macros for a specific schema.
+     *
+     * @param schema the name of the schema
+     * @return List&lt; of MacroEntity objects for the specified schema
+     */
+    public List&lt;MacroEntity&gt; getMacrosBySchema(String schema) {
+<span class="nc" id="L283">        logger.info(&quot;Fetching macros for schema: {}&quot;, schema);</span>
+<span class="nc" id="L284">        return macroRepository.findBySchema(schema);</span>
+    }
+
+    /**
+     * Retrieves macros for a specific database.
+     *
+     * @param database the name of the database
+     * @return List&lt; of MacroEntity objects for the specified database
+     */
+    public List&lt;MacroEntity&gt; getMacrosByDatabase(String database) {
+<span class="nc" id="L294">        logger.info(&quot;Fetching macros for database: {}&quot;, database);</span>
+<span class="nc" id="L295">        return macroRepository.findByDatabase(database);</span>
+    }
+
+    /**
+     * Retrieves all partitions from the database.
+     *
+     * @return List&lt; of PartitionEntity objects
+     */
+    public List&lt;PartitionEntity&gt; getAllPartitions() {
+<span class="nc" id="L304">        return partitionRepository.fetchAllPartitions();</span>
+    }
+
+    /**
+     * Retrieves partitions for a specific schema.
+     *
+     * @param schema the name of the schema
+     * @return List&lt; of PartitionEntity objects for the specified schema
+     */
+    public List&lt;PartitionEntity&gt; getPartitionsBySchema(String schema) {
+<span class="nc" id="L314">        logger.info(&quot;Fetching partitions for schema: {}&quot;, schema);</span>
+<span class="nc" id="L315">        return partitionRepository.findBySchema(schema);</span>
+    }
+
+    /**
+     * Retrieves partitions for a specific database.
+     *
+     * @param database the name of the database
+     * @return List&lt; of PartitionEntity objects for the specified database
+     */
+    public List&lt;PartitionEntity&gt; getPartitionsByDatabase(String database) {
+<span class="nc" id="L325">        logger.info(&quot;Fetching partitions for database: {}&quot;, database);</span>
+<span class="nc" id="L326">        return partitionRepository.findByDatabase(database);</span>
+    }
+
+    /**
+     * Retrieves partitions for a specific table.
+     *
+     * @param tableName the name of the table
+     * @return List&lt; of PartitionEntity objects for the specified table
+     */
+    public List&lt;PartitionEntity&gt; getPartitionsByTable(String tableName) {
+<span class="nc" id="L336">        logger.info(&quot;Fetching partitions for table: {}&quot;, tableName);</span>
+<span class="nc" id="L337">        return partitionRepository.findByTableName(tableName);</span>
+    }
+
+    /**
+     * Retrieves all procedures from the database.
+     *
+     * @return List&lt; of ProcedureEntity objects
+     */
+    public List&lt;ProcedureEntity&gt; getAllProcedures() {
+<span class="nc" id="L346">        return procedureRepository.fetchAllProcedures();</span>
+    }
+
+    /**
+     * Retrieves procedures for a specific schema.
+     *
+     * @param schema the name of the schema
+     * @return List&lt; of ProcedureEntity objects for the specified schema
+     */
+    public List&lt;ProcedureEntity&gt; getProceduresBySchema(String schema) {
+<span class="nc" id="L356">        logger.info(&quot;Fetching procedures for schema: {}&quot;, schema);</span>
+<span class="nc" id="L357">        return procedureRepository.findBySchema(schema);</span>
+    }
+
+    /**
+     * Retrieves procedures for a specific database.
+     *
+     * @param database the name of the database
+     * @return List&lt; of ProcedureEntity objects for the specified database
+     */
+    public List&lt;ProcedureEntity&gt; getProceduresByDatabase(String database) {
+<span class="nc" id="L367">        logger.info(&quot;Fetching procedures for database: {}&quot;, database);</span>
+<span class="nc" id="L368">        return procedureRepository.findByDatabase(database);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

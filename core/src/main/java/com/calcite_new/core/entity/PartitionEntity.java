@@ -4,13 +4,17 @@ import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
 
 import java.util.List;
 
 @Entity
 @Table(name = "partition_metadata")
 @Data
+@EqualsAndHashCode
+@ToString
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor

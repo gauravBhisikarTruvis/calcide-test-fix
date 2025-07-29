@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>EntityResolver.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">core</a> &gt; <a href="index.source.html" class="el_package">com.calcite_new.core.resolver</a> &gt; <span class="el_source">EntityResolver.java</span></div><h1>EntityResolver.java</h1><pre class="source lang-java linenums">package com.calcite_new.core.resolver;
+
+import com.calcite_new.core.model.EntityCatalog;
+import com.calcite_new.core.model.EntityQualifier;
+import com.calcite_new.core.model.SchemaWrapper;
+import com.calcite_new.core.model.entity.DatabaseEntity;
+
+/**
+ * EntityResolver is responsible for resolving entities in the catalog.
+ * It provides methods to resolve entities based on their qualifiers.
+ */
+public class EntityResolver {
+  private final EntityCatalog catalog;
+
+<span class="nc" id="L15">  public EntityResolver(EntityCatalog catalog) {</span>
+<span class="nc" id="L16">    this.catalog = catalog;</span>
+<span class="nc" id="L17">  }</span>
+
+  public DatabaseEntity resolve(EntityQualifier qualifier) {
+<span class="nc" id="L20">    DatabaseEntity databaseEntity = catalog.getDatabaseEntity(qualifier);</span>
+<span class="nc bnc" id="L21" title="All 2 branches missed.">    if (databaseEntity == null) {</span>
+<span class="nc" id="L22">      throw new IllegalArgumentException(&quot;Entity not found: &quot; + qualifier);</span>
+    }
+<span class="nc" id="L24">    return databaseEntity;</span>
+  }
+
+  public SchemaWrapper getSchema() {
+<span class="nc" id="L28">    return new SchemaWrapper(catalog);</span>
+  }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

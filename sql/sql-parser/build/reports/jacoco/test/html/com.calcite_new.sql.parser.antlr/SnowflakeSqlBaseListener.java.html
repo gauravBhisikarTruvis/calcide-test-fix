@@ -1,0 +1,727 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>SnowflakeSqlBaseListener.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">sql-parser</a> &gt; <a href="index.source.html" class="el_package">com.calcite_new.sql.parser.antlr</a> &gt; <span class="el_source">SnowflakeSqlBaseListener.java</span></div><h1>SnowflakeSqlBaseListener.java</h1><pre class="source lang-java linenums">// Generated from SnowflakeSql.g4 by ANTLR 4.13.2
+
+package com.calcite_new.sql.parser.antlr;
+
+
+import org.antlr.v4.runtime.ParserRuleContext;
+import org.antlr.v4.runtime.tree.ErrorNode;
+import org.antlr.v4.runtime.tree.TerminalNode;
+
+/**
+ * This class provides an empty implementation of {@link SnowflakeSqlListener},
+ * which can be extended to create a listener which only needs to handle a subset
+ * of the available methods.
+ */
+@SuppressWarnings(&quot;CheckReturnValue&quot;)
+<span class="nc" id="L16">public class SnowflakeSqlBaseListener implements SnowflakeSqlListener {</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L22">	@Override public void enterSelectStatement(SnowflakeSqlParser.SelectStatementContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L28">	@Override public void exitSelectStatement(SnowflakeSqlParser.SelectStatementContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L34">	@Override public void enterWithClause(SnowflakeSqlParser.WithClauseContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L40">	@Override public void exitWithClause(SnowflakeSqlParser.WithClauseContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L46">	@Override public void enterCommonTableExpression(SnowflakeSqlParser.CommonTableExpressionContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L52">	@Override public void exitCommonTableExpression(SnowflakeSqlParser.CommonTableExpressionContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L58">	@Override public void enterSelectCore(SnowflakeSqlParser.SelectCoreContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L64">	@Override public void exitSelectCore(SnowflakeSqlParser.SelectCoreContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L70">	@Override public void enterSetQuantifier(SnowflakeSqlParser.SetQuantifierContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L76">	@Override public void exitSetQuantifier(SnowflakeSqlParser.SetQuantifierContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L82">	@Override public void enterSelectList(SnowflakeSqlParser.SelectListContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L88">	@Override public void exitSelectList(SnowflakeSqlParser.SelectListContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L94">	@Override public void enterSelectItem(SnowflakeSqlParser.SelectItemContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L100">	@Override public void exitSelectItem(SnowflakeSqlParser.SelectItemContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L106">	@Override public void enterFromClause(SnowflakeSqlParser.FromClauseContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L112">	@Override public void exitFromClause(SnowflakeSqlParser.FromClauseContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L118">	@Override public void enterTableExpression(SnowflakeSqlParser.TableExpressionContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L124">	@Override public void exitTableExpression(SnowflakeSqlParser.TableExpressionContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L130">	@Override public void enterTablePrimary(SnowflakeSqlParser.TablePrimaryContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L136">	@Override public void exitTablePrimary(SnowflakeSqlParser.TablePrimaryContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L142">	@Override public void enterTableFunctionCall(SnowflakeSqlParser.TableFunctionCallContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L148">	@Override public void exitTableFunctionCall(SnowflakeSqlParser.TableFunctionCallContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L154">	@Override public void enterFunctionArgument(SnowflakeSqlParser.FunctionArgumentContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L160">	@Override public void exitFunctionArgument(SnowflakeSqlParser.FunctionArgumentContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L166">	@Override public void enterJoinClause(SnowflakeSqlParser.JoinClauseContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L172">	@Override public void exitJoinClause(SnowflakeSqlParser.JoinClauseContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L178">	@Override public void enterJoinType(SnowflakeSqlParser.JoinTypeContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L184">	@Override public void exitJoinType(SnowflakeSqlParser.JoinTypeContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L190">	@Override public void enterWhereClause(SnowflakeSqlParser.WhereClauseContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L196">	@Override public void exitWhereClause(SnowflakeSqlParser.WhereClauseContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L202">	@Override public void enterGroupByClause(SnowflakeSqlParser.GroupByClauseContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L208">	@Override public void exitGroupByClause(SnowflakeSqlParser.GroupByClauseContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L214">	@Override public void enterGroupByItem(SnowflakeSqlParser.GroupByItemContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L220">	@Override public void exitGroupByItem(SnowflakeSqlParser.GroupByItemContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L226">	@Override public void enterGroupingSetItem(SnowflakeSqlParser.GroupingSetItemContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L232">	@Override public void exitGroupingSetItem(SnowflakeSqlParser.GroupingSetItemContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L238">	@Override public void enterHavingClause(SnowflakeSqlParser.HavingClauseContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L244">	@Override public void exitHavingClause(SnowflakeSqlParser.HavingClauseContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L250">	@Override public void enterQualifyClause(SnowflakeSqlParser.QualifyClauseContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L256">	@Override public void exitQualifyClause(SnowflakeSqlParser.QualifyClauseContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L262">	@Override public void enterWindowClause(SnowflakeSqlParser.WindowClauseContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L268">	@Override public void exitWindowClause(SnowflakeSqlParser.WindowClauseContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L274">	@Override public void enterNamedWindow(SnowflakeSqlParser.NamedWindowContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L280">	@Override public void exitNamedWindow(SnowflakeSqlParser.NamedWindowContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L286">	@Override public void enterWindowSpecification(SnowflakeSqlParser.WindowSpecificationContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L292">	@Override public void exitWindowSpecification(SnowflakeSqlParser.WindowSpecificationContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L298">	@Override public void enterPartitionByClause(SnowflakeSqlParser.PartitionByClauseContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L304">	@Override public void exitPartitionByClause(SnowflakeSqlParser.PartitionByClauseContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L310">	@Override public void enterOrderByClause(SnowflakeSqlParser.OrderByClauseContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L316">	@Override public void exitOrderByClause(SnowflakeSqlParser.OrderByClauseContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L322">	@Override public void enterOrderByItem(SnowflakeSqlParser.OrderByItemContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L328">	@Override public void exitOrderByItem(SnowflakeSqlParser.OrderByItemContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L334">	@Override public void enterFrameClause(SnowflakeSqlParser.FrameClauseContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L340">	@Override public void exitFrameClause(SnowflakeSqlParser.FrameClauseContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L346">	@Override public void enterFrameStart(SnowflakeSqlParser.FrameStartContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L352">	@Override public void exitFrameStart(SnowflakeSqlParser.FrameStartContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L358">	@Override public void enterFrameEnd(SnowflakeSqlParser.FrameEndContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L364">	@Override public void exitFrameEnd(SnowflakeSqlParser.FrameEndContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L370">	@Override public void enterLimitClause(SnowflakeSqlParser.LimitClauseContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L376">	@Override public void exitLimitClause(SnowflakeSqlParser.LimitClauseContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L382">	@Override public void enterExpression(SnowflakeSqlParser.ExpressionContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L388">	@Override public void exitExpression(SnowflakeSqlParser.ExpressionContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L394">	@Override public void enterCaseExpression(SnowflakeSqlParser.CaseExpressionContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L400">	@Override public void exitCaseExpression(SnowflakeSqlParser.CaseExpressionContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L406">	@Override public void enterSimpleCaseExpression(SnowflakeSqlParser.SimpleCaseExpressionContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L412">	@Override public void exitSimpleCaseExpression(SnowflakeSqlParser.SimpleCaseExpressionContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L418">	@Override public void enterSearchedCaseExpression(SnowflakeSqlParser.SearchedCaseExpressionContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L424">	@Override public void exitSearchedCaseExpression(SnowflakeSqlParser.SearchedCaseExpressionContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L430">	@Override public void enterFunctionCall(SnowflakeSqlParser.FunctionCallContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L436">	@Override public void exitFunctionCall(SnowflakeSqlParser.FunctionCallContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L442">	@Override public void enterAggregateFunction(SnowflakeSqlParser.AggregateFunctionContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L448">	@Override public void exitAggregateFunction(SnowflakeSqlParser.AggregateFunctionContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L454">	@Override public void enterWithinGroup(SnowflakeSqlParser.WithinGroupContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L460">	@Override public void exitWithinGroup(SnowflakeSqlParser.WithinGroupContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L466">	@Override public void enterRegularFunction(SnowflakeSqlParser.RegularFunctionContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L472">	@Override public void exitRegularFunction(SnowflakeSqlParser.RegularFunctionContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L478">	@Override public void enterSpecialFunction(SnowflakeSqlParser.SpecialFunctionContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L484">	@Override public void exitSpecialFunction(SnowflakeSqlParser.SpecialFunctionContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L490">	@Override public void enterColumnReference(SnowflakeSqlParser.ColumnReferenceContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L496">	@Override public void exitColumnReference(SnowflakeSqlParser.ColumnReferenceContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L502">	@Override public void enterTableName(SnowflakeSqlParser.TableNameContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L508">	@Override public void exitTableName(SnowflakeSqlParser.TableNameContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L514">	@Override public void enterSchemaName(SnowflakeSqlParser.SchemaNameContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L520">	@Override public void exitSchemaName(SnowflakeSqlParser.SchemaNameContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L526">	@Override public void enterDatabaseName(SnowflakeSqlParser.DatabaseNameContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L532">	@Override public void exitDatabaseName(SnowflakeSqlParser.DatabaseNameContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L538">	@Override public void enterColumnName(SnowflakeSqlParser.ColumnNameContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L544">	@Override public void exitColumnName(SnowflakeSqlParser.ColumnNameContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L550">	@Override public void enterColumnAlias(SnowflakeSqlParser.ColumnAliasContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L556">	@Override public void exitColumnAlias(SnowflakeSqlParser.ColumnAliasContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L562">	@Override public void enterTableAlias(SnowflakeSqlParser.TableAliasContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L568">	@Override public void exitTableAlias(SnowflakeSqlParser.TableAliasContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L574">	@Override public void enterWindowName(SnowflakeSqlParser.WindowNameContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L580">	@Override public void exitWindowName(SnowflakeSqlParser.WindowNameContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L586">	@Override public void enterCollationName(SnowflakeSqlParser.CollationNameContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L592">	@Override public void exitCollationName(SnowflakeSqlParser.CollationNameContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L598">	@Override public void enterLiteral(SnowflakeSqlParser.LiteralContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L604">	@Override public void exitLiteral(SnowflakeSqlParser.LiteralContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L610">	@Override public void enterArrayLiteral(SnowflakeSqlParser.ArrayLiteralContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L616">	@Override public void exitArrayLiteral(SnowflakeSqlParser.ArrayLiteralContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L622">	@Override public void enterObjectLiteral(SnowflakeSqlParser.ObjectLiteralContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L628">	@Override public void exitObjectLiteral(SnowflakeSqlParser.ObjectLiteralContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L634">	@Override public void enterObjectField(SnowflakeSqlParser.ObjectFieldContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L640">	@Override public void exitObjectField(SnowflakeSqlParser.ObjectFieldContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L646">	@Override public void enterDataType(SnowflakeSqlParser.DataTypeContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L652">	@Override public void exitDataType(SnowflakeSqlParser.DataTypeContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L658">	@Override public void enterUnaryOperator(SnowflakeSqlParser.UnaryOperatorContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L664">	@Override public void exitUnaryOperator(SnowflakeSqlParser.UnaryOperatorContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L670">	@Override public void enterBinaryOperator(SnowflakeSqlParser.BinaryOperatorContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L676">	@Override public void exitBinaryOperator(SnowflakeSqlParser.BinaryOperatorContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L682">	@Override public void enterIdentifier(SnowflakeSqlParser.IdentifierContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L688">	@Override public void exitIdentifier(SnowflakeSqlParser.IdentifierContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L694">	@Override public void enterNonReservedKeyword(SnowflakeSqlParser.NonReservedKeywordContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L700">	@Override public void exitNonReservedKeyword(SnowflakeSqlParser.NonReservedKeywordContext ctx) { }</span>
+
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L707">	@Override public void enterEveryRule(ParserRuleContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L713">	@Override public void exitEveryRule(ParserRuleContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L719">	@Override public void visitTerminal(TerminalNode node) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L725">	@Override public void visitErrorNode(ErrorNode node) { }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

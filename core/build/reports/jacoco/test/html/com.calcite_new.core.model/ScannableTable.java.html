@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ScannableTable.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">core</a> &gt; <a href="index.source.html" class="el_package">com.calcite_new.core.model</a> &gt; <span class="el_source">ScannableTable.java</span></div><h1>ScannableTable.java</h1><pre class="source lang-java linenums">package com.calcite_new.core.model;
+
+import com.calcite_new.core.model.entity.DataType;
+import com.calcite_new.core.model.entity.Table;
+import org.apache.calcite.DataContext;
+import org.apache.calcite.linq4j.Enumerable;
+import org.apache.calcite.rel.type.RelDataType;
+import org.apache.calcite.rel.type.RelDataTypeFactory;
+import org.apache.calcite.rel.type.StructKind;
+import org.apache.calcite.schema.impl.AbstractTable;
+import org.checkerframework.checker.nullness.qual.Nullable;
+
+import java.util.List;
+
+public class ScannableTable extends AbstractTable implements org.apache.calcite.schema.ScannableTable {
+  private final Table table;
+
+<span class="nc" id="L18">  private ScannableTable(Table table) {</span>
+<span class="nc" id="L19">    this.table = table;</span>
+<span class="nc" id="L20">  }</span>
+
+  @Override
+  public Enumerable&lt;@Nullable Object[]&gt; scan(DataContext root) {
+<span class="nc" id="L24">    throw new UnsupportedOperationException(&quot;Scan not supported&quot;);</span>
+  }
+
+  @Override
+  public RelDataType getRowType(RelDataTypeFactory typeFactory) {
+<span class="nc" id="L29">    List&lt;String&gt; names = table.getColumns().stream().map(c -&gt; c.name().getName()).toList();</span>
+<span class="nc" id="L30">    List&lt;RelDataType&gt; types = table.getColumns().stream()</span>
+<span class="nc" id="L31">        .map(c -&gt; {</span>
+<span class="nc" id="L32">          DataType type = c.type();</span>
+<span class="nc bnc" id="L33" title="All 4 branches missed.">          if (type.getName().allowsPrec() &amp;&amp; type.getName().allowsScale()) {</span>
+<span class="nc" id="L34">            return typeFactory.createSqlType(type.getName(), type.getPrecision(), type.getScale());</span>
+          }
+<span class="nc bnc" id="L36" title="All 2 branches missed.">          if (type.getName().allowsPrec()) {</span>
+<span class="nc" id="L37">            return typeFactory.createSqlType(type.getName(), type.getPrecision());</span>
+          }
+<span class="nc" id="L39">          return typeFactory.createSqlType(type.getName());</span>
+<span class="nc" id="L40">        }).toList();</span>
+<span class="nc" id="L41">    return typeFactory.createStructType(StructKind.FULLY_QUALIFIED, types, names);</span>
+  }
+
+  public static ScannableTable create(Table table) {
+<span class="nc" id="L45">    return new ScannableTable(table);</span>
+  }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

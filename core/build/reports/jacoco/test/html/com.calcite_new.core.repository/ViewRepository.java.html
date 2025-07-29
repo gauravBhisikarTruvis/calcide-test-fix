@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ViewRepository.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">core</a> &gt; <a href="index.source.html" class="el_package">com.calcite_new.core.repository</a> &gt; <span class="el_source">ViewRepository.java</span></div><h1>ViewRepository.java</h1><pre class="source lang-java linenums">package com.calcite_new.core.repository;
+
+import com.calcite_new.core.config.HibernateUtil;
+import com.calcite_new.core.entity.ViewEntity;
+import org.hibernate.Session;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Repository;
+
+import java.util.List;
+
+@Repository
+<span class="nc" id="L13">public class ViewRepository {</span>
+<span class="nc" id="L14">    private static final Logger logger = LoggerFactory.getLogger(ViewRepository.class);</span>
+
+    public List&lt;ViewEntity&gt; fetchAllViews() {
+<span class="nc" id="L17">        try (Session session = HibernateUtil.getSessionFactory().openSession()) {</span>
+<span class="nc" id="L18">            return session.createQuery(&quot;FROM ViewEntity&quot;, ViewEntity.class)</span>
+<span class="nc" id="L19">                   .getResultList();</span>
+<span class="nc" id="L20">        } catch (Exception e) {</span>
+<span class="nc" id="L21">            logger.error(&quot;Error fetching views&quot;, e);</span>
+<span class="nc" id="L22">            throw e;</span>
+        }
+    }
+
+    public List&lt;ViewEntity&gt; findBySchema(String schema) {
+<span class="nc" id="L27">        try (Session session = HibernateUtil.getSessionFactory().openSession()) {</span>
+<span class="nc" id="L28">            return session.createQuery(</span>
+                    &quot;FROM ViewEntity WHERE schema = :schema&quot;,
+                    ViewEntity.class)
+<span class="nc" id="L31">                    .setParameter(&quot;schema&quot;, schema)</span>
+<span class="nc" id="L32">                    .getResultList();</span>
+<span class="nc" id="L33">        } catch (Exception e) {</span>
+<span class="nc" id="L34">            logger.error(&quot;Error fetching views for schema: {}&quot;, schema, e);</span>
+<span class="nc" id="L35">            throw e;</span>
+        }
+    }
+
+    public List&lt;ViewEntity&gt; findByDatabase(String database) {
+<span class="nc" id="L40">        try (Session session = HibernateUtil.getSessionFactory().openSession()) {</span>
+<span class="nc" id="L41">            return session.createQuery(</span>
+                    &quot;FROM ViewEntity WHERE database = :database&quot;,
+                    ViewEntity.class)
+<span class="nc" id="L44">                    .setParameter(&quot;database&quot;, database)</span>
+<span class="nc" id="L45">                    .getResultList();</span>
+<span class="nc" id="L46">        } catch (Exception e) {</span>
+<span class="nc" id="L47">            logger.error(&quot;Error fetching views for database: {}&quot;, database, e);</span>
+<span class="nc" id="L48">            throw e;</span>
+        }
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

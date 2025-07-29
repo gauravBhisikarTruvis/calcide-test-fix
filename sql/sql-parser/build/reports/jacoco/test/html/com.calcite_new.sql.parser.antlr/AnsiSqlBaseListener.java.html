@@ -1,0 +1,655 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AnsiSqlBaseListener.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">sql-parser</a> &gt; <a href="index.source.html" class="el_package">com.calcite_new.sql.parser.antlr</a> &gt; <span class="el_source">AnsiSqlBaseListener.java</span></div><h1>AnsiSqlBaseListener.java</h1><pre class="source lang-java linenums">// Generated from AnsiSql.g4 by ANTLR 4.13.2
+
+package com.calcite_new.sql.parser.antlr;
+
+
+import org.antlr.v4.runtime.ParserRuleContext;
+import org.antlr.v4.runtime.tree.ErrorNode;
+import org.antlr.v4.runtime.tree.TerminalNode;
+
+/**
+ * This class provides an empty implementation of {@link AnsiSqlListener},
+ * which can be extended to create a listener which only needs to handle a subset
+ * of the available methods.
+ */
+@SuppressWarnings(&quot;CheckReturnValue&quot;)
+<span class="nc" id="L16">public class AnsiSqlBaseListener implements AnsiSqlListener {</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L22">	@Override public void enterStatement(AnsiSqlParser.StatementContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L28">	@Override public void exitStatement(AnsiSqlParser.StatementContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L34">	@Override public void enterSelectStatement(AnsiSqlParser.SelectStatementContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L40">	@Override public void exitSelectStatement(AnsiSqlParser.SelectStatementContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L46">	@Override public void enterInsertStatement(AnsiSqlParser.InsertStatementContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L52">	@Override public void exitInsertStatement(AnsiSqlParser.InsertStatementContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L58">	@Override public void enterUpdateStatement(AnsiSqlParser.UpdateStatementContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L64">	@Override public void exitUpdateStatement(AnsiSqlParser.UpdateStatementContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L70">	@Override public void enterDeleteStatement(AnsiSqlParser.DeleteStatementContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L76">	@Override public void exitDeleteStatement(AnsiSqlParser.DeleteStatementContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L82">	@Override public void enterMergeStatement(AnsiSqlParser.MergeStatementContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L88">	@Override public void exitMergeStatement(AnsiSqlParser.MergeStatementContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L94">	@Override public void enterDropStatement(AnsiSqlParser.DropStatementContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L100">	@Override public void exitDropStatement(AnsiSqlParser.DropStatementContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L106">	@Override public void enterAlterStatement(AnsiSqlParser.AlterStatementContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L112">	@Override public void exitAlterStatement(AnsiSqlParser.AlterStatementContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L118">	@Override public void enterAlterAction(AnsiSqlParser.AlterActionContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L124">	@Override public void exitAlterAction(AnsiSqlParser.AlterActionContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L130">	@Override public void enterCreateTableStatement(AnsiSqlParser.CreateTableStatementContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L136">	@Override public void exitCreateTableStatement(AnsiSqlParser.CreateTableStatementContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L142">	@Override public void enterColumnDefinition(AnsiSqlParser.ColumnDefinitionContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L148">	@Override public void exitColumnDefinition(AnsiSqlParser.ColumnDefinitionContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L154">	@Override public void enterCreateViewStatement(AnsiSqlParser.CreateViewStatementContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L160">	@Override public void exitCreateViewStatement(AnsiSqlParser.CreateViewStatementContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L166">	@Override public void enterRenameStatement(AnsiSqlParser.RenameStatementContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L172">	@Override public void exitRenameStatement(AnsiSqlParser.RenameStatementContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L178">	@Override public void enterDataType(AnsiSqlParser.DataTypeContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L184">	@Override public void exitDataType(AnsiSqlParser.DataTypeContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L190">	@Override public void enterAssignment(AnsiSqlParser.AssignmentContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L196">	@Override public void exitAssignment(AnsiSqlParser.AssignmentContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L202">	@Override public void enterDistinct(AnsiSqlParser.DistinctContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L208">	@Override public void exitDistinct(AnsiSqlParser.DistinctContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L214">	@Override public void enterSelectList(AnsiSqlParser.SelectListContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L220">	@Override public void exitSelectList(AnsiSqlParser.SelectListContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L226">	@Override public void enterSelectElement(AnsiSqlParser.SelectElementContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L232">	@Override public void exitSelectElement(AnsiSqlParser.SelectElementContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L238">	@Override public void enterFromClause(AnsiSqlParser.FromClauseContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L244">	@Override public void exitFromClause(AnsiSqlParser.FromClauseContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L250">	@Override public void enterTableSource(AnsiSqlParser.TableSourceContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L256">	@Override public void exitTableSource(AnsiSqlParser.TableSourceContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L262">	@Override public void enterPrimaryTableSource(AnsiSqlParser.PrimaryTableSourceContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L268">	@Override public void exitPrimaryTableSource(AnsiSqlParser.PrimaryTableSourceContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L274">	@Override public void enterJoinPart(AnsiSqlParser.JoinPartContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L280">	@Override public void exitJoinPart(AnsiSqlParser.JoinPartContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L286">	@Override public void enterJoinType(AnsiSqlParser.JoinTypeContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L292">	@Override public void exitJoinType(AnsiSqlParser.JoinTypeContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L298">	@Override public void enterColumnList(AnsiSqlParser.ColumnListContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L304">	@Override public void exitColumnList(AnsiSqlParser.ColumnListContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L310">	@Override public void enterWhereClause(AnsiSqlParser.WhereClauseContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L316">	@Override public void exitWhereClause(AnsiSqlParser.WhereClauseContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L322">	@Override public void enterGroupByClause(AnsiSqlParser.GroupByClauseContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L328">	@Override public void exitGroupByClause(AnsiSqlParser.GroupByClauseContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L334">	@Override public void enterHavingClause(AnsiSqlParser.HavingClauseContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L340">	@Override public void exitHavingClause(AnsiSqlParser.HavingClauseContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L346">	@Override public void enterOrderByClause(AnsiSqlParser.OrderByClauseContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L352">	@Override public void exitOrderByClause(AnsiSqlParser.OrderByClauseContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L358">	@Override public void enterOrderByElement(AnsiSqlParser.OrderByElementContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L364">	@Override public void exitOrderByElement(AnsiSqlParser.OrderByElementContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L370">	@Override public void enterLimitClause(AnsiSqlParser.LimitClauseContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L376">	@Override public void exitLimitClause(AnsiSqlParser.LimitClauseContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L382">	@Override public void enterInSubqueryExpr(AnsiSqlParser.InSubqueryExprContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L388">	@Override public void exitInSubqueryExpr(AnsiSqlParser.InSubqueryExprContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L394">	@Override public void enterIsNullExpr(AnsiSqlParser.IsNullExprContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L400">	@Override public void exitIsNullExpr(AnsiSqlParser.IsNullExprContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L406">	@Override public void enterLiteralExpr(AnsiSqlParser.LiteralExprContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L412">	@Override public void exitLiteralExpr(AnsiSqlParser.LiteralExprContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L418">	@Override public void enterLikeExpr(AnsiSqlParser.LikeExprContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L424">	@Override public void exitLikeExpr(AnsiSqlParser.LikeExprContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L430">	@Override public void enterBinaryExpr(AnsiSqlParser.BinaryExprContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L436">	@Override public void exitBinaryExpr(AnsiSqlParser.BinaryExprContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L442">	@Override public void enterColumnRefExpr(AnsiSqlParser.ColumnRefExprContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L448">	@Override public void exitColumnRefExpr(AnsiSqlParser.ColumnRefExprContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L454">	@Override public void enterSubqueryExpr(AnsiSqlParser.SubqueryExprContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L460">	@Override public void exitSubqueryExpr(AnsiSqlParser.SubqueryExprContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L466">	@Override public void enterExistsExpr(AnsiSqlParser.ExistsExprContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L472">	@Override public void exitExistsExpr(AnsiSqlParser.ExistsExprContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L478">	@Override public void enterCaseExprs(AnsiSqlParser.CaseExprsContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L484">	@Override public void exitCaseExprs(AnsiSqlParser.CaseExprsContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L490">	@Override public void enterParenExpr(AnsiSqlParser.ParenExprContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L496">	@Override public void exitParenExpr(AnsiSqlParser.ParenExprContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L502">	@Override public void enterFunctionExpr(AnsiSqlParser.FunctionExprContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L508">	@Override public void exitFunctionExpr(AnsiSqlParser.FunctionExprContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L514">	@Override public void enterSubquery(AnsiSqlParser.SubqueryContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L520">	@Override public void exitSubquery(AnsiSqlParser.SubqueryContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L526">	@Override public void enterCaseExpr(AnsiSqlParser.CaseExprContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L532">	@Override public void exitCaseExpr(AnsiSqlParser.CaseExprContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L538">	@Override public void enterFunctionCall(AnsiSqlParser.FunctionCallContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L544">	@Override public void exitFunctionCall(AnsiSqlParser.FunctionCallContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L550">	@Override public void enterColumnRef(AnsiSqlParser.ColumnRefContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L556">	@Override public void exitColumnRef(AnsiSqlParser.ColumnRefContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L562">	@Override public void enterLiteral(AnsiSqlParser.LiteralContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L568">	@Override public void exitLiteral(AnsiSqlParser.LiteralContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L574">	@Override public void enterAlias(AnsiSqlParser.AliasContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L580">	@Override public void exitAlias(AnsiSqlParser.AliasContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L586">	@Override public void enterTableName(AnsiSqlParser.TableNameContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L592">	@Override public void exitTableName(AnsiSqlParser.TableNameContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L598">	@Override public void enterColumnName(AnsiSqlParser.ColumnNameContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L604">	@Override public void exitColumnName(AnsiSqlParser.ColumnNameContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L610">	@Override public void enterFunctionName(AnsiSqlParser.FunctionNameContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L616">	@Override public void exitFunctionName(AnsiSqlParser.FunctionNameContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L622">	@Override public void enterStar(AnsiSqlParser.StarContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L628">	@Override public void exitStar(AnsiSqlParser.StarContext ctx) { }</span>
+
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L635">	@Override public void enterEveryRule(ParserRuleContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L641">	@Override public void exitEveryRule(ParserRuleContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L647">	@Override public void visitTerminal(TerminalNode node) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L653">	@Override public void visitErrorNode(ErrorNode node) { }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

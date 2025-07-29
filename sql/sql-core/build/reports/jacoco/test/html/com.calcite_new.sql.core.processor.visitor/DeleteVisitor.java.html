@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>DeleteVisitor.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">sql-core</a> &gt; <a href="index.source.html" class="el_package">com.calcite_new.sql.core.processor.visitor</a> &gt; <span class="el_source">DeleteVisitor.java</span></div><h1>DeleteVisitor.java</h1><pre class="source lang-java linenums">package com.calcite_new.sql.core.processor.visitor;
+
+import com.calcite_new.sql.core.processor.utils.InClauseAnalyzer;
+import com.calcite_new.sql.model.enums.StatementType;
+import com.calcite_new.sql.model.entity.context.clause.WhereClause;
+import org.apache.calcite.sql.SqlCall;
+import org.apache.calcite.sql.SqlDelete;
+import org.apache.calcite.sql.SqlNode;
+
+import static com.calcite_new.sql.core.processor.utils.SqlConditionUtils.isConditionAlwaysTrue;
+
+public class DeleteVisitor extends BaseStatementVisitor {
+
+    public DeleteVisitor(String userName, String defaultDatabase, String defaultSchema) {
+<span class="nc" id="L15">        super(userName, defaultDatabase, defaultSchema);</span>
+<span class="nc" id="L16">    }</span>
+
+    @Override
+    public SqlNodeVisitor.Result visit(SqlCall call) {
+<span class="nc" id="L20">        SqlDelete delete = (SqlDelete) call;</span>
+<span class="nc" id="L21">        SqlNodeVisitor.Result result = new SqlNodeVisitor.Result();</span>
+<span class="nc" id="L22">        result.setStatementType(StatementType.DELETE);</span>
+
+<span class="nc" id="L24">        addAccess(delete.getTargetTable(), result);</span>
+
+<span class="nc bnc" id="L26" title="All 2 branches missed.">        if (delete.getCondition() != null) {</span>
+<span class="nc" id="L27">            SqlNode deleteCondition = delete.getCondition();</span>
+<span class="nc" id="L28">            SqlNodeVisitor visitor = new SqlNodeVisitor(userName, defaultDatabase, defaultSchema);</span>
+<span class="nc" id="L29">            SqlNodeVisitor.Result conditionResult = deleteCondition.accept(visitor);</span>
+
+<span class="nc bnc" id="L31" title="All 2 branches missed.">            if (conditionResult == null) {</span>
+<span class="nc" id="L32">                conditionResult = new SqlNodeVisitor.Result();</span>
+            }
+<span class="nc" id="L34">            SqlNodeVisitor.mergeResults(result, conditionResult);</span>
+<span class="nc" id="L35">            addDependsOn(delete.getTargetTable(), conditionResult, result);</span>
+
+<span class="nc" id="L37">            WhereClause whereClause = new WhereClause();</span>
+<span class="nc" id="L38">            whereClause.setHasTrueCondition(isConditionAlwaysTrue(deleteCondition));</span>
+<span class="nc" id="L39">            InClauseAnalyzer.InClauseInfo inInfo = InClauseAnalyzer.analyze(deleteCondition);</span>
+<span class="nc" id="L40">            whereClause.setHasInWithSubquery(inInfo.hasInWithSubquery());</span>
+<span class="nc" id="L41">            whereClause.setHasInWithConstant(inInfo.hasInWithConstant());</span>
+<span class="nc" id="L42">            result.getContext().setWhereClause(whereClause);</span>
+        }
+
+<span class="nc" id="L45">        return result;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

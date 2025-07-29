@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ExternalTableRepository.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">core</a> &gt; <a href="index.source.html" class="el_package">com.calcite_new.core.repository</a> &gt; <span class="el_source">ExternalTableRepository.java</span></div><h1>ExternalTableRepository.java</h1><pre class="source lang-java linenums">package com.calcite_new.core.repository;
+
+
+import com.calcite_new.core.config.HibernateUtil;
+import com.calcite_new.core.entity.ExternalTableEntity;
+import org.hibernate.Session;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Repository;
+
+import java.util.List;
+
+@Repository
+<span class="nc" id="L14">public class ExternalTableRepository {</span>
+<span class="nc" id="L15">    private static final Logger logger = LoggerFactory.getLogger(ExternalTableRepository.class);</span>
+
+    public List&lt;ExternalTableEntity&gt; fetchAllExternalTables() {
+<span class="nc" id="L18">        try (Session session = HibernateUtil.getSessionFactory().openSession()) {</span>
+<span class="nc" id="L19">            logger.info(&quot;Fetching all records from external_table_e&quot;);</span>
+<span class="nc" id="L20">            return session.createQuery(&quot;FROM ExternalTableEntity&quot;, ExternalTableEntity.class).getResultList();</span>
+<span class="nc" id="L21">        } catch (Exception e) {</span>
+<span class="nc" id="L22">            logger.error(&quot;Error fetching external tables&quot;, e);</span>
+<span class="nc" id="L23">            throw e;</span>
+        }
+    }
+
+    public List&lt;ExternalTableEntity&gt; findBySchema(String schema) {
+<span class="nc" id="L28">        try (Session session = HibernateUtil.getSessionFactory().openSession()) {</span>
+<span class="nc" id="L29">            logger.info(&quot;Finding external tables for schema: {}&quot;, schema);</span>
+<span class="nc" id="L30">            return session.createQuery(</span>
+                    &quot;FROM ExternalTableEntity WHERE schema = :schema&quot;,
+                    ExternalTableEntity.class)
+<span class="nc" id="L33">                .setParameter(&quot;schema&quot;, schema)</span>
+<span class="nc" id="L34">                .getResultList();</span>
+<span class="nc" id="L35">        } catch (Exception e) {</span>
+<span class="nc" id="L36">            logger.error(&quot;Error finding external tables by schema: {}&quot;, schema, e);</span>
+<span class="nc" id="L37">            throw e;</span>
+        }
+    }
+
+    public List&lt;ExternalTableEntity&gt; findByDatabase(String database) {
+<span class="nc" id="L42">        try (Session session = HibernateUtil.getSessionFactory().openSession()) {</span>
+<span class="nc" id="L43">            logger.info(&quot;Finding external tables for database: {}&quot;, database);</span>
+<span class="nc" id="L44">            return session.createQuery(</span>
+                    &quot;FROM ExternalTableEntity WHERE database = :database&quot;,
+                    ExternalTableEntity.class)
+<span class="nc" id="L47">                .setParameter(&quot;database&quot;, database)</span>
+<span class="nc" id="L48">                .getResultList();</span>
+<span class="nc" id="L49">        } catch (Exception e) {</span>
+<span class="nc" id="L50">            logger.error(&quot;Error finding external tables by database: {}&quot;, database, e);</span>
+<span class="nc" id="L51">            throw e;</span>
+        }
+    }
+
+    public List&lt;ExternalTableEntity&gt; findByProduct(String product) {
+<span class="nc" id="L56">        try (Session session = HibernateUtil.getSessionFactory().openSession()) {</span>
+<span class="nc" id="L57">            logger.info(&quot;Finding external tables for product: {}&quot;, product);</span>
+<span class="nc" id="L58">            return session.createQuery(</span>
+                    &quot;FROM ExternalTableEntity WHERE product = :product&quot;,
+                    ExternalTableEntity.class)
+<span class="nc" id="L61">                .setParameter(&quot;product&quot;, product)</span>
+<span class="nc" id="L62">                .getResultList();</span>
+<span class="nc" id="L63">        } catch (Exception e) {</span>
+<span class="nc" id="L64">            logger.error(&quot;Error finding external tables by product: {}&quot;, product, e);</span>
+<span class="nc" id="L65">            throw e;</span>
+        }
+    }
+
+    public List&lt;ExternalTableEntity&gt; findByType(String type) {
+<span class="nc" id="L70">        try (Session session = HibernateUtil.getSessionFactory().openSession()) {</span>
+<span class="nc" id="L71">            logger.info(&quot;Finding external tables by type: {}&quot;, type);</span>
+<span class="nc" id="L72">            return session.createQuery(</span>
+                    &quot;FROM ExternalTableEntity WHERE type = :type&quot;,
+                    ExternalTableEntity.class)
+<span class="nc" id="L75">                .setParameter(&quot;type&quot;, type)</span>
+<span class="nc" id="L76">                .getResultList();</span>
+<span class="nc" id="L77">        } catch (Exception e) {</span>
+<span class="nc" id="L78">            logger.error(&quot;Error finding external tables by type: {}&quot;, type, e);</span>
+<span class="nc" id="L79">            throw e;</span>
+        }
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

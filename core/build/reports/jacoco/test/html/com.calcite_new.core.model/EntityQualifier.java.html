@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>EntityQualifier.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">core</a> &gt; <a href="index.source.html" class="el_package">com.calcite_new.core.model</a> &gt; <span class="el_source">EntityQualifier.java</span></div><h1>EntityQualifier.java</h1><pre class="source lang-java linenums">package com.calcite_new.core.model;
+
+import com.calcite_new.core.dialect.Dialect;
+
+import java.util.ArrayDeque;
+import java.util.Deque;
+import java.util.List;
+
+/**
+ * Class representing the qualifiers for an entity. Given default qualification and actual qualification,
+ * it creates a list of identifiers that represent the full qualification of the entity.
+ * &lt;p&gt;
+ * For example, if the default qualification is &lt;code&gt;[database, schema]&lt;/code&gt; and the actual qualification is [table],
+ * the full qualification will be &lt;code&gt;[database, schema, table]&lt;/code&gt;.
+ *
+ * &lt;p&gt;
+ * OR if the default qualification is &lt;code&gt;[database, schema]&lt;/code&gt; and the actual qualification is &lt;code&gt;[schema2, table]&lt;/code&gt;,
+ * the full qualification will be &lt;code&gt;[database, schema2, table]&lt;/code&gt;.
+ *
+ * &lt;p&gt;
+ * OR if the default qualification is &lt;code&gt;[database, schema]&lt;/code&gt; and the actual qualification is &lt;code&gt;[db, sch, tbl]&lt;/code&gt;,
+ * the full qualification will be &lt;code&gt;[db, sch, tbl]&lt;/code&gt;.
+ */
+<span class="nc" id="L24">public class EntityQualifier {</span>
+  private final List&lt;String&gt; qualifiers;
+  private final List&lt;String&gt; defaultQualifiers;
+  private final Dialect dialect;
+  private final List&lt;Identifier&gt; fullQualifiers;
+
+<span class="nc" id="L30">  public EntityQualifier(List&lt;String&gt; qualifiers, List&lt;String&gt; defaultQualifiers, Dialect dialect) {</span>
+<span class="nc" id="L31">    this.qualifiers = qualifiers;</span>
+<span class="nc" id="L32">    this.defaultQualifiers = defaultQualifiers;</span>
+<span class="nc" id="L33">    this.dialect = dialect;</span>
+<span class="nc" id="L34">    this.fullQualifiers = initQualifiers();</span>
+<span class="nc bnc" id="L35" title="All 2 branches missed.">    assert qualifiers.size() + defaultQualifiers.size() &gt;= dialect.supportedQualificationLevels();</span>
+<span class="nc" id="L36">  }</span>
+
+  private List&lt;Identifier&gt; initQualifiers() {
+<span class="nc" id="L39">    int supportedQualificationLevels = dialect.supportedQualificationLevels() + 1;</span>
+<span class="nc" id="L40">    Deque&lt;Identifier&gt; actualQualifiers = new ArrayDeque&lt;&gt;();</span>
+<span class="nc bnc" id="L41" title="All 2 branches missed.">    for (int i = 0; i &lt; supportedQualificationLevels; i++) {</span>
+<span class="nc bnc" id="L42" title="All 2 branches missed.">      if (qualifiers.size() &gt; i) {</span>
+<span class="nc" id="L43">        actualQualifiers.push(createId(qualifiers.get(qualifiers.size() - i - 1)));</span>
+<span class="nc" id="L44">        continue;</span>
+      }
+<span class="nc" id="L46">      int idx = supportedQualificationLevels - i - 1;</span>
+<span class="nc" id="L47">      actualQualifiers.push(createId(defaultQualifiers.get(idx)));</span>
+    }
+//    actualQualifiers.push(createId(dialect.product.name()));
+<span class="nc" id="L50">    return actualQualifiers.stream().toList();</span>
+  }
+
+
+  public List&lt;Identifier&gt; getQualifiers() {
+<span class="nc" id="L55">    return fullQualifiers;</span>
+  }
+
+  private Identifier createId(String name) {
+<span class="nc" id="L59">    return Identifier.of(name, dialect);</span>
+  }
+
+  @Override
+  public String toString() {
+<span class="nc" id="L64">    return &quot;EntityQualifier&quot; + fullQualifiers;</span>
+  }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>EntityCatalog.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">core</a> &gt; <a href="index.source.html" class="el_package">com.calcite_new.core.model</a> &gt; <span class="el_source">EntityCatalog.java</span></div><h1>EntityCatalog.java</h1><pre class="source lang-java linenums">package com.calcite_new.core.model;
+
+import com.calcite_new.core.model.entity.DatabaseEntity;
+import com.calcite_new.core.model.entity.EntityKind;
+import com.calcite_new.core.model.entity.Table;
+import com.calcite_new.core.model.entity.View;
+import org.apache.calcite.schema.Schema;
+import org.apache.calcite.schema.impl.AbstractSchema;
+
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
+
+/**
+ * EntityCatalog is a schema that contains a collection of namespaces and tables.
+ */
+<span class="nc" id="L18">public class EntityCatalog extends AbstractSchema {</span>
+<span class="nc" id="L19">  private Map&lt;Identifier, Namespace&gt; products = new ConcurrentHashMap&lt;&gt;();</span>
+
+  public DatabaseEntity getDatabaseEntity(EntityQualifier qualifier) {
+<span class="nc" id="L22">    List&lt;Identifier&gt; qualifiedName = qualifier.getQualifiers();</span>
+<span class="nc bnc" id="L23" title="All 2 branches missed.">    if (qualifiedName.size() &lt; 2) {</span>
+<span class="nc" id="L24">      throw new IllegalArgumentException(&quot;Qualified name must have at least two parts&quot;);</span>
+    }
+<span class="nc" id="L26">    Namespace namespace = getNamespace(qualifiedName.subList(0, qualifiedName.size() - 1));</span>
+<span class="nc bnc" id="L27" title="All 2 branches missed.">    if (namespace == null) {</span>
+<span class="nc" id="L28">      return null;</span>
+    }
+<span class="nc" id="L30">    return namespace.getTable(qualifiedName.get(qualifiedName.size() - 1));</span>
+  }
+
+  public void addEntity(DatabaseEntity entity) {
+<span class="nc" id="L34">    List&lt;Identifier&gt; namespace = entity.getNamespace();</span>
+<span class="nc" id="L35">    Namespace ns = getOrAddNamespace(namespace);</span>
+<span class="nc bnc" id="L36" title="All 2 branches missed.">    if (entity.getKind() != EntityKind.TABLE) {</span>
+<span class="nc" id="L37">      ns.addTable((Table) entity);</span>
+<span class="nc bnc" id="L38" title="All 2 branches missed.">    } else if (entity.getKind() == EntityKind.VIEW) {</span>
+<span class="nc" id="L39">      ns.addView((View) entity);</span>
+    }
+<span class="nc" id="L41">    throw new IllegalArgumentException(&quot;Unsupported entity kind: &quot; + entity.getKind());</span>
+  }
+
+  private Namespace getOrAddNamespace(List&lt;Identifier&gt; namespace) {
+<span class="nc" id="L45">    Namespace ns = products.computeIfAbsent(namespace.get(0), Namespace::new);</span>
+<span class="nc bnc" id="L46" title="All 2 branches missed.">    for (Identifier nsName : namespace.subList(1, namespace.size())) {</span>
+<span class="nc" id="L47">      ns = ns.getOrAddNamespace(nsName);</span>
+<span class="nc" id="L48">    }</span>
+<span class="nc" id="L49">    return ns;</span>
+  }
+
+  private Namespace getNamespace(List&lt;Identifier&gt; identifiers) {
+<span class="nc bnc" id="L53" title="All 2 branches missed.">    if (identifiers.isEmpty()) {</span>
+<span class="nc" id="L54">      throw new IllegalArgumentException(&quot;Namespace must have at least one part&quot;);</span>
+    }
+<span class="nc" id="L56">    Namespace ns = products.get(identifiers.get(0));</span>
+<span class="nc bnc" id="L57" title="All 2 branches missed.">    for (Identifier nsName : identifiers.subList(1, identifiers.size())) {</span>
+//      checkNamespace(ns, nsName, identifiers);
+<span class="nc bnc" id="L59" title="All 2 branches missed.">      if (ns == null) {</span>
+<span class="nc" id="L60">        return ns;</span>
+      }
+<span class="nc" id="L62">      ns = ns.getNamespace(nsName);</span>
+<span class="nc" id="L63">    }</span>
+//    checkNamespace(ns, identifiers.get(identifiers.size() - 1), identifiers);
+<span class="nc" id="L65">    return ns;</span>
+  }
+
+  private static void checkNamespace(Namespace namespace, Identifier nsName, List&lt;Identifier&gt; identifiers) {
+<span class="nc bnc" id="L69" title="All 2 branches missed.">    if (namespace == null) {</span>
+<span class="nc" id="L70">      throw new IllegalArgumentException(&quot;Unknown name: &quot; + nsName + &quot; in namespace: &quot; + identifiers);</span>
+    }
+<span class="nc" id="L72">  }</span>
+
+  @Override
+  protected Map&lt;String, Schema&gt; getSubSchemaMap() {
+<span class="nc" id="L76">    return products.entrySet().stream()</span>
+<span class="nc" id="L77">        .collect(Collectors.toMap(</span>
+<span class="nc" id="L78">            entry -&gt; entry.getKey().getNormalizedName(),</span>
+            Map.Entry::getValue));
+  }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

@@ -1,0 +1,1579 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>BigQuerySqlBaseListener.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">sql-parser</a> &gt; <a href="index.source.html" class="el_package">com.calcite_new.sql.parser.antlr</a> &gt; <span class="el_source">BigQuerySqlBaseListener.java</span></div><h1>BigQuerySqlBaseListener.java</h1><pre class="source lang-java linenums">// Generated from BigQuerySql.g4 by ANTLR 4.13.2
+
+package com.calcite_new.sql.parser.antlr;
+
+
+import org.antlr.v4.runtime.ParserRuleContext;
+import org.antlr.v4.runtime.tree.ErrorNode;
+import org.antlr.v4.runtime.tree.TerminalNode;
+
+/**
+ * This class provides an empty implementation of {@link BigQuerySqlListener},
+ * which can be extended to create a listener which only needs to handle a subset
+ * of the available methods.
+ */
+@SuppressWarnings(&quot;CheckReturnValue&quot;)
+<span class="nc" id="L16">public class BigQuerySqlBaseListener implements BigQuerySqlListener {</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L22">	@Override public void enterStatement(BigQuerySqlParser.StatementContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L28">	@Override public void exitStatement(BigQuerySqlParser.StatementContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L34">	@Override public void enterDdlStatement(BigQuerySqlParser.DdlStatementContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L40">	@Override public void exitDdlStatement(BigQuerySqlParser.DdlStatementContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L46">	@Override public void enterDmlStatement(BigQuerySqlParser.DmlStatementContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L52">	@Override public void exitDmlStatement(BigQuerySqlParser.DmlStatementContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L58">	@Override public void enterCreateViewStatement(BigQuerySqlParser.CreateViewStatementContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L64">	@Override public void exitCreateViewStatement(BigQuerySqlParser.CreateViewStatementContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L70">	@Override public void enterViewOptionList(BigQuerySqlParser.ViewOptionListContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L76">	@Override public void exitViewOptionList(BigQuerySqlParser.ViewOptionListContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L82">	@Override public void enterViewOption(BigQuerySqlParser.ViewOptionContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L88">	@Override public void exitViewOption(BigQuerySqlParser.ViewOptionContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L94">	@Override public void enterCreateTableStatement(BigQuerySqlParser.CreateTableStatementContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L100">	@Override public void exitCreateTableStatement(BigQuerySqlParser.CreateTableStatementContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L106">	@Override public void enterTableElementList(BigQuerySqlParser.TableElementListContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L112">	@Override public void exitTableElementList(BigQuerySqlParser.TableElementListContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L118">	@Override public void enterTableElement(BigQuerySqlParser.TableElementContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L124">	@Override public void exitTableElement(BigQuerySqlParser.TableElementContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L130">	@Override public void enterColumnDefinition(BigQuerySqlParser.ColumnDefinitionContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L136">	@Override public void exitColumnDefinition(BigQuerySqlParser.ColumnDefinitionContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L142">	@Override public void enterTableConstraint(BigQuerySqlParser.TableConstraintContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L148">	@Override public void exitTableConstraint(BigQuerySqlParser.TableConstraintContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L154">	@Override public void enterReferentialAction(BigQuerySqlParser.ReferentialActionContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L160">	@Override public void exitReferentialAction(BigQuerySqlParser.ReferentialActionContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L166">	@Override public void enterPartitionExpression(BigQuerySqlParser.PartitionExpressionContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L172">	@Override public void exitPartitionExpression(BigQuerySqlParser.PartitionExpressionContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L178">	@Override public void enterClusteringColumnList(BigQuerySqlParser.ClusteringColumnListContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L184">	@Override public void exitClusteringColumnList(BigQuerySqlParser.ClusteringColumnListContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L190">	@Override public void enterTableOptionList(BigQuerySqlParser.TableOptionListContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L196">	@Override public void exitTableOptionList(BigQuerySqlParser.TableOptionListContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L202">	@Override public void enterTableOption(BigQuerySqlParser.TableOptionContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L208">	@Override public void exitTableOption(BigQuerySqlParser.TableOptionContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L214">	@Override public void enterColumnOptionList(BigQuerySqlParser.ColumnOptionListContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L220">	@Override public void exitColumnOptionList(BigQuerySqlParser.ColumnOptionListContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L226">	@Override public void enterColumnOption(BigQuerySqlParser.ColumnOptionContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L232">	@Override public void exitColumnOption(BigQuerySqlParser.ColumnOptionContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L238">	@Override public void enterOptionName(BigQuerySqlParser.OptionNameContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L244">	@Override public void exitOptionName(BigQuerySqlParser.OptionNameContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L250">	@Override public void enterOptionValue(BigQuerySqlParser.OptionValueContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L256">	@Override public void exitOptionValue(BigQuerySqlParser.OptionValueContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L262">	@Override public void enterDefaultExpression(BigQuerySqlParser.DefaultExpressionContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L268">	@Override public void exitDefaultExpression(BigQuerySqlParser.DefaultExpressionContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L274">	@Override public void enterGenerationExpression(BigQuerySqlParser.GenerationExpressionContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L280">	@Override public void exitGenerationExpression(BigQuerySqlParser.GenerationExpressionContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L286">	@Override public void enterStartExpr(BigQuerySqlParser.StartExprContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L292">	@Override public void exitStartExpr(BigQuerySqlParser.StartExprContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L298">	@Override public void enterEndExpr(BigQuerySqlParser.EndExprContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L304">	@Override public void exitEndExpr(BigQuerySqlParser.EndExprContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L310">	@Override public void enterStepExpr(BigQuerySqlParser.StepExprContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L316">	@Override public void exitStepExpr(BigQuerySqlParser.StepExprContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L322">	@Override public void enterColumnName(BigQuerySqlParser.ColumnNameContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L328">	@Override public void exitColumnName(BigQuerySqlParser.ColumnNameContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L334">	@Override public void enterConstraintName(BigQuerySqlParser.ConstraintNameContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L340">	@Override public void exitConstraintName(BigQuerySqlParser.ConstraintNameContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L346">	@Override public void enterInsertStatement(BigQuerySqlParser.InsertStatementContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L352">	@Override public void exitInsertStatement(BigQuerySqlParser.InsertStatementContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L358">	@Override public void enterValueRow(BigQuerySqlParser.ValueRowContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L364">	@Override public void exitValueRow(BigQuerySqlParser.ValueRowContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L370">	@Override public void enterDeleteStatement(BigQuerySqlParser.DeleteStatementContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L376">	@Override public void exitDeleteStatement(BigQuerySqlParser.DeleteStatementContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L382">	@Override public void enterUpdateStatement(BigQuerySqlParser.UpdateStatementContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L388">	@Override public void exitUpdateStatement(BigQuerySqlParser.UpdateStatementContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L394">	@Override public void enterUpdateSetItem(BigQuerySqlParser.UpdateSetItemContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L400">	@Override public void exitUpdateSetItem(BigQuerySqlParser.UpdateSetItemContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L406">	@Override public void enterMergeStatement(BigQuerySqlParser.MergeStatementContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L412">	@Override public void exitMergeStatement(BigQuerySqlParser.MergeStatementContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L418">	@Override public void enterMergeMatchedClause(BigQuerySqlParser.MergeMatchedClauseContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L424">	@Override public void exitMergeMatchedClause(BigQuerySqlParser.MergeMatchedClauseContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L430">	@Override public void enterMergeNotMatchedByTargetClause(BigQuerySqlParser.MergeNotMatchedByTargetClauseContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L436">	@Override public void exitMergeNotMatchedByTargetClause(BigQuerySqlParser.MergeNotMatchedByTargetClauseContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L442">	@Override public void enterMergeNotMatchedBySourceClause(BigQuerySqlParser.MergeNotMatchedBySourceClauseContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L448">	@Override public void exitMergeNotMatchedBySourceClause(BigQuerySqlParser.MergeNotMatchedBySourceClauseContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L454">	@Override public void enterMergeAction(BigQuerySqlParser.MergeActionContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L460">	@Override public void exitMergeAction(BigQuerySqlParser.MergeActionContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L466">	@Override public void enterSelectStatement(BigQuerySqlParser.SelectStatementContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L472">	@Override public void exitSelectStatement(BigQuerySqlParser.SelectStatementContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L478">	@Override public void enterWithClause(BigQuerySqlParser.WithClauseContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L484">	@Override public void exitWithClause(BigQuerySqlParser.WithClauseContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L490">	@Override public void enterWithQueryItem(BigQuerySqlParser.WithQueryItemContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L496">	@Override public void exitWithQueryItem(BigQuerySqlParser.WithQueryItemContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L502">	@Override public void enterQueryExpression(BigQuerySqlParser.QueryExpressionContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L508">	@Override public void exitQueryExpression(BigQuerySqlParser.QueryExpressionContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L514">	@Override public void enterQueryTerm(BigQuerySqlParser.QueryTermContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L520">	@Override public void exitQueryTerm(BigQuerySqlParser.QueryTermContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L526">	@Override public void enterQueryPrimary(BigQuerySqlParser.QueryPrimaryContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L532">	@Override public void exitQueryPrimary(BigQuerySqlParser.QueryPrimaryContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L538">	@Override public void enterSimpleQuery(BigQuerySqlParser.SimpleQueryContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L544">	@Override public void exitSimpleQuery(BigQuerySqlParser.SimpleQueryContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L550">	@Override public void enterSelectClause(BigQuerySqlParser.SelectClauseContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L556">	@Override public void exitSelectClause(BigQuerySqlParser.SelectClauseContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L562">	@Override public void enterSelectItem(BigQuerySqlParser.SelectItemContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L568">	@Override public void exitSelectItem(BigQuerySqlParser.SelectItemContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L574">	@Override public void enterTableWildcard(BigQuerySqlParser.TableWildcardContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L580">	@Override public void exitTableWildcard(BigQuerySqlParser.TableWildcardContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L586">	@Override public void enterFromClause(BigQuerySqlParser.FromClauseContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L592">	@Override public void exitFromClause(BigQuerySqlParser.FromClauseContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L598">	@Override public void enterTableExpression(BigQuerySqlParser.TableExpressionContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L604">	@Override public void exitTableExpression(BigQuerySqlParser.TableExpressionContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L610">	@Override public void enterTableFactor(BigQuerySqlParser.TableFactorContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L616">	@Override public void exitTableFactor(BigQuerySqlParser.TableFactorContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L622">	@Override public void enterTableAlias(BigQuerySqlParser.TableAliasContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L628">	@Override public void exitTableAlias(BigQuerySqlParser.TableAliasContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L634">	@Override public void enterColumnAlias(BigQuerySqlParser.ColumnAliasContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L640">	@Override public void exitColumnAlias(BigQuerySqlParser.ColumnAliasContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L646">	@Override public void enterJoinedTable(BigQuerySqlParser.JoinedTableContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L652">	@Override public void exitJoinedTable(BigQuerySqlParser.JoinedTableContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L658">	@Override public void enterJoinType(BigQuerySqlParser.JoinTypeContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L664">	@Override public void exitJoinType(BigQuerySqlParser.JoinTypeContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L670">	@Override public void enterJoinSpecification(BigQuerySqlParser.JoinSpecificationContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L676">	@Override public void exitJoinSpecification(BigQuerySqlParser.JoinSpecificationContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L682">	@Override public void enterWhereClause(BigQuerySqlParser.WhereClauseContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L688">	@Override public void exitWhereClause(BigQuerySqlParser.WhereClauseContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L694">	@Override public void enterGroupByClause(BigQuerySqlParser.GroupByClauseContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L700">	@Override public void exitGroupByClause(BigQuerySqlParser.GroupByClauseContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L706">	@Override public void enterGroupingElement(BigQuerySqlParser.GroupingElementContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L712">	@Override public void exitGroupingElement(BigQuerySqlParser.GroupingElementContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L718">	@Override public void enterGroupingSet(BigQuerySqlParser.GroupingSetContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L724">	@Override public void exitGroupingSet(BigQuerySqlParser.GroupingSetContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L730">	@Override public void enterHavingClause(BigQuerySqlParser.HavingClauseContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L736">	@Override public void exitHavingClause(BigQuerySqlParser.HavingClauseContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L742">	@Override public void enterQualifyClause(BigQuerySqlParser.QualifyClauseContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L748">	@Override public void exitQualifyClause(BigQuerySqlParser.QualifyClauseContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L754">	@Override public void enterWindowClause(BigQuerySqlParser.WindowClauseContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L760">	@Override public void exitWindowClause(BigQuerySqlParser.WindowClauseContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L766">	@Override public void enterNamedWindow(BigQuerySqlParser.NamedWindowContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L772">	@Override public void exitNamedWindow(BigQuerySqlParser.NamedWindowContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L778">	@Override public void enterWindowSpecification(BigQuerySqlParser.WindowSpecificationContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L784">	@Override public void exitWindowSpecification(BigQuerySqlParser.WindowSpecificationContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L790">	@Override public void enterWindowName(BigQuerySqlParser.WindowNameContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L796">	@Override public void exitWindowName(BigQuerySqlParser.WindowNameContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L802">	@Override public void enterPartitionClause(BigQuerySqlParser.PartitionClauseContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L808">	@Override public void exitPartitionClause(BigQuerySqlParser.PartitionClauseContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L814">	@Override public void enterOrderByClause(BigQuerySqlParser.OrderByClauseContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L820">	@Override public void exitOrderByClause(BigQuerySqlParser.OrderByClauseContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L826">	@Override public void enterOrderingItem(BigQuerySqlParser.OrderingItemContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L832">	@Override public void exitOrderingItem(BigQuerySqlParser.OrderingItemContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L838">	@Override public void enterFrameClause(BigQuerySqlParser.FrameClauseContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L844">	@Override public void exitFrameClause(BigQuerySqlParser.FrameClauseContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L850">	@Override public void enterFrameUnits(BigQuerySqlParser.FrameUnitsContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L856">	@Override public void exitFrameUnits(BigQuerySqlParser.FrameUnitsContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L862">	@Override public void enterFrameExtent(BigQuerySqlParser.FrameExtentContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L868">	@Override public void exitFrameExtent(BigQuerySqlParser.FrameExtentContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L874">	@Override public void enterFrameStart(BigQuerySqlParser.FrameStartContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L880">	@Override public void exitFrameStart(BigQuerySqlParser.FrameStartContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L886">	@Override public void enterFrameEnd(BigQuerySqlParser.FrameEndContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L892">	@Override public void exitFrameEnd(BigQuerySqlParser.FrameEndContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L898">	@Override public void enterLimitClause(BigQuerySqlParser.LimitClauseContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L904">	@Override public void exitLimitClause(BigQuerySqlParser.LimitClauseContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L910">	@Override public void enterSetQuantifier(BigQuerySqlParser.SetQuantifierContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L916">	@Override public void exitSetQuantifier(BigQuerySqlParser.SetQuantifierContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L922">	@Override public void enterExpression(BigQuerySqlParser.ExpressionContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L928">	@Override public void exitExpression(BigQuerySqlParser.ExpressionContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L934">	@Override public void enterLogicalOrExpression(BigQuerySqlParser.LogicalOrExpressionContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L940">	@Override public void exitLogicalOrExpression(BigQuerySqlParser.LogicalOrExpressionContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L946">	@Override public void enterLogicalAndExpression(BigQuerySqlParser.LogicalAndExpressionContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L952">	@Override public void exitLogicalAndExpression(BigQuerySqlParser.LogicalAndExpressionContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L958">	@Override public void enterEqualityExpression(BigQuerySqlParser.EqualityExpressionContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L964">	@Override public void exitEqualityExpression(BigQuerySqlParser.EqualityExpressionContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L970">	@Override public void enterComparisonExpression(BigQuerySqlParser.ComparisonExpressionContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L976">	@Override public void exitComparisonExpression(BigQuerySqlParser.ComparisonExpressionContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L982">	@Override public void enterRangeExpression(BigQuerySqlParser.RangeExpressionContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L988">	@Override public void exitRangeExpression(BigQuerySqlParser.RangeExpressionContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L994">	@Override public void enterInExpressionList(BigQuerySqlParser.InExpressionListContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L1000">	@Override public void exitInExpressionList(BigQuerySqlParser.InExpressionListContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L1006">	@Override public void enterAdditiveExpression(BigQuerySqlParser.AdditiveExpressionContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L1012">	@Override public void exitAdditiveExpression(BigQuerySqlParser.AdditiveExpressionContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L1018">	@Override public void enterMultiplicativeExpression(BigQuerySqlParser.MultiplicativeExpressionContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L1024">	@Override public void exitMultiplicativeExpression(BigQuerySqlParser.MultiplicativeExpressionContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L1030">	@Override public void enterUnaryExpression(BigQuerySqlParser.UnaryExpressionContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L1036">	@Override public void exitUnaryExpression(BigQuerySqlParser.UnaryExpressionContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L1042">	@Override public void enterIsExpression(BigQuerySqlParser.IsExpressionContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L1048">	@Override public void exitIsExpression(BigQuerySqlParser.IsExpressionContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L1054">	@Override public void enterIfPE(BigQuerySqlParser.IfPEContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L1060">	@Override public void exitIfPE(BigQuerySqlParser.IfPEContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L1066">	@Override public void enterColumnReferencePE(BigQuerySqlParser.ColumnReferencePEContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L1072">	@Override public void exitColumnReferencePE(BigQuerySqlParser.ColumnReferencePEContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L1078">	@Override public void enterFunctionCallPE(BigQuerySqlParser.FunctionCallPEContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L1084">	@Override public void exitFunctionCallPE(BigQuerySqlParser.FunctionCallPEContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L1090">	@Override public void enterArrayOrdinal(BigQuerySqlParser.ArrayOrdinalContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L1096">	@Override public void exitArrayOrdinal(BigQuerySqlParser.ArrayOrdinalContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L1102">	@Override public void enterCastPE(BigQuerySqlParser.CastPEContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L1108">	@Override public void exitCastPE(BigQuerySqlParser.CastPEContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L1114">	@Override public void enterStructPE(BigQuerySqlParser.StructPEContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L1120">	@Override public void exitStructPE(BigQuerySqlParser.StructPEContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L1126">	@Override public void enterParenthesisedPE(BigQuerySqlParser.ParenthesisedPEContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L1132">	@Override public void exitParenthesisedPE(BigQuerySqlParser.ParenthesisedPEContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L1138">	@Override public void enterQueryPE(BigQuerySqlParser.QueryPEContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L1144">	@Override public void exitQueryPE(BigQuerySqlParser.QueryPEContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L1150">	@Override public void enterArrayOffsetPE(BigQuerySqlParser.ArrayOffsetPEContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L1156">	@Override public void exitArrayOffsetPE(BigQuerySqlParser.ArrayOffsetPEContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L1162">	@Override public void enterStructOrdinalAccessPE(BigQuerySqlParser.StructOrdinalAccessPEContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L1168">	@Override public void exitStructOrdinalAccessPE(BigQuerySqlParser.StructOrdinalAccessPEContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L1174">	@Override public void enterArraySafeOffset(BigQuerySqlParser.ArraySafeOffsetContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L1180">	@Override public void exitArraySafeOffset(BigQuerySqlParser.ArraySafeOffsetContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L1186">	@Override public void enterArrayPE(BigQuerySqlParser.ArrayPEContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L1192">	@Override public void exitArrayPE(BigQuerySqlParser.ArrayPEContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L1198">	@Override public void enterArraySlice(BigQuerySqlParser.ArraySliceContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L1204">	@Override public void exitArraySlice(BigQuerySqlParser.ArraySliceContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L1210">	@Override public void enterCasePE(BigQuerySqlParser.CasePEContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L1216">	@Override public void exitCasePE(BigQuerySqlParser.CasePEContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L1222">	@Override public void enterSimpleStructAccessPE(BigQuerySqlParser.SimpleStructAccessPEContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L1228">	@Override public void exitSimpleStructAccessPE(BigQuerySqlParser.SimpleStructAccessPEContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L1234">	@Override public void enterExtractPE(BigQuerySqlParser.ExtractPEContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L1240">	@Override public void exitExtractPE(BigQuerySqlParser.ExtractPEContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L1246">	@Override public void enterArrayElementAccess(BigQuerySqlParser.ArrayElementAccessContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L1252">	@Override public void exitArrayElementAccess(BigQuerySqlParser.ArrayElementAccessContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L1258">	@Override public void enterArraySafeOrdinal(BigQuerySqlParser.ArraySafeOrdinalContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L1264">	@Override public void exitArraySafeOrdinal(BigQuerySqlParser.ArraySafeOrdinalContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L1270">	@Override public void enterLiteralPE(BigQuerySqlParser.LiteralPEContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L1276">	@Override public void exitLiteralPE(BigQuerySqlParser.LiteralPEContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L1282">	@Override public void enterParameterPE(BigQuerySqlParser.ParameterPEContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L1288">	@Override public void exitParameterPE(BigQuerySqlParser.ParameterPEContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L1294">	@Override public void enterParameterReference(BigQuerySqlParser.ParameterReferenceContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L1300">	@Override public void exitParameterReference(BigQuerySqlParser.ParameterReferenceContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L1306">	@Override public void enterIfExpression(BigQuerySqlParser.IfExpressionContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L1312">	@Override public void exitIfExpression(BigQuerySqlParser.IfExpressionContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L1318">	@Override public void enterExtractExpression(BigQuerySqlParser.ExtractExpressionContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L1324">	@Override public void exitExtractExpression(BigQuerySqlParser.ExtractExpressionContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L1330">	@Override public void enterExtractField(BigQuerySqlParser.ExtractFieldContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L1336">	@Override public void exitExtractField(BigQuerySqlParser.ExtractFieldContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L1342">	@Override public void enterLiteralValue(BigQuerySqlParser.LiteralValueContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L1348">	@Override public void exitLiteralValue(BigQuerySqlParser.LiteralValueContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L1354">	@Override public void enterCaseExpression(BigQuerySqlParser.CaseExpressionContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L1360">	@Override public void exitCaseExpression(BigQuerySqlParser.CaseExpressionContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L1366">	@Override public void enterSimpleCaseExpression(BigQuerySqlParser.SimpleCaseExpressionContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L1372">	@Override public void exitSimpleCaseExpression(BigQuerySqlParser.SimpleCaseExpressionContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L1378">	@Override public void enterSearchedCaseExpression(BigQuerySqlParser.SearchedCaseExpressionContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L1384">	@Override public void exitSearchedCaseExpression(BigQuerySqlParser.SearchedCaseExpressionContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L1390">	@Override public void enterCastExpression(BigQuerySqlParser.CastExpressionContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L1396">	@Override public void exitCastExpression(BigQuerySqlParser.CastExpressionContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L1402">	@Override public void enterArrayExpression(BigQuerySqlParser.ArrayExpressionContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L1408">	@Override public void exitArrayExpression(BigQuerySqlParser.ArrayExpressionContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L1414">	@Override public void enterStructExpression(BigQuerySqlParser.StructExpressionContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L1420">	@Override public void exitStructExpression(BigQuerySqlParser.StructExpressionContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L1426">	@Override public void enterStructField(BigQuerySqlParser.StructFieldContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L1432">	@Override public void exitStructField(BigQuerySqlParser.StructFieldContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L1438">	@Override public void enterFunctionCall(BigQuerySqlParser.FunctionCallContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L1444">	@Override public void exitFunctionCall(BigQuerySqlParser.FunctionCallContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L1450">	@Override public void enterComparisonOperator(BigQuerySqlParser.ComparisonOperatorContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L1456">	@Override public void exitComparisonOperator(BigQuerySqlParser.ComparisonOperatorContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L1462">	@Override public void enterColumnReference(BigQuerySqlParser.ColumnReferenceContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L1468">	@Override public void exitColumnReference(BigQuerySqlParser.ColumnReferenceContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L1474">	@Override public void enterTableIdentifier(BigQuerySqlParser.TableIdentifierContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L1480">	@Override public void exitTableIdentifier(BigQuerySqlParser.TableIdentifierContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L1486">	@Override public void enterDataType(BigQuerySqlParser.DataTypeContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L1492">	@Override public void exitDataType(BigQuerySqlParser.DataTypeContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L1498">	@Override public void enterStructTypeElement(BigQuerySqlParser.StructTypeElementContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L1504">	@Override public void exitStructTypeElement(BigQuerySqlParser.StructTypeElementContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L1510">	@Override public void enterDateUnit(BigQuerySqlParser.DateUnitContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L1516">	@Override public void exitDateUnit(BigQuerySqlParser.DateUnitContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L1522">	@Override public void enterLiteral(BigQuerySqlParser.LiteralContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L1528">	@Override public void exitLiteral(BigQuerySqlParser.LiteralContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L1534">	@Override public void enterIdentifier(BigQuerySqlParser.IdentifierContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L1540">	@Override public void exitIdentifier(BigQuerySqlParser.IdentifierContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L1546">	@Override public void enterNonReservedKeyword(BigQuerySqlParser.NonReservedKeywordContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L1552">	@Override public void exitNonReservedKeyword(BigQuerySqlParser.NonReservedKeywordContext ctx) { }</span>
+
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L1559">	@Override public void enterEveryRule(ParserRuleContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L1565">	@Override public void exitEveryRule(ParserRuleContext ctx) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L1571">	@Override public void visitTerminal(TerminalNode node) { }</span>
+	/**
+	 * {@inheritDoc}
+	 *
+	 * &lt;p&gt;The default implementation does nothing.&lt;/p&gt;
+	 */
+<span class="nc" id="L1577">	@Override public void visitErrorNode(ErrorNode node) { }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

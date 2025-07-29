@@ -1,0 +1,2248 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>BigQueryToSqlNodeVisitor.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">sql-parser</a> &gt; <a href="index.source.html" class="el_package">com.calcite_new.sql.parser.bigquery</a> &gt; <span class="el_source">BigQueryToSqlNodeVisitor.java</span></div><h1>BigQueryToSqlNodeVisitor.java</h1><pre class="source lang-java linenums">package com.calcite_new.sql.parser.bigquery;
+
+import com.calcite_new.sql.SqlUpdate;
+import com.calcite_new.sql.parser.antlr.BigQuerySqlBaseVisitor;
+import com.calcite_new.sql.parser.antlr.BigQuerySqlParser;
+import org.antlr.v4.runtime.ParserRuleContext;
+import org.antlr.v4.runtime.RuleContext;
+import org.antlr.v4.runtime.tree.TerminalNode;
+import org.apache.calcite.avatica.util.TimeUnitRange;
+import org.apache.calcite.sql.*;
+import org.apache.calcite.sql.fun.SqlCase;
+import org.apache.calcite.sql.fun.SqlLibraryOperators;
+import org.apache.calcite.sql.fun.SqlStdOperatorTable;
+import org.apache.calcite.sql.parser.SqlParserPos;
+import org.apache.calcite.sql.type.OperandTypes;
+import org.apache.calcite.sql.type.ReturnTypes;
+import org.apache.calcite.sql.type.SqlTypeName;
+import org.apache.calcite.sql.validate.SqlUserDefinedAggFunction;
+import org.apache.calcite.sql.validate.SqlUserDefinedFunction;
+import org.apache.calcite.util.DateString;
+import org.apache.calcite.util.Optionality;
+import org.apache.calcite.util.TimeString;
+import org.apache.calcite.util.TimestampString;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
+
+/**
+ * Visitor to convert BigQuery SQL AST to Calcite {@link SqlNode}.
+ */
+<span class="fc" id="L32">public class BigQueryToSqlNodeVisitor extends BigQuerySqlBaseVisitor&lt;SqlNode&gt; {</span>
+
+<span class="fc" id="L34">  private static final SqlFunction SAFE_ACCESS =</span>
+<span class="fc" id="L35">      SqlBasicFunction.create(&quot;SAFE_ACCESS&quot;,</span>
+          ReturnTypes.ARG0_NULLABLE,
+          OperandTypes.ANY,
+          SqlFunctionCategory.SYSTEM);
+
+  @Override
+  public SqlNode visitSelectStatement(BigQuerySqlParser.SelectStatementContext ctx) {
+<span class="fc" id="L42">    SqlNode query = visit(ctx.queryExpression());</span>
+
+<span class="pc bpc" id="L44" title="1 of 2 branches missed.">    if (ctx.orderByClause() != null) {</span>
+<span class="nc" id="L45">      SqlNodeList orderList = (SqlNodeList) visit(ctx.orderByClause());</span>
+<span class="nc" id="L46">      query = new SqlOrderBy(parserPos(ctx), query, orderList, null,</span>
+<span class="nc bnc" id="L47" title="All 2 branches missed.">          ctx.limitClause() != null ? visit(ctx.limitClause()) : null);</span>
+<span class="pc bpc" id="L48" title="1 of 2 branches missed.">    } else if (ctx.limitClause() != null) {</span>
+<span class="nc" id="L49">      query = new SqlOrderBy(parserPos(ctx), query, SqlNodeList.EMPTY, null,</span>
+<span class="nc" id="L50">          visit(ctx.limitClause()));</span>
+    }
+
+<span class="fc bfc" id="L53" title="All 2 branches covered.">    if (ctx.withClause() != null) {</span>
+<span class="fc" id="L54">      SqlNodeList withList = (SqlNodeList) visit(ctx.withClause());</span>
+<span class="fc" id="L55">      query = new SqlWith(parserPos(ctx), withList, query);</span>
+    }
+
+<span class="fc" id="L58">    return query;</span>
+  }
+
+  @Override
+  public SqlNode visitDeleteStatement(BigQuerySqlParser.DeleteStatementContext ctx) {
+    // Get table identifier
+<span class="fc" id="L64">    SqlNode sqlNode = visit(ctx.tableFactor());</span>
+    SqlIdentifier tableIdentifier;
+    // Handle optional alias
+<span class="fc" id="L67">    SqlIdentifier tableAlias = null;</span>
+<span class="fc bfc" id="L68" title="All 2 branches covered.">    if (sqlNode.getKind() == SqlKind.AS) {</span>
+//      sqlNode = ((SqlBasicCall) sqlNode).getOperands()[0];
+<span class="fc" id="L70">      tableIdentifier = ((SqlBasicCall) sqlNode).operand(0);</span>
+<span class="fc" id="L71">      tableAlias = ((SqlBasicCall) sqlNode).operand(1);</span>
+    } else {
+<span class="fc" id="L73">      tableIdentifier = (SqlIdentifier) sqlNode;</span>
+    }
+
+    // Create FROM node with optional alias
+    SqlNode fromNode;
+<span class="fc bfc" id="L78" title="All 2 branches covered.">    if (tableAlias != null) {</span>
+<span class="fc" id="L79">      fromNode = new SqlBasicCall(</span>
+          SqlStdOperatorTable.AS,
+<span class="fc" id="L81">          List.of(tableIdentifier, tableAlias),</span>
+<span class="fc" id="L82">          parserPos(ctx)</span>
+      );
+    } else {
+<span class="fc" id="L85">      fromNode = tableIdentifier;</span>
+    }
+
+    // Get WHERE condition
+<span class="fc" id="L89">    SqlNode whereCondition = visit(ctx.whereCondition);</span>
+
+    // Create DELETE statement
+<span class="fc" id="L92">    return new SqlDelete(</span>
+<span class="fc" id="L93">        parserPos(ctx),</span>
+        fromNode,           // target table
+        whereCondition,     // condition
+        null,               // source (not used in DELETE)
+        null                // alias (handled separately in fromNode)
+    );
+  }
+
+  @Override
+  public SqlNode visitUpdateStatement(BigQuerySqlParser.UpdateStatementContext ctx) {
+    // Get table identifier
+<span class="fc" id="L104">    SqlIdentifier tableIdentifier = (SqlIdentifier) visit(ctx.tableIdentifier());</span>
+
+    // Handle optional alias
+<span class="fc" id="L107">    SqlIdentifier tableAlias = null;</span>
+<span class="fc bfc" id="L108" title="All 2 branches covered.">    if (ctx.alias != null) {</span>
+<span class="fc" id="L109">      tableAlias = createIdentifier(ctx.alias);</span>
+    }
+
+    // Target with optional alias
+    SqlNode targetTable;
+<span class="fc bfc" id="L114" title="All 2 branches covered.">    if (tableAlias != null) {</span>
+<span class="fc" id="L115">      targetTable = new SqlBasicCall(</span>
+          SqlStdOperatorTable.AS,
+<span class="fc" id="L117">          List.of(tableIdentifier, tableAlias),</span>
+<span class="fc" id="L118">          parserPos(ctx)</span>
+      );
+    } else {
+<span class="fc" id="L121">      targetTable = tableIdentifier;</span>
+    }
+
+    // Process SET items
+<span class="fc" id="L125">    SqlNodeList targetColumns = new SqlNodeList(parserPos(ctx));</span>
+<span class="fc" id="L126">    SqlNodeList sourceExpressions = new SqlNodeList(parserPos(ctx));</span>
+<span class="fc bfc" id="L127" title="All 2 branches covered.">    for (BigQuerySqlParser.UpdateSetItemContext setItemCtx : ctx.updateSetItem()) {</span>
+<span class="fc" id="L128">      SqlNode setItem = visit(setItemCtx);</span>
+<span class="pc bpc" id="L129" title="1 of 2 branches missed.">      if (setItem instanceof SqlNodeList) {</span>
+<span class="fc" id="L130">        targetColumns.add(((SqlNodeList) setItem).get(0));</span>
+<span class="fc" id="L131">        sourceExpressions.add(((SqlNodeList) setItem).get(1));</span>
+      } else {
+<span class="nc" id="L133">        throw new UnsupportedOperationException(</span>
+<span class="nc" id="L134">            &quot;Unsupported update set item: &quot; + setItem.getClass().getSimpleName());</span>
+      }
+<span class="fc" id="L136">    }</span>
+
+    // Process optional FROM clause
+<span class="fc" id="L139">    SqlNode source = null;</span>
+<span class="pc bpc" id="L140" title="1 of 4 branches missed.">    if (ctx.tableExpression() != null &amp;&amp; !ctx.tableExpression().isEmpty()) {</span>
+<span class="fc" id="L141">      List&lt;SqlNode&gt; sourceList = new ArrayList&lt;&gt;();</span>
+<span class="fc bfc" id="L142" title="All 2 branches covered.">      for (BigQuerySqlParser.TableExpressionContext tableExprCtx : ctx.tableExpression()) {</span>
+<span class="fc" id="L143">        sourceList.add(visit(tableExprCtx));</span>
+<span class="fc" id="L144">      }</span>
+
+<span class="pc bpc" id="L146" title="1 of 2 branches missed.">      if (sourceList.size() == 1) {</span>
+<span class="fc" id="L147">        source = sourceList.get(0);</span>
+      } else {
+        // Multiple source tables - create a join tree
+<span class="nc" id="L150">        source = new SqlJoin(</span>
+<span class="nc" id="L151">            parserPos(ctx),</span>
+<span class="nc" id="L152">            sourceList.get(0),</span>
+<span class="nc" id="L153">            SqlLiteral.createBoolean(false, parserPos(ctx)), // isNatural</span>
+<span class="nc" id="L154">            JoinType.COMMA.symbol(parserPos(ctx)),</span>
+            null, // No condition needed for COMMA join
+            null,
+            null
+        );
+
+<span class="nc bnc" id="L160" title="All 2 branches missed.">        for (int i = 1; i &lt; sourceList.size(); i++) {</span>
+<span class="nc" id="L161">          source = new SqlJoin(</span>
+<span class="nc" id="L162">              parserPos(ctx),</span>
+              source,
+<span class="nc" id="L164">              SqlLiteral.createBoolean(false, parserPos(ctx)), // isNatural</span>
+<span class="nc" id="L165">              JoinType.COMMA.symbol(parserPos(ctx)),</span>
+<span class="nc" id="L166">              sourceList.get(i),</span>
+              null,
+              null
+          );
+        }
+
+      }
+    }
+
+//    if (source != null &amp;&amp; source.getKind() != SqlKind.SELECT) {
+//      SqlIdentifier star = SqlIdentifier.star(parserPos(ctx));
+//      // convert source to SqlSelect
+//      source = new SqlSelect(
+//          parserPos(ctx),
+//          SqlNodeList.EMPTY, // No keyword list
+//          new SqlNodeList(List.of(star), parserPos(ctx)), // Select the joined source
+//          source, // No FROM clause needed
+//          null, // No WHERE condition
+//          null, // No GROUP BY
+//          null, // No HAVING
+//          null, // No window list
+//          null, // No QUALIFY
+//          null, // No ORDER BY
+//          null, // No OFFSET
+//          null, // No FETCH
+//          null  // No hints
+//      );
+//    }
+
+    // Process optional WHERE clause
+<span class="fc" id="L196">    SqlNode condition = null;</span>
+<span class="pc bpc" id="L197" title="1 of 2 branches missed.">    if (ctx.whereCondition != null) {</span>
+<span class="fc" id="L198">      condition = visit(ctx.whereCondition);</span>
+    }
+
+    // Create UPDATE statement
+<span class="fc" id="L202">    return new SqlUpdate(</span>
+<span class="fc" id="L203">        parserPos(ctx),</span>
+        targetTable,
+        targetColumns,
+        sourceExpressions,
+        condition,
+        source,
+        null // alias (handled separately in targetTable)
+    );
+  }
+
+  @Override
+  public SqlNode visitUpdateSetItem(BigQuerySqlParser.UpdateSetItemContext ctx) {
+<span class="fc" id="L215">    SqlNodeList pair = new SqlNodeList(parserPos(ctx));</span>
+<span class="fc bfc" id="L216" title="All 2 branches covered.">    if (ctx.primaryExpression() != null) {</span>
+      // Simple case: columnReference = expression
+<span class="fc" id="L218">      SqlNode colRef = visit(ctx.primaryExpression());</span>
+<span class="fc" id="L219">      pair.add(colRef);</span>
+<span class="fc" id="L220">      pair.add(visit(ctx.expression(0)));</span>
+<span class="fc" id="L221">      return pair;</span>
+<span class="pc bpc" id="L222" title="1 of 2 branches missed.">    } else if (ctx.DEFAULT() != null) {</span>
+      // Case: columnReference = DEFAULT
+<span class="fc" id="L224">      pair.add(visit(ctx.columnReference(0)));</span>
+<span class="fc" id="L225">      pair.add(SqlLiteral.createSymbol(SqlKind.DEFAULT, parserPos(ctx)));</span>
+<span class="fc" id="L226">      return pair;</span>
+//      throw new UnsupportedOperationException(&quot;DEFAULT not supported in BigQuery UPDATE&quot;);
+<span class="nc bnc" id="L228" title="All 2 branches missed.">    } else if (ctx.columnReference().size() &gt; 1) {</span>
+//      // Multi-column update: (col1, col2, ...) = (expr1, expr2, ...) or = (SELECT ...)
+//      SqlNode firstColumn = visit(ctx.columnReference(0));
+//      if (ctx.queryExpression() != null) {
+//        // Case: (col1, col2, ...) = (SELECT ...)
+//        // For UPDATE, we return the first column as the target
+//        return firstColumn;
+//      } else {
+//        // Case: (col1, col2, ...) = (expr1, expr2, ...)
+//        // For UPDATE, we return the first column as the target
+//        return firstColumn;
+//      }
+<span class="nc" id="L240">      throw new UnsupportedOperationException(&quot;Multi-column updates not supported in BigQuery UPDATE&quot;);</span>
+    }
+
+<span class="nc" id="L243">    throw new UnsupportedOperationException(&quot;Unsupported update set item&quot;);</span>
+  }
+
+  @Override
+  public SqlNode visitWithClause(BigQuerySqlParser.WithClauseContext ctx) {
+<span class="fc" id="L248">    List&lt;SqlNode&gt; withItems = new ArrayList&lt;&gt;();</span>
+<span class="fc bfc" id="L249" title="All 2 branches covered.">    for (BigQuerySqlParser.WithQueryItemContext itemCtx : ctx.withQueryItem()) {</span>
+<span class="fc" id="L250">      withItems.add(visit(itemCtx));</span>
+<span class="fc" id="L251">    }</span>
+<span class="fc" id="L252">    return new SqlNodeList(withItems, parserPos(ctx));</span>
+  }
+
+  @Override
+  public SqlNode visitWithQueryItem(BigQuerySqlParser.WithQueryItemContext ctx) {
+<span class="fc" id="L257">    SqlNode query = visit(ctx.queryExpression());</span>
+<span class="fc" id="L258">    SqlIdentifier name = createIdentifier(ctx.identifier());</span>
+<span class="fc" id="L259">    return new SqlWithItem(parserPos(ctx), name, null, query);</span>
+  }
+
+  @Override
+  public SqlNode visitQueryExpression(BigQuerySqlParser.QueryExpressionContext ctx) {
+<span class="fc" id="L264">    SqlNode right = visit(ctx.queryTerm());</span>
+
+<span class="pc bpc" id="L266" title="2 of 6 branches missed.">    if (ctx.UNION() != null || ctx.EXCEPT() != null || ctx.INTERSECT() != null) {</span>
+      SqlKind kind;
+<span class="pc bpc" id="L268" title="1 of 2 branches missed.">      if (ctx.UNION() != null) {</span>
+<span class="fc" id="L269">        kind = SqlKind.UNION;</span>
+<span class="nc bnc" id="L270" title="All 2 branches missed.">      } else if (ctx.EXCEPT() != null) {</span>
+<span class="nc" id="L271">        kind = SqlKind.EXCEPT;</span>
+      } else {
+<span class="nc" id="L273">        kind = SqlKind.INTERSECT;</span>
+      }
+
+<span class="pc bpc" id="L276" title="1 of 2 branches missed.">      boolean isAll = ctx.ALL() != null;</span>
+<span class="pc bpc" id="L277" title="1 of 2 branches missed.">      boolean isDistinct = ctx.DISTINCT() != null;</span>
+
+      SqlOperator operator;
+<span class="pc bpc" id="L280" title="1 of 2 branches missed.">      if (kind == SqlKind.UNION) {</span>
+<span class="pc bpc" id="L281" title="1 of 2 branches missed.">        operator = isAll ? SqlStdOperatorTable.UNION_ALL : SqlStdOperatorTable.UNION;</span>
+<span class="nc bnc" id="L282" title="All 2 branches missed.">      } else if (kind == SqlKind.EXCEPT) {</span>
+<span class="nc bnc" id="L283" title="All 2 branches missed.">        operator = isAll ? SqlStdOperatorTable.EXCEPT_ALL : SqlStdOperatorTable.EXCEPT;</span>
+      } else {
+<span class="nc bnc" id="L285" title="All 2 branches missed.">        operator = isAll ? SqlStdOperatorTable.INTERSECT_ALL : SqlStdOperatorTable.INTERSECT;</span>
+      }
+
+<span class="fc" id="L288">      SqlNode left = visit(ctx.queryExpression());</span>
+<span class="fc" id="L289">      return new SqlBasicCall(operator, List.of(left, right), parserPos(ctx));</span>
+    }
+
+<span class="fc" id="L292">    return right;</span>
+  }
+
+  @Override
+  public SqlNode visitQueryTerm(BigQuerySqlParser.QueryTermContext ctx) {
+<span class="fc" id="L297">    return visit(ctx.queryPrimary());</span>
+  }
+
+  @Override
+  public SqlNode visitQueryPrimary(BigQuerySqlParser.QueryPrimaryContext ctx) {
+<span class="fc bfc" id="L302" title="All 2 branches covered.">    if (ctx.simpleQuery() != null) {</span>
+<span class="fc" id="L303">      return visit(ctx.simpleQuery());</span>
+    } else {
+<span class="fc" id="L305">      return visit(ctx.queryExpression());</span>
+    }
+  }
+
+  @Override
+  public SqlNode visitSimpleQuery(BigQuerySqlParser.SimpleQueryContext ctx) {
+<span class="fc" id="L311">    SqlNodeList selectList = (SqlNodeList) visit(ctx.selectClause());</span>
+<span class="fc" id="L312">    SqlNodeList keywordList = SqlNodeList.EMPTY;</span>
+<span class="fc" id="L313">    SqlNode from = null;</span>
+<span class="fc" id="L314">    SqlNode where = null;</span>
+<span class="fc" id="L315">    SqlNodeList groupBy = null;</span>
+<span class="fc" id="L316">    SqlNode having = null;</span>
+<span class="fc" id="L317">    SqlNode qualify = null;</span>
+<span class="fc" id="L318">    SqlNodeList windowList = null;</span>
+
+<span class="fc bfc" id="L320" title="All 2 branches covered.">    if (ctx.selectClause().setQuantifier() != null) {</span>
+<span class="fc" id="L321">      TerminalNode distinct = ctx.selectClause().setQuantifier().DISTINCT();</span>
+<span class="fc" id="L322">      TerminalNode all = ctx.selectClause().setQuantifier().ALL();</span>
+<span class="pc bpc" id="L323" title="1 of 2 branches missed.">      if (distinct != null) {</span>
+<span class="fc" id="L324">        keywordList = SqlNodeList.of(SqlLiteral.createSymbol(SqlSelectKeyword.DISTINCT, parserPos(distinct)));</span>
+      } else {
+<span class="nc" id="L326">        keywordList = SqlNodeList.of(SqlLiteral.createSymbol(SqlSelectKeyword.ALL, parserPos(all)));</span>
+      }
+
+    }
+
+<span class="fc bfc" id="L331" title="All 2 branches covered.">    if (ctx.fromClause() != null) {</span>
+<span class="fc" id="L332">      from = visit(ctx.fromClause());</span>
+    }
+
+<span class="fc bfc" id="L335" title="All 2 branches covered.">    if (ctx.whereClause() != null) {</span>
+<span class="fc" id="L336">      where = visit(ctx.whereClause());</span>
+    }
+
+<span class="fc bfc" id="L339" title="All 2 branches covered.">    if (ctx.groupByClause() != null) {</span>
+<span class="fc" id="L340">      groupBy = (SqlNodeList) visit(ctx.groupByClause());</span>
+    }
+
+<span class="fc bfc" id="L343" title="All 2 branches covered.">    if (ctx.havingClause() != null) {</span>
+<span class="fc" id="L344">      having = visit(ctx.havingClause());</span>
+    }
+
+<span class="pc bpc" id="L347" title="1 of 2 branches missed.">    if (ctx.qualifyClause() != null) {</span>
+<span class="nc" id="L348">      qualify = visit(ctx.qualifyClause());</span>
+    }
+
+<span class="pc bpc" id="L351" title="1 of 2 branches missed.">    if (ctx.windowClause() != null) {</span>
+<span class="nc" id="L352">      windowList = (SqlNodeList) visit(ctx.windowClause());</span>
+    }
+
+    // Create a SQL select
+<span class="fc" id="L356">    SqlNode query = new SqlSelect(</span>
+<span class="fc" id="L357">        parserPos(ctx),</span>
+        keywordList,                     // KEYWORD LIST
+        selectList,
+        from,
+        where,
+        groupBy,
+        having,
+        windowList,
+        qualify,                   // QUALIFY
+        null,                    // ORDER BY (handled at selectStatement level)
+        null,                    // OFFSET
+        null,                    // FETCH
+        null                    // HINTS
+    );
+
+<span class="fc bfc" id="L372" title="All 2 branches covered.">    if (ctx.orderByClause() != null) {</span>
+<span class="fc" id="L373">      SqlNodeList orderList = (SqlNodeList) visit(ctx.orderByClause());</span>
+<span class="fc" id="L374">      query = new SqlOrderBy(parserPos(ctx), query, orderList, null,</span>
+<span class="fc bfc" id="L375" title="All 2 branches covered.">          ctx.limitClause() != null ? visit(ctx.limitClause()) : null);</span>
+<span class="fc bfc" id="L376" title="All 2 branches covered.">    } else if (ctx.limitClause() != null) {</span>
+<span class="fc" id="L377">      query = new SqlOrderBy(parserPos(ctx), query, SqlNodeList.EMPTY, null,</span>
+<span class="fc" id="L378">          visit(ctx.limitClause()));</span>
+    }
+<span class="fc" id="L380">    return query;</span>
+  }
+
+  @Override
+  public SqlNode visitSelectClause(BigQuerySqlParser.SelectClauseContext ctx) {
+<span class="fc" id="L385">    List&lt;SqlNode&gt; selectItems = new ArrayList&lt;&gt;();</span>
+<span class="fc bfc" id="L386" title="All 2 branches covered.">    for (BigQuerySqlParser.SelectItemContext itemCtx : ctx.selectItem()) {</span>
+<span class="fc" id="L387">      selectItems.add(visit(itemCtx));</span>
+<span class="fc" id="L388">    }</span>
+
+<span class="pc bpc" id="L390" title="1 of 4 branches missed.">    if (ctx.AS() != null &amp;&amp; ctx.STRUCT() != null) {</span>
+<span class="fc" id="L391">      SqlNode selectRow = SqlStdOperatorTable.ROW.createCall(parserPos(ctx), selectItems);</span>
+<span class="fc" id="L392">      selectItems = List.of(selectRow);</span>
+      // Handle STRUCT AS alias
+//      SqlIdentifier structAlias = createIdentifier(ctx.identifier());
+//      selectItems.add(new SqlBasicCall(
+//          SqlStdOperatorTable.AS,
+//          List.of(new SqlNodeList(selectItems, parserPos(ctx)), structAlias),
+//          parserPos(ctx)
+//      ));
+    } /*else if (ctx.AS() != null) {
+      // Handle AS alias for the entire select list
+      SqlIdentifier alias = createIdentifier(ctx.identifier());
+      selectItems.add(new SqlBasicCall(
+          SqlStdOperatorTable.AS,
+          List.of(new SqlNodeList(selectItems, parserPos(ctx)), alias),
+          parserPos(ctx)
+      ));
+    }*/
+
+<span class="fc" id="L410">    return new SqlNodeList(selectItems, parserPos(ctx));</span>
+  }
+
+  @Override
+  public SqlNode visitSelectItem(BigQuerySqlParser.SelectItemContext ctx) {
+<span class="fc bfc" id="L415" title="All 2 branches covered.">    if (ctx.expression() != null) {</span>
+<span class="fc" id="L416">      SqlNode expr = visit(ctx.expression());</span>
+<span class="fc bfc" id="L417" title="All 2 branches covered.">      if (ctx.identifier() != null) {</span>
+<span class="fc" id="L418">        SqlIdentifier alias = createIdentifier(ctx.identifier());</span>
+<span class="fc" id="L419">        return new SqlBasicCall(</span>
+            SqlStdOperatorTable.AS,
+<span class="fc" id="L421">            List.of(expr, alias),</span>
+<span class="fc" id="L422">            parserPos(ctx)</span>
+        );
+      }
+<span class="fc" id="L425">      return expr;</span>
+<span class="pc bpc" id="L426" title="1 of 2 branches missed.">    } else if (ctx.tableWildcard() != null) {</span>
+<span class="nc" id="L427">      return visit(ctx.tableWildcard());</span>
+    } else {
+      // '*' wildcard
+<span class="fc" id="L430">      return SqlIdentifier.star(parserPos(ctx));</span>
+    }
+  }
+
+  @Override
+  public SqlNode visitTableWildcard(BigQuerySqlParser.TableWildcardContext ctx) {
+<span class="nc" id="L436">    SqlIdentifier tableId = (SqlIdentifier) visit(ctx.tableIdentifier());</span>
+<span class="nc" id="L437">    return new SqlIdentifier(</span>
+<span class="nc" id="L438">        List.of(tableId.getSimple(), &quot;*&quot;),</span>
+<span class="nc" id="L439">        parserPos(ctx)</span>
+    );
+  }
+
+  @Override
+  public SqlNode visitFromClause(BigQuerySqlParser.FromClauseContext ctx) {
+<span class="fc" id="L445">    List&lt;SqlNode&gt; fromItems = new ArrayList&lt;&gt;();</span>
+<span class="fc bfc" id="L446" title="All 2 branches covered.">    for (BigQuerySqlParser.TableExpressionContext tableCtx : ctx.tableExpression()) {</span>
+<span class="fc" id="L447">      fromItems.add(visit(tableCtx));</span>
+<span class="fc" id="L448">    }</span>
+
+<span class="pc bpc" id="L450" title="1 of 2 branches missed.">    if (fromItems.size() == 1) {</span>
+<span class="fc" id="L451">      return fromItems.get(0);</span>
+    } else {
+      // Handle multiple table expressions with a comma-separated list
+      // In Calcite, this is represented as a join tree
+<span class="nc" id="L455">      SqlNode result = fromItems.get(0);</span>
+<span class="nc bnc" id="L456" title="All 2 branches missed.">      for (int i = 1; i &lt; fromItems.size(); i++) {</span>
+<span class="nc" id="L457">        result = new SqlJoin(</span>
+<span class="nc" id="L458">            parserPos(ctx),</span>
+            result,
+<span class="nc" id="L460">            SqlLiteral.createBoolean(false, parserPos(ctx)),  // isNatural</span>
+<span class="nc" id="L461">            SqlLiteral.createSymbol(JoinType.COMMA, parserPos(ctx)),</span>
+<span class="nc" id="L462">            fromItems.get(i),</span>
+<span class="nc" id="L463">            SqlLiteral.createSymbol(JoinConditionType.NONE, parserPos(ctx)),</span>
+            null  // Condition is null for comma join
+        );
+      }
+<span class="nc" id="L467">      return result;</span>
+    }
+  }
+
+  @Override
+  public SqlNode visitTableExpression(BigQuerySqlParser.TableExpressionContext ctx) {
+//    if (ctx.tableFactor() != null) {
+//      return visit(ctx.tableFactor());
+//    } else {
+<span class="fc" id="L476">    return visit(ctx.joinedTable());</span>
+//    }
+  }
+
+  @Override
+  public SqlNode visitTableFactor(BigQuerySqlParser.TableFactorContext ctx) {
+    SqlNode fromSource;
+
+<span class="fc bfc" id="L484" title="All 2 branches covered.">    if (ctx.queryExpression() != null) {</span>
+      // Subquery
+<span class="fc bfc" id="L486" title="All 2 branches covered.">      if (ctx.tableAlias() == null) {</span>
+        // No alias provided
+<span class="fc" id="L488">        fromSource = visit(ctx.queryExpression());</span>
+      } else {
+        // Alias provided
+<span class="fc" id="L491">        fromSource = new SqlBasicCall(</span>
+            SqlStdOperatorTable.AS,
+<span class="fc" id="L493">            List.of(</span>
+<span class="fc" id="L494">                visit(ctx.queryExpression()),</span>
+<span class="fc" id="L495">                createIdentifier(ctx.tableAlias().identifier())</span>
+            ),
+<span class="fc" id="L497">            parserPos(ctx)</span>
+        );
+      }
+<span class="pc bpc" id="L500" title="1 of 2 branches missed.">    } else if (ctx.tableExpression() != null) {</span>
+      // Parenthesized table expression
+<span class="nc" id="L502">      fromSource = new SqlBasicCall(</span>
+          SqlStdOperatorTable.AS,
+<span class="nc" id="L504">          List.of(</span>
+<span class="nc" id="L505">              visit(ctx.tableExpression()),</span>
+<span class="nc" id="L506">              createIdentifier(ctx.tableAlias().identifier())</span>
+          ),
+<span class="nc" id="L508">          parserPos(ctx)</span>
+      );
+<span class="fc bfc" id="L510" title="All 2 branches covered.">    } else if (ctx.UNNEST() != null) {</span>
+      // UNNEST operation
+<span class="fc" id="L512">      SqlNode unnestExpr = visit(ctx.expression());</span>
+<span class="fc" id="L513">      fromSource = new SqlBasicCall(</span>
+          new SqlUnresolvedFunction(
+<span class="fc" id="L515">              new SqlIdentifier(&quot;UNNEST&quot;, parserPos(ctx)),</span>
+              null,
+              null,
+              null,
+              null,
+              SqlFunctionCategory.USER_DEFINED_FUNCTION
+          ),
+<span class="fc" id="L522">          List.of(unnestExpr),</span>
+<span class="fc" id="L523">          parserPos(ctx)</span>
+      );
+
+<span class="pc bpc" id="L526" title="1 of 2 branches missed.">      if (ctx.tableAlias() != null) {</span>
+<span class="fc" id="L527">        fromSource = new SqlBasicCall(</span>
+            SqlStdOperatorTable.AS,
+<span class="fc" id="L529">            List.of(</span>
+                fromSource,
+<span class="fc" id="L531">                createIdentifier(ctx.tableAlias().identifier())</span>
+            ),
+<span class="fc" id="L533">            parserPos(ctx)</span>
+        );
+      }
+
+      // Handle WITH OFFSET
+<span class="pc bpc" id="L538" title="1 of 2 branches missed.">      if (ctx.WITH() != null) {</span>
+        SqlIdentifier offsetAlias;
+<span class="nc bnc" id="L540" title="All 2 branches missed.">        if (ctx.identifier() != null) {</span>
+<span class="nc" id="L541">          offsetAlias = createIdentifier(ctx.identifier());</span>
+        } else {
+<span class="nc" id="L543">          offsetAlias = new SqlIdentifier(&quot;offset&quot;, parserPos(ctx));</span>
+        }
+
+<span class="nc" id="L546">        fromSource = new SqlBasicCall(</span>
+            new SqlUnresolvedFunction(
+<span class="nc" id="L548">                new SqlIdentifier(&quot;WITH OFFSET&quot;, parserPos(ctx)),</span>
+                null,
+                null,
+                null,
+                null,
+                SqlFunctionCategory.USER_DEFINED_FUNCTION
+            ),
+<span class="nc" id="L555">            List.of(fromSource, offsetAlias),</span>
+<span class="nc" id="L556">            parserPos(ctx)</span>
+        );
+      }
+<span class="pc bpc" id="L559" title="1 of 2 branches missed.">    } else if (ctx.functionCall() != null) {</span>
+      // Function as a table
+<span class="nc" id="L561">      fromSource = visit(ctx.functionCall());</span>
+
+<span class="nc bnc" id="L563" title="All 2 branches missed.">      if (ctx.tableAlias() != null) {</span>
+<span class="nc" id="L564">        fromSource = new SqlBasicCall(</span>
+            SqlStdOperatorTable.AS,
+            new SqlNode[]{
+                fromSource,
+<span class="nc" id="L568">                createIdentifier(ctx.tableAlias().identifier())</span>
+            },
+<span class="nc" id="L570">            parserPos(ctx)</span>
+        );
+      }
+    } else {
+      // Regular table reference
+
+<span class="fc" id="L576">      SqlNode tableRef = visit(ctx.tableIdentifier());</span>
+
+      // Handle table alias if present
+<span class="fc bfc" id="L579" title="All 2 branches covered.">      if (ctx.tableAlias() != null) {</span>
+<span class="fc" id="L580">        SqlIdentifier alias = createIdentifier(ctx.tableAlias().identifier());</span>
+
+        // Check if column aliases are provided
+<span class="pc bpc" id="L583" title="1 of 2 branches missed.">        if (ctx.tableAlias().columnAlias() != null) {</span>
+<span class="nc" id="L584">          List&lt;SqlNode&gt; columnAliases = new ArrayList&lt;&gt;();</span>
+          for (BigQuerySqlParser.IdentifierContext idCtx :
+<span class="nc bnc" id="L586" title="All 2 branches missed.">              ctx.tableAlias().columnAlias().identifier()) {</span>
+<span class="nc" id="L587">            columnAliases.add(createIdentifier(idCtx));</span>
+<span class="nc" id="L588">          }</span>
+
+<span class="nc" id="L590">          fromSource = new SqlBasicCall(</span>
+              SqlStdOperatorTable.AS,
+<span class="nc" id="L592">              new SqlNode[]{tableRef, alias, new SqlNodeList(columnAliases, parserPos(ctx))},</span>
+<span class="nc" id="L593">              parserPos(ctx)</span>
+          );
+<span class="nc" id="L595">        } else {</span>
+<span class="fc" id="L596">          fromSource = new SqlBasicCall(</span>
+              SqlStdOperatorTable.AS,
+              new SqlNode[]{tableRef, alias},
+<span class="fc" id="L599">              parserPos(ctx)</span>
+          );
+        }
+<span class="fc" id="L602">      } else {</span>
+<span class="fc" id="L603">        fromSource = tableRef;</span>
+      }
+    }
+
+<span class="fc" id="L607">    return fromSource;</span>
+  }
+
+  @Override
+  public SqlNode visitTableIdentifier(BigQuerySqlParser.TableIdentifierContext ctx) {
+<span class="fc" id="L612">    List&lt;String&gt; names = ctx.identifier().stream()</span>
+<span class="fc" id="L613">        .map(it -&gt; createIdentifier(it).getSimple())</span>
+<span class="fc" id="L614">        .toList();</span>
+<span class="fc" id="L615">    return new SqlIdentifier(names, parserPos(ctx));</span>
+  }
+
+  @Override
+  public SqlNode visitJoinedTable(BigQuerySqlParser.JoinedTableContext ctx) {
+<span class="fc bfc" id="L620" title="All 2 branches covered.">    if (ctx.tableFactor() != null) {</span>
+<span class="fc" id="L621">      return visit(ctx.tableFactor());</span>
+    }
+
+<span class="fc" id="L624">    SqlNode left = visit(ctx.joinedTable());</span>
+<span class="fc" id="L625">    SqlNode right = visit(ctx.tableExpression());</span>
+
+    // Determine join type
+<span class="fc" id="L628">    JoinType joinType = JoinType.INNER;</span>
+<span class="fc bfc" id="L629" title="All 2 branches covered.">    if (ctx.joinType() != null) {</span>
+<span class="pc bpc" id="L630" title="1 of 2 branches missed.">      if (ctx.joinType().CROSS() != null) {</span>
+<span class="nc" id="L631">        joinType = JoinType.CROSS;</span>
+<span class="pc bpc" id="L632" title="1 of 2 branches missed.">      } else if (ctx.joinType().FULL() != null) {</span>
+<span class="nc" id="L633">        joinType = JoinType.FULL;</span>
+<span class="fc bfc" id="L634" title="All 2 branches covered.">      } else if (ctx.joinType().LEFT() != null) {</span>
+<span class="fc" id="L635">        joinType = JoinType.LEFT;</span>
+<span class="pc bpc" id="L636" title="1 of 2 branches missed.">      } else if (ctx.joinType().RIGHT() != null) {</span>
+<span class="nc" id="L637">        joinType = JoinType.RIGHT;</span>
+      }
+    }
+
+<span class="fc" id="L641">    JoinConditionType conditionType = JoinConditionType.NONE;</span>
+<span class="fc" id="L642">    SqlNode condition = null;</span>
+
+<span class="pc bpc" id="L644" title="1 of 2 branches missed.">    if (ctx.joinSpecification() != null) {</span>
+<span class="pc bpc" id="L645" title="1 of 2 branches missed.">      if (ctx.joinSpecification().ON() != null) {</span>
+<span class="fc" id="L646">        conditionType = JoinConditionType.ON;</span>
+<span class="fc" id="L647">        condition = visit(ctx.joinSpecification().expression());</span>
+<span class="nc bnc" id="L648" title="All 2 branches missed.">      } else if (ctx.joinSpecification().USING() != null) {</span>
+<span class="nc" id="L649">        conditionType = JoinConditionType.USING;</span>
+<span class="nc" id="L650">        List&lt;SqlNode&gt; usingColumns = new ArrayList&lt;&gt;();</span>
+        for (BigQuerySqlParser.IdentifierContext idCtx :
+<span class="nc bnc" id="L652" title="All 2 branches missed.">            ctx.joinSpecification().identifier()) {</span>
+<span class="nc" id="L653">          usingColumns.add(createIdentifier(idCtx));</span>
+<span class="nc" id="L654">        }</span>
+<span class="nc" id="L655">        condition = new SqlNodeList(usingColumns, parserPos(ctx));</span>
+      }
+    }
+
+<span class="fc" id="L659">    return new SqlJoin(</span>
+<span class="fc" id="L660">        parserPos(ctx),</span>
+        left,
+<span class="fc" id="L662">        SqlLiteral.createBoolean(false, parserPos(ctx)),  // isNatural</span>
+<span class="fc" id="L663">        SqlLiteral.createSymbol(joinType, parserPos(ctx)),</span>
+        right,
+<span class="fc" id="L665">        SqlLiteral.createSymbol(conditionType, parserPos(ctx)),</span>
+        condition
+    );
+  }
+
+  @Override
+  public SqlNode visitWhereClause(BigQuerySqlParser.WhereClauseContext ctx) {
+<span class="fc" id="L672">    return visit(ctx.expression());</span>
+  }
+
+  @Override
+  public SqlNode visitGroupByClause(BigQuerySqlParser.GroupByClauseContext ctx) {
+<span class="fc" id="L677">    List&lt;SqlNode&gt; groupingElements = new ArrayList&lt;&gt;();</span>
+<span class="fc bfc" id="L678" title="All 2 branches covered.">    for (BigQuerySqlParser.GroupingElementContext elemCtx : ctx.groupingElement()) {</span>
+<span class="fc" id="L679">      groupingElements.add(visit(elemCtx));</span>
+<span class="fc" id="L680">    }</span>
+
+<span class="fc" id="L682">    return new SqlNodeList(groupingElements, parserPos(ctx));</span>
+  }
+
+  @Override
+  public SqlNode visitGroupingElement(BigQuerySqlParser.GroupingElementContext ctx) {
+<span class="pc bpc" id="L687" title="1 of 2 branches missed.">    if (ctx.expression() != null) {</span>
+<span class="fc" id="L688">      return ctx.expression().stream().map(this::visit).toList().get(0);</span>
+<span class="nc bnc" id="L689" title="All 2 branches missed.">    } else if (ctx.ROLLUP() != null) {</span>
+<span class="nc" id="L690">      List&lt;SqlNode&gt; rollupItems = new ArrayList&lt;&gt;();</span>
+<span class="nc bnc" id="L691" title="All 2 branches missed.">      for (BigQuerySqlParser.ExpressionContext exprCtx : ctx.expression()) {</span>
+<span class="nc" id="L692">        rollupItems.add(visit(exprCtx));</span>
+<span class="nc" id="L693">      }</span>
+
+<span class="nc" id="L695">      return new SqlBasicCall(</span>
+          SqlStdOperatorTable.ROLLUP,
+<span class="nc" id="L697">          rollupItems.toArray(new SqlNode[0]),</span>
+<span class="nc" id="L698">          parserPos(ctx)</span>
+      );
+<span class="nc bnc" id="L700" title="All 2 branches missed.">    } else if (ctx.CUBE() != null) {</span>
+<span class="nc" id="L701">      List&lt;SqlNode&gt; cubeItems = new ArrayList&lt;&gt;();</span>
+<span class="nc bnc" id="L702" title="All 2 branches missed.">      for (BigQuerySqlParser.ExpressionContext exprCtx : ctx.expression()) {</span>
+<span class="nc" id="L703">        cubeItems.add(visit(exprCtx));</span>
+<span class="nc" id="L704">      }</span>
+
+<span class="nc" id="L706">      return new SqlBasicCall(</span>
+          SqlStdOperatorTable.CUBE,
+<span class="nc" id="L708">          cubeItems.toArray(new SqlNode[0]),</span>
+<span class="nc" id="L709">          parserPos(ctx)</span>
+      );
+<span class="nc bnc" id="L711" title="All 2 branches missed.">    } else if (ctx.GROUPING() != null) {</span>
+      // GROUPING SETS
+<span class="nc" id="L713">      List&lt;SqlNode&gt; groupingSets = new ArrayList&lt;&gt;();</span>
+<span class="nc bnc" id="L714" title="All 2 branches missed.">      for (BigQuerySqlParser.GroupingSetContext setCtx : ctx.groupingSet()) {</span>
+<span class="nc" id="L715">        groupingSets.add(visit(setCtx));</span>
+<span class="nc" id="L716">      }</span>
+
+<span class="nc" id="L718">      return new SqlBasicCall(</span>
+          SqlStdOperatorTable.GROUPING_SETS,
+<span class="nc" id="L720">          groupingSets.toArray(new SqlNode[0]),</span>
+<span class="nc" id="L721">          parserPos(ctx)</span>
+      );
+    }
+
+<span class="nc" id="L725">    throw new UnsupportedOperationException(&quot;Unsupported grouping element&quot;);</span>
+  }
+
+  @Override
+  public SqlNode visitGroupingSet(BigQuerySqlParser.GroupingSetContext ctx) {
+<span class="nc" id="L730">    List&lt;SqlNode&gt; items = new ArrayList&lt;&gt;();</span>
+<span class="nc bnc" id="L731" title="All 2 branches missed.">    if (ctx.expression() != null) {</span>
+<span class="nc bnc" id="L732" title="All 2 branches missed.">      for (BigQuerySqlParser.ExpressionContext exprCtx : ctx.expression()) {</span>
+<span class="nc" id="L733">        items.add(visit(exprCtx));</span>
+<span class="nc" id="L734">      }</span>
+    }
+
+<span class="nc" id="L737">    return new SqlBasicCall(SqlStdOperatorTable.ROW, items, parserPos(ctx));</span>
+  }
+
+  @Override
+  public SqlNode visitHavingClause(BigQuerySqlParser.HavingClauseContext ctx) {
+<span class="fc" id="L742">    return visit(ctx.expression());</span>
+  }
+
+  @Override
+  public SqlNode visitQualifyClause(BigQuerySqlParser.QualifyClauseContext ctx) {
+<span class="nc" id="L747">    return visit(ctx.expression());</span>
+  }
+
+  @Override
+  public SqlNode visitWindowClause(BigQuerySqlParser.WindowClauseContext ctx) {
+<span class="nc" id="L752">    List&lt;SqlNode&gt; windowList = new ArrayList&lt;&gt;();</span>
+<span class="nc bnc" id="L753" title="All 2 branches missed.">    for (BigQuerySqlParser.NamedWindowContext winCtx : ctx.namedWindow()) {</span>
+<span class="nc" id="L754">      windowList.add(visit(winCtx));</span>
+<span class="nc" id="L755">    }</span>
+
+<span class="nc" id="L757">    return new SqlNodeList(windowList, parserPos(ctx));</span>
+  }
+
+  @Override
+  public SqlNode visitNamedWindow(BigQuerySqlParser.NamedWindowContext ctx) {
+<span class="nc" id="L762">    SqlWindow namedWindow = (SqlWindow) visit(ctx.windowSpecification());</span>
+<span class="nc" id="L763">    SqlIdentifier name = createIdentifier(ctx.identifier());</span>
+<span class="nc bnc" id="L764" title="All 2 branches missed.">    if (name != null) {</span>
+<span class="nc" id="L765">      namedWindow.setDeclName(name);</span>
+    }
+<span class="nc" id="L767">    return namedWindow;</span>
+  }
+
+  @Override
+  public SqlNode visitWindowSpecification(BigQuerySqlParser.WindowSpecificationContext ctx) {
+//    SqlWindow window = new SqlWindow(parserPos(ctx), null, null, null, null, null, null);
+<span class="fc" id="L773">    SqlIdentifier declName = null;</span>
+<span class="fc" id="L774">    SqlNodeList orderList = SqlNodeList.EMPTY;</span>
+<span class="fc" id="L775">    SqlNodeList partitionList = SqlNodeList.EMPTY;</span>
+
+<span class="pc bpc" id="L777" title="1 of 2 branches missed.">    if (ctx.windowName() != null) {</span>
+<span class="nc" id="L778">      declName = createIdentifier(ctx.windowName().identifier());</span>
+    }
+
+<span class="pc bpc" id="L781" title="1 of 2 branches missed.">    if (ctx.partitionClause() != null) {</span>
+<span class="fc" id="L782">      List&lt;SqlNode&gt; partitionItems = new ArrayList&lt;&gt;();</span>
+<span class="fc bfc" id="L783" title="All 2 branches covered.">      for (BigQuerySqlParser.ExpressionContext exprCtx : ctx.partitionClause().expression()) {</span>
+<span class="fc" id="L784">        partitionItems.add(visit(exprCtx));</span>
+<span class="fc" id="L785">      }</span>
+<span class="fc" id="L786">      partitionList = new SqlNodeList(partitionItems, parserPos(ctx));</span>
+    }
+
+<span class="pc bpc" id="L789" title="1 of 2 branches missed.">    if (ctx.orderByClause() != null) {</span>
+<span class="fc" id="L790">      orderList = (SqlNodeList) visit(ctx.orderByClause());</span>
+    }
+
+<span class="pc bpc" id="L793" title="1 of 2 branches missed.">    if (ctx.frameClause() != null) {</span>
+<span class="nc" id="L794">      throw new UnsupportedOperationException(&quot;frameClause not supported&quot;);</span>
+//      SqlLiteral frameType = null;
+//      SqlNode start = null;
+//      SqlNode end = null;
+//
+//      // Frame type (ROWS or RANGE)
+//      if (ctx.frameClause().frameUnits().ROWS() != null) {
+//        frameType = SqlLiteral.createSymbol(FrameUnit.ROWS, parserPos(ctx));
+//      } else {
+//        frameType = SqlLiteral.createSymbol(FrameUnit.RANGE, parserPos(ctx));
+//      }
+//
+//      // Frame extent
+//      BigQuerySqlParser.FrameExtentContext extentCtx = ctx.frameClause().frameExtent();
+//
+//      // Frame start
+//      start = visit(extentCtx.frameStart());
+//
+//      // Frame end (if present)
+//      if (extentCtx.frameEnd() != null) {
+//        end = visit(extentCtx.frameEnd());
+//      } else {
+//        // If no end is specified, use CURRENT ROW as default (same as start for bounds)
+//        end = start;
+//      }
+//
+//      window = window.over(frameType, start, end);
+    }
+<span class="fc" id="L822">    SqlLiteral isRows = SqlLiteral.createBoolean(false, parserPos(ctx));</span>
+<span class="fc" id="L823">    return new SqlWindow(parserPos(ctx), declName, null, partitionList, orderList, isRows, null, null, null);</span>
+  }
+
+  @Override
+  public SqlNode visitFrameStart(BigQuerySqlParser.FrameStartContext ctx) {
+<span class="nc bnc" id="L828" title="All 4 branches missed.">    if (ctx.UNBOUNDED() != null &amp;&amp; ctx.PRECEDING() != null) {</span>
+<span class="nc" id="L829">      return SqlWindow.createUnboundedPreceding(parserPos(ctx));</span>
+<span class="nc bnc" id="L830" title="All 4 branches missed.">    } else if (ctx.CURRENT() != null &amp;&amp; ctx.ROW() != null) {</span>
+<span class="nc" id="L831">      return SqlWindow.createCurrentRow(parserPos(ctx));</span>
+<span class="nc bnc" id="L832" title="All 4 branches missed.">    } else if (ctx.expression() != null &amp;&amp; ctx.PRECEDING() != null) {</span>
+<span class="nc" id="L833">      SqlNode offset = visit(ctx.expression());</span>
+<span class="nc" id="L834">      return SqlWindow.createPreceding(offset, parserPos(ctx));</span>
+<span class="nc bnc" id="L835" title="All 4 branches missed.">    } else if (ctx.expression() != null &amp;&amp; ctx.FOLLOWING() != null) {</span>
+<span class="nc" id="L836">      SqlNode offset = visit(ctx.expression());</span>
+<span class="nc" id="L837">      return SqlWindow.createFollowing(offset, parserPos(ctx));</span>
+<span class="nc bnc" id="L838" title="All 4 branches missed.">    } else if (ctx.UNBOUNDED() != null &amp;&amp; ctx.FOLLOWING() != null) {</span>
+<span class="nc" id="L839">      return SqlWindow.createUnboundedFollowing(parserPos(ctx));</span>
+    }
+
+<span class="nc" id="L842">    throw new UnsupportedOperationException(&quot;Unsupported frame start&quot;);</span>
+  }
+
+  @Override
+  public SqlNode visitFrameEnd(BigQuerySqlParser.FrameEndContext ctx) {
+<span class="nc bnc" id="L847" title="All 4 branches missed.">    if (ctx.UNBOUNDED() != null &amp;&amp; ctx.PRECEDING() != null) {</span>
+<span class="nc" id="L848">      return SqlWindow.createUnboundedPreceding(parserPos(ctx));</span>
+<span class="nc bnc" id="L849" title="All 4 branches missed.">    } else if (ctx.CURRENT() != null &amp;&amp; ctx.ROW() != null) {</span>
+<span class="nc" id="L850">      return SqlWindow.createCurrentRow(parserPos(ctx));</span>
+<span class="nc bnc" id="L851" title="All 4 branches missed.">    } else if (ctx.expression() != null &amp;&amp; ctx.PRECEDING() != null) {</span>
+<span class="nc" id="L852">      SqlNode offset = visit(ctx.expression());</span>
+<span class="nc" id="L853">      return SqlWindow.createPreceding(offset, parserPos(ctx));</span>
+<span class="nc bnc" id="L854" title="All 4 branches missed.">    } else if (ctx.expression() != null &amp;&amp; ctx.FOLLOWING() != null) {</span>
+<span class="nc" id="L855">      SqlNode offset = visit(ctx.expression());</span>
+<span class="nc" id="L856">      return SqlWindow.createFollowing(offset, parserPos(ctx));</span>
+<span class="nc bnc" id="L857" title="All 4 branches missed.">    } else if (ctx.UNBOUNDED() != null &amp;&amp; ctx.FOLLOWING() != null) {</span>
+<span class="nc" id="L858">      return SqlWindow.createUnboundedFollowing(parserPos(ctx));</span>
+    }
+
+<span class="nc" id="L861">    throw new UnsupportedOperationException(&quot;Unsupported frame end&quot;);</span>
+  }
+
+  @Override
+  public SqlNode visitOrderByClause(BigQuerySqlParser.OrderByClauseContext ctx) {
+<span class="fc" id="L866">    List&lt;SqlNode&gt; orderItems = new ArrayList&lt;&gt;();</span>
+<span class="fc bfc" id="L867" title="All 2 branches covered.">    for (BigQuerySqlParser.OrderingItemContext itemCtx : ctx.orderingItem()) {</span>
+<span class="fc" id="L868">      orderItems.add(visit(itemCtx));</span>
+<span class="fc" id="L869">    }</span>
+
+<span class="fc" id="L871">    return new SqlNodeList(orderItems, parserPos(ctx));</span>
+  }
+
+  @Override
+  public SqlNode visitOrderingItem(BigQuerySqlParser.OrderingItemContext ctx) {
+<span class="fc" id="L876">    SqlNode expr = visit(ctx.expression());</span>
+<span class="fc bfc" id="L877" title="All 2 branches covered.">    boolean ascending = ctx.DESC() == null; // Default is ASC if not specified</span>
+<span class="fc bfc" id="L878" title="All 2 branches covered.">    expr = ascending ? expr : new SqlBasicCall(SqlStdOperatorTable.DESC, List.of(expr), parserPos(ctx));</span>
+
+<span class="pc bpc" id="L880" title="1 of 2 branches missed.">    if (ctx.NULLS() == null) {</span>
+<span class="fc" id="L881">      return expr;</span>
+    }
+
+<span class="nc bnc" id="L884" title="All 2 branches missed.">    if (ctx.FIRST() != null) {</span>
+<span class="nc" id="L885">      return SqlStdOperatorTable.NULLS_FIRST.createCall(parserPos(ctx), expr);</span>
+    } else {
+<span class="nc" id="L887">      return SqlStdOperatorTable.NULLS_LAST.createCall(parserPos(ctx), expr);</span>
+    }
+  }
+
+  @Override
+  public SqlNode visitLimitClause(BigQuerySqlParser.LimitClauseContext ctx) {
+<span class="fc" id="L893">    return visit(ctx.expression());</span>
+  }
+
+//  private SqlIdentifier createIdentifier(BigQuerySqlParser.TableIdentifierContext ctx) {
+//    return createIdentifier(ctx.identifier());
+//  }
+
+  // Helper methods
+  private SqlIdentifier createIdentifier(BigQuerySqlParser.IdentifierContext ctx) {
+<span class="pc bpc" id="L902" title="1 of 2 branches missed.">    if (ctx == null) {</span>
+<span class="nc" id="L903">      return null;</span>
+    }
+
+    String identifierText;
+<span class="fc bfc" id="L907" title="All 2 branches covered.">    if (ctx.IDENTIFIER() != null) {</span>
+<span class="fc" id="L908">      identifierText = ctx.IDENTIFIER().getText();</span>
+<span class="fc bfc" id="L909" title="All 2 branches covered.">    } else if (ctx.BACKTICK_IDENTIFIER() != null) {</span>
+      // Remove backticks
+<span class="fc" id="L911">      identifierText = ctx.BACKTICK_IDENTIFIER().getText();</span>
+<span class="fc" id="L912">      identifierText = identifierText.substring(1, identifierText.length() - 1);</span>
+      // Handle escaped backticks
+<span class="fc" id="L914">      identifierText = identifierText.replace(&quot;``&quot;, &quot;`&quot;);</span>
+<span class="pc bpc" id="L915" title="1 of 2 branches missed.">    } else if (ctx.QUOTED_IDENTIFIER() != null) {</span>
+      // Remove quotes
+<span class="nc" id="L917">      identifierText = ctx.QUOTED_IDENTIFIER().getText();</span>
+<span class="nc" id="L918">      identifierText = identifierText.substring(1, identifierText.length() - 1);</span>
+      // Handle escaped quotes
+<span class="nc" id="L920">      identifierText = identifierText.replace(&quot;\&quot;\&quot;&quot;, &quot;\&quot;&quot;);</span>
+<span class="pc bpc" id="L921" title="1 of 2 branches missed.">    } else if (ctx.nonReservedKeyword() != null) {</span>
+<span class="fc" id="L922">      identifierText = ctx.getText();</span>
+    } else {
+<span class="nc" id="L924">      throw new IllegalArgumentException(&quot;Unsupported identifier type&quot;);</span>
+    }
+
+<span class="fc" id="L927">    return new SqlIdentifier(identifierText, parserPos(ctx));</span>
+  }
+
+  @Override
+  public SqlNode visitLogicalOrExpression(BigQuerySqlParser.LogicalOrExpressionContext ctx) {
+    // Start with the first logical AND expression
+<span class="fc" id="L933">    SqlNode result = visit(ctx.logicalAndExpression(0));</span>
+
+    // Process each additional OR condition, if any
+<span class="fc bfc" id="L936" title="All 2 branches covered.">    for (int i = 1; i &lt; ctx.logicalAndExpression().size(); i++) {</span>
+<span class="fc" id="L937">      SqlNode right = visit(ctx.logicalAndExpression(i));</span>
+      // Create OR operation between the accumulated result and the next operand
+<span class="fc" id="L939">      result = SqlStdOperatorTable.OR.createCall(parserPos(ctx), result, right);</span>
+    }
+
+<span class="fc" id="L942">    return result;</span>
+  }
+
+  @Override
+  public SqlNode visitLogicalAndExpression(BigQuerySqlParser.LogicalAndExpressionContext ctx) {
+    // Start with the first equality expression
+<span class="fc" id="L948">    SqlNode result = visit(ctx.equalityExpression(0));</span>
+
+    // Process each additional AND condition, if any
+<span class="fc bfc" id="L951" title="All 2 branches covered.">    for (int i = 1; i &lt; ctx.equalityExpression().size(); i++) {</span>
+<span class="fc" id="L952">      SqlNode right = visit(ctx.equalityExpression(i));</span>
+      // Create AND operation between the accumulated result and the next operand
+<span class="fc" id="L954">      result = SqlStdOperatorTable.AND.createCall(parserPos(ctx), result, right);</span>
+    }
+
+<span class="fc" id="L957">    return result;</span>
+  }
+
+  @Override
+  public SqlNode visitEqualityExpression(BigQuerySqlParser.EqualityExpressionContext ctx) {
+    // Start with the first comparison expression
+<span class="fc" id="L963">    SqlNode result = visit(ctx.comparisonExpression(0));</span>
+
+    // Process each additional equality condition, if any
+<span class="fc bfc" id="L966" title="All 2 branches covered.">    for (int i = 0; i &lt; ctx.comparisonExpression().size() - 1; i++) {</span>
+<span class="fc" id="L967">      SqlNode right = visit(ctx.comparisonExpression(i + 1));</span>
+
+      // Determine the operator (EQ, NEQ, NE)
+      SqlOperator operator;
+<span class="pc bpc" id="L971" title="1 of 2 branches missed.">      if (ctx.EQ() != null) {</span>
+<span class="fc" id="L972">        operator = SqlStdOperatorTable.EQUALS;</span>
+      } else { // NE (&lt;&gt;)
+<span class="nc" id="L974">        operator = SqlStdOperatorTable.NOT_EQUALS;</span>
+      }
+
+      // Create operation between the accumulated result and the next operand
+<span class="fc" id="L978">      result = operator.createCall(parserPos(ctx), result, right);</span>
+    }
+
+<span class="fc" id="L981">    return result;</span>
+  }
+
+  @Override
+  public SqlNode visitComparisonExpression(BigQuerySqlParser.ComparisonExpressionContext ctx) {
+    // Start with the first range expression
+<span class="fc" id="L987">    SqlNode result = visit(ctx.rangeExpression(0));</span>
+
+    // Process each additional comparison condition, if any
+<span class="fc bfc" id="L990" title="All 2 branches covered.">    for (int i = 0; i &lt; ctx.rangeExpression().size() - 1; i++) {</span>
+<span class="fc" id="L991">      SqlNode right = visit(ctx.rangeExpression(i + 1));</span>
+
+      // Determine the comparison operator (LT, GT, LTE, GTE)
+      SqlOperator operator;
+<span class="fc bfc" id="L995" title="All 2 branches covered.">      if (ctx.LT(i) != null) {</span>
+<span class="fc" id="L996">        operator = SqlStdOperatorTable.LESS_THAN;</span>
+<span class="fc bfc" id="L997" title="All 2 branches covered.">      } else if (ctx.GT(i) != null) {</span>
+<span class="fc" id="L998">        operator = SqlStdOperatorTable.GREATER_THAN;</span>
+<span class="fc bfc" id="L999" title="All 2 branches covered.">      } else if (ctx.LTE(i) != null) {</span>
+<span class="fc" id="L1000">        operator = SqlStdOperatorTable.LESS_THAN_OR_EQUAL;</span>
+      } else { // GTE
+<span class="fc" id="L1002">        operator = SqlStdOperatorTable.GREATER_THAN_OR_EQUAL;</span>
+      }
+
+      // Create operation between the accumulated result and the next operand
+<span class="fc" id="L1006">      result = operator.createCall(parserPos(ctx), result, right);</span>
+    }
+
+<span class="fc" id="L1009">    return result;</span>
+  }
+
+  @Override
+  public SqlNode visitRangeExpression(BigQuerySqlParser.RangeExpressionContext ctx) {
+    // Get the base additive expression
+<span class="fc" id="L1015">    SqlNode result = visit(ctx.additiveExpression(0));</span>
+
+    // Handle BETWEEN operator if present
+<span class="fc bfc" id="L1018" title="All 2 branches covered.">    if (ctx.BETWEEN() != null) {</span>
+<span class="fc" id="L1019">      SqlNode lower = visit(ctx.additiveExpression(1));</span>
+<span class="fc" id="L1020">      SqlNode upper = visit(ctx.additiveExpression(2));</span>
+<span class="fc" id="L1021">      result = SqlStdOperatorTable.BETWEEN.createCall(</span>
+<span class="fc" id="L1022">          parserPos(ctx),</span>
+          result,
+          lower,
+          upper
+      );
+
+      // Apply NOT if present
+<span class="pc bpc" id="L1029" title="3 of 4 branches missed.">      if (ctx.NOT() != null &amp;&amp; ctx.BETWEEN() != null) {</span>
+<span class="nc" id="L1030">        result = SqlStdOperatorTable.NOT.createCall(</span>
+<span class="nc" id="L1031">            parserPos(ctx),</span>
+            result
+        );
+      }
+<span class="fc" id="L1035">    }</span>
+    // Handle IN operator if present
+<span class="fc bfc" id="L1037" title="All 2 branches covered.">    else if (ctx.IN() != null) {</span>
+<span class="fc" id="L1038">      SqlNode inList = visit(ctx.inExpressionList());</span>
+
+      // Create IN operation
+<span class="fc" id="L1041">      result = SqlStdOperatorTable.IN.createCall(</span>
+<span class="fc" id="L1042">          parserPos(ctx),</span>
+          result,
+          inList
+      );
+
+      // Apply NOT if present
+<span class="pc bpc" id="L1048" title="1 of 4 branches missed.">      if (ctx.NOT() != null &amp;&amp; ctx.IN() != null) {</span>
+<span class="fc" id="L1049">        result = SqlStdOperatorTable.NOT.createCall(</span>
+<span class="fc" id="L1050">            parserPos(ctx),</span>
+            result
+        );
+      }
+<span class="fc" id="L1054">    }</span>
+    // Handle LIKE operator if present
+<span class="fc bfc" id="L1056" title="All 2 branches covered.">    else if (ctx.LIKE() != null) {</span>
+<span class="fc" id="L1057">      SqlNode pattern = visit(ctx.additiveExpression(1));</span>
+<span class="fc" id="L1058">      SqlNode escape = null;</span>
+
+      // Handle optional ESCAPE clause
+<span class="pc bpc" id="L1061" title="1 of 2 branches missed.">      if (ctx.ESCAPE() != null) {</span>
+<span class="nc" id="L1062">        escape = visit(ctx.additiveExpression(2));</span>
+      }
+
+      // Create LIKE operation with or without ESCAPE
+      SqlNode likeCall;
+<span class="pc bpc" id="L1067" title="1 of 2 branches missed.">      if (escape != null) {</span>
+<span class="nc" id="L1068">        likeCall = SqlStdOperatorTable.LIKE.createCall(</span>
+<span class="nc" id="L1069">            parserPos(ctx),</span>
+            result,
+            pattern,
+            escape
+        );
+      } else {
+<span class="fc" id="L1075">        likeCall = SqlStdOperatorTable.LIKE.createCall(</span>
+<span class="fc" id="L1076">            parserPos(ctx),</span>
+            result,
+            pattern
+        );
+      }
+
+      // Apply NOT if present
+<span class="pc bpc" id="L1083" title="3 of 4 branches missed.">      if (ctx.NOT() != null &amp;&amp; ctx.LIKE() != null) {</span>
+<span class="nc" id="L1084">        result = SqlStdOperatorTable.NOT.createCall(</span>
+<span class="nc" id="L1085">            parserPos(ctx),</span>
+            likeCall
+        );
+      } else {
+<span class="fc" id="L1089">        result = likeCall;</span>
+      }
+    }
+
+<span class="fc" id="L1093">    return result;</span>
+  }
+
+  @Override
+  public SqlNode visitInExpressionList(BigQuerySqlParser.InExpressionListContext ctx) {
+    // Case 1: Regular IN list with explicit values (expression, expression, ...)
+<span class="pc bpc" id="L1099" title="1 of 4 branches missed.">    if (ctx.LPAREN() != null &amp;&amp; !ctx.expression().isEmpty()) {</span>
+<span class="fc" id="L1100">      List&lt;SqlNode&gt; valueList = new ArrayList&lt;&gt;();</span>
+<span class="fc bfc" id="L1101" title="All 2 branches covered.">      for (BigQuerySqlParser.ExpressionContext exprCtx : ctx.expression()) {</span>
+<span class="fc" id="L1102">        valueList.add(visit(exprCtx));</span>
+<span class="fc" id="L1103">      }</span>
+<span class="fc" id="L1104">      return new SqlNodeList(valueList, parserPos(ctx));</span>
+    }
+
+    // Case 2: IN with UNNEST - converts array to a set of values
+<span class="pc bpc" id="L1108" title="1 of 2 branches missed.">    if (ctx.UNNEST() != null) {</span>
+<span class="nc" id="L1109">      SqlNode arrayExpression = visit(ctx.expression(0));</span>
+<span class="nc" id="L1110">      return SqlStdOperatorTable.UNNEST.createCall(</span>
+<span class="nc" id="L1111">          parserPos(ctx),</span>
+          arrayExpression
+      );
+    }
+
+    // Case 3: IN subquery - values come from a subquery
+<span class="pc bpc" id="L1117" title="1 of 2 branches missed.">    if (ctx.queryExpression() != null) {</span>
+<span class="fc" id="L1118">      return visit(ctx.queryExpression());</span>
+    }
+
+    // Case 4: Empty IN list
+<span class="nc bnc" id="L1122" title="All 4 branches missed.">    if (ctx.LPAREN() != null &amp;&amp; ctx.expression().isEmpty()) {</span>
+<span class="nc" id="L1123">      return new SqlNodeList(new ArrayList&lt;&gt;(), parserPos(ctx));</span>
+    }
+
+<span class="nc" id="L1126">    throw new UnsupportedOperationException(&quot;Unsupported IN expression list type&quot;);</span>
+  }
+
+  @Override
+  public SqlNode visitAdditiveExpression(BigQuerySqlParser.AdditiveExpressionContext ctx) {
+    // Start with the first multiplicative expression
+<span class="fc" id="L1132">    SqlNode result = visit(ctx.multiplicativeExpression(0));</span>
+
+    // Process each additional additive operator, if any
+<span class="fc bfc" id="L1135" title="All 2 branches covered.">    for (int i = 0; i &lt; ctx.multiplicativeExpression().size() - 1; i++) {</span>
+<span class="fc" id="L1136">      SqlNode right = visit(ctx.multiplicativeExpression(i + 1));</span>
+
+      // Determine the operator (PLUS, MINUS, CONCAT)
+      SqlOperator operator;
+<span class="fc bfc" id="L1140" title="All 2 branches covered.">      if (ctx.PLUS(i) != null) {</span>
+<span class="fc" id="L1141">        operator = SqlStdOperatorTable.PLUS;</span>
+<span class="pc bpc" id="L1142" title="1 of 2 branches missed.">      } else if (ctx.MINUS(i) != null) {</span>
+<span class="fc" id="L1143">        operator = SqlStdOperatorTable.MINUS;</span>
+      } else { // CONCAT
+<span class="nc" id="L1145">        operator = SqlStdOperatorTable.CONCAT;</span>
+      }
+
+      // Create operation between the accumulated result and the next operand
+<span class="fc" id="L1149">      result = operator.createCall(parserPos(ctx), result, right);</span>
+    }
+
+<span class="fc" id="L1152">    return result;</span>
+  }
+
+  @Override
+  public SqlNode visitMultiplicativeExpression(BigQuerySqlParser.MultiplicativeExpressionContext ctx) {
+    // Start with the first unary expression
+<span class="fc" id="L1158">    SqlNode result = visit(ctx.unaryExpression(0));</span>
+
+    // Process each additional multiplicative operator, if any
+<span class="fc bfc" id="L1161" title="All 2 branches covered.">    for (int i = 0; i &lt; ctx.unaryExpression().size() - 1; i++) {</span>
+<span class="fc" id="L1162">      SqlNode right = visit(ctx.unaryExpression(i + 1));</span>
+
+      // Determine the operator (MULTIPLY, DIVIDE, DIV, MOD)
+      SqlOperator operator;
+<span class="pc bpc" id="L1166" title="1 of 2 branches missed.">      if (ctx.STAR(i) != null) {</span>
+<span class="fc" id="L1167">        operator = SqlStdOperatorTable.MULTIPLY;</span>
+<span class="nc bnc" id="L1168" title="All 4 branches missed.">      } else if (ctx.DIVIDE(i) != null || ctx.DIV(i) != null) {</span>
+<span class="nc" id="L1169">        operator = SqlStdOperatorTable.DIVIDE;</span>
+      } else { // MOD
+<span class="nc" id="L1171">        operator = SqlStdOperatorTable.MOD;</span>
+      }
+
+      // Create operation between the accumulated result and the next operand
+<span class="fc" id="L1175">      result = operator.createCall(parserPos(ctx), result, right);</span>
+    }
+
+<span class="fc" id="L1178">    return result;</span>
+  }
+
+  @Override
+  public SqlNode visitUnaryExpression(BigQuerySqlParser.UnaryExpressionContext ctx) {
+    // Handle unary operators if present
+<span class="fc bfc" id="L1184" title="All 2 branches covered.">    if (ctx.NOT() != null) {</span>
+<span class="fc" id="L1185">      SqlNode operand = visit(ctx.unaryExpression());</span>
+<span class="fc" id="L1186">      return SqlStdOperatorTable.NOT.createCall(parserPos(ctx), operand);</span>
+<span class="pc bpc" id="L1187" title="1 of 2 branches missed.">    } else if (ctx.PLUS() != null) {</span>
+<span class="nc" id="L1188">      SqlNode operand = visit(ctx.unaryExpression());</span>
+//      return SqlStdOperatorTable.PLUS_PREFIX.createCall(parserPos(ctx), operand);
+<span class="nc" id="L1190">      throw new UnsupportedOperationException(&quot;Unary plus operator not supported&quot;);</span>
+<span class="pc bpc" id="L1191" title="1 of 2 branches missed.">    } else if (ctx.MINUS() != null) {</span>
+<span class="nc" id="L1192">      SqlNode operand = visit(ctx.unaryExpression());</span>
+//      return SqlStdOperatorTable.MINUS_PREFIX.createCall(parserPos(ctx), operand);
+<span class="nc" id="L1194">      throw new UnsupportedOperationException(&quot;Unary minus operator not supported&quot;);</span>
+    } else {
+      // If no unary operator, visit the IS expression
+<span class="fc" id="L1197">      return visit(ctx.isExpression());</span>
+    }
+  }
+
+  @Override
+  public SqlNode visitIsExpression(BigQuerySqlParser.IsExpressionContext ctx) {
+    // Get the primary expression
+<span class="fc" id="L1204">    SqlNode result = visit(ctx.primaryExpression());</span>
+
+    // If there's no IS condition, just return the primary expression
+<span class="fc bfc" id="L1207" title="All 2 branches covered.">    if (ctx.IS() == null) {</span>
+<span class="fc" id="L1208">      return result;</span>
+    }
+
+    // Handle IS conditions
+<span class="fc bfc" id="L1212" title="All 2 branches covered.">    boolean isNot = ctx.NOT() != null;</span>
+    SqlOperator operator;
+
+<span class="pc bpc" id="L1215" title="1 of 2 branches missed.">    if (ctx.NULL() != null) {</span>
+<span class="fc bfc" id="L1216" title="All 2 branches covered.">      operator = isNot ? SqlStdOperatorTable.IS_NOT_NULL : SqlStdOperatorTable.IS_NULL;</span>
+<span class="fc" id="L1217">      return operator.createCall(parserPos(ctx), result);</span>
+<span class="nc bnc" id="L1218" title="All 2 branches missed.">    } else if (ctx.TRUE() != null) {</span>
+<span class="nc bnc" id="L1219" title="All 2 branches missed.">      operator = isNot ? SqlStdOperatorTable.IS_NOT_TRUE : SqlStdOperatorTable.IS_TRUE;</span>
+<span class="nc" id="L1220">      return operator.createCall(parserPos(ctx), result);</span>
+<span class="nc bnc" id="L1221" title="All 2 branches missed.">    } else if (ctx.FALSE() != null) {</span>
+<span class="nc bnc" id="L1222" title="All 2 branches missed.">      operator = isNot ? SqlStdOperatorTable.IS_NOT_FALSE : SqlStdOperatorTable.IS_FALSE;</span>
+<span class="nc" id="L1223">      return operator.createCall(parserPos(ctx), result);</span>
+<span class="nc bnc" id="L1224" title="All 2 branches missed.">    } else if (ctx.NAN() != null) {</span>
+//      operator = isNot ? SqlLibraryOperators.IS_NOT_NAN : SqlLibraryOperators.IS_NAN;
+//      return operator.createCall(parserPos(ctx), result);
+<span class="nc" id="L1227">      throw new UnsupportedOperationException(&quot;IS NAN operator not supported&quot;);</span>
+    }
+
+    // Should not reach here if grammar is correctly defined
+<span class="nc" id="L1231">    throw new UnsupportedOperationException(&quot;Unsupported IS expression&quot;);</span>
+  }
+
+//  @Override
+//  public SqlNode visitPrimaryExpression(BigQuerySqlParser.PrimaryExpressionContext ctx) {
+//    // Handle literal values
+//    if (ctx.literalValue() != null) {
+//      return visit(ctx.literalValue());
+//    }
+//
+//    // Handle CASE expressions
+//    if (ctx.caseExpression() != null) {
+//      return visit(ctx.caseExpression());
+//    }
+//
+//    // Handle CAST expressions
+//    if (ctx.castExpression() != null) {
+//      return visit(ctx.castExpression());
+//    }
+//
+//    // Handle function calls
+//    if (ctx.functionCall() != null) {
+//      return visit(ctx.functionCall());
+//    }
+//
+//    // Handle column references
+//    if (ctx.columnReference() != null) {
+//      return visit(ctx.columnReference());
+//    }
+//
+//    // Handle array expressions
+//    if (ctx.arrayExpression() != null) {
+//      return visit(ctx.arrayExpression());
+//    }
+//
+//
+//    // Handle EXTRACT expressions
+//    if (ctx.extractExpression() != null) {
+//      return visit(ctx.extractExpression());
+//    }
+//
+//    // Handle IF expressions
+//    if (ctx.ifExpression() != null) {
+//      return visit(ctx.ifExpression());
+//    }
+//
+//    // Handle array expressions
+//    if (ctx.arrayExpression() != null) {
+//      return visit(ctx.arrayExpression());
+//    }
+//
+//    // Handle struct expressions
+//    if (ctx.structExpression() != null) {
+//      return visit(ctx.structExpression());
+//    }
+//
+//    // Handle subqueries
+//    if (ctx.queryExpression() != null) {
+//      return visit(ctx.queryExpression());
+//    }
+//
+//    // Handle array/struct field access (e.g., expr[idx])
+//
+//    throw new UnsupportedOperationException(&quot;Unsupported primary expression: &quot; + ctx.getText());
+//  }
+
+
+  @Override
+  public SqlNode visitParenthesisedPE(BigQuerySqlParser.ParenthesisedPEContext ctx) {
+<span class="fc" id="L1300">    SqlNode operand = visit(ctx.expression());</span>
+<span class="fc" id="L1301">    SqlIdentifier funcName = new SqlIdentifier(&quot;&quot;, parserPos(ctx));</span>
+<span class="fc" id="L1302">    SqlFunction op = new SqlUserDefinedFunction(funcName, SqlKind.OTHER_FUNCTION, null, null, null, null) {</span>
+      @Override
+      public void unparse(SqlWriter writer, SqlCall call, int leftPrec, int rightPrec) {
+<span class="fc" id="L1305">        final SqlWriter.Frame frame = writer.startList(&quot;(&quot;, &quot;)&quot;);</span>
+<span class="fc" id="L1306">        operand.unparse(writer, 0, 0);</span>
+<span class="fc" id="L1307">        writer.endList(frame);</span>
+<span class="fc" id="L1308">      }</span>
+    };
+<span class="fc" id="L1310">    return new SqlBasicCall(op, List.of(operand), parserPos(ctx));</span>
+  }
+
+  @Override
+  public SqlNode visitIfExpression(BigQuerySqlParser.IfExpressionContext ctx) {
+    // Get the three required expressions for IF(condition, then_expr, else_expr)
+<span class="fc" id="L1316">    SqlNode conditionExpr = visit(ctx.expression(0));</span>
+<span class="fc" id="L1317">    SqlNode thenExpr = visit(ctx.expression(1));</span>
+<span class="fc" id="L1318">    SqlNode elseExpr = visit(ctx.expression(2));</span>
+
+<span class="fc" id="L1320">    return SqlLibraryOperators.IF.createCall(</span>
+<span class="fc" id="L1321">        parserPos(ctx),</span>
+        conditionExpr, // Condition expression
+        thenExpr, // Then expression
+        elseExpr // Else expression
+    );
+  }
+
+  @Override
+  public SqlNode visitArrayOffsetPE(BigQuerySqlParser.ArrayOffsetPEContext ctx) {
+    // Get the array expression
+<span class="fc" id="L1331">    SqlNode arrayExpr = visit(ctx.primaryExpression());</span>
+
+    // Get the offset/index expression
+<span class="fc" id="L1334">    SqlNode offsetExpr = visit(ctx.expression());</span>
+
+<span class="fc" id="L1336">    return new SqlBasicCall(</span>
+        SqlLibraryOperators.OFFSET, // OFFSET operator
+<span class="fc" id="L1338">        List.of(arrayExpr, offsetExpr), // Operand: 0</span>
+        SqlParserPos.ZERO
+    );
+  }
+
+  @Override
+  public SqlNode visitStructOrdinalAccessPE(BigQuerySqlParser.StructOrdinalAccessPEContext ctx) {
+    try {
+      // Get the base struct expression
+<span class="fc" id="L1347">      SqlNode structExpr = visit(ctx.primaryExpression());</span>
+
+      // Get the float literal which is used as the ordinal index
+<span class="fc" id="L1350">      String ordinalText = ctx.FLOAT_LITERAL().getText();</span>
+
+      // Convert to integer index (remove decimal part if any)
+      int ordinalIndex;
+      try {
+<span class="fc" id="L1355">        ordinalIndex = Integer.parseInt(ordinalText.split(&quot;\\.&quot;)[1]);</span>
+<span class="nc" id="L1356">      } catch (NumberFormatException e) {</span>
+<span class="nc" id="L1357">        throw new UnsupportedOperationException(</span>
+            &quot;Invalid ordinal index for struct access: &quot; + ordinalText
+        );
+<span class="fc" id="L1360">      }</span>
+
+      // Handle SAFE access if present (using '?' operator for nullable structs)
+<span class="pc bpc" id="L1363" title="1 of 2 branches missed.">      boolean isSafeAccess = ctx.SAFE() != null;</span>
+
+      // Create a SqlLiteral for the ordinal index
+<span class="fc" id="L1366">      SqlLiteral ordinalLiteral = SqlLiteral.createExactNumeric(</span>
+<span class="fc" id="L1367">          String.valueOf(ordinalIndex),</span>
+<span class="fc" id="L1368">          parserPos(ctx)</span>
+      );
+
+<span class="pc bpc" id="L1371" title="1 of 2 branches missed.">      if (isSafeAccess) {</span>
+        // Use special operator for safe struct access by ordinal
+<span class="nc" id="L1373">        return SAFE_ACCESS.createCall(</span>
+<span class="nc" id="L1374">            parserPos(ctx),</span>
+            structExpr,
+            ordinalLiteral
+        );
+      } else {
+        // Standard struct field access by ordinal
+<span class="fc" id="L1380">        return SqlStdOperatorTable.ITEM.createCall(</span>
+<span class="fc" id="L1381">            parserPos(ctx),</span>
+            structExpr,
+            ordinalLiteral
+        );
+      }
+<span class="nc" id="L1386">    } catch (Exception e) {</span>
+<span class="nc" id="L1387">      throw new UnsupportedOperationException(</span>
+<span class="nc" id="L1388">          &quot;Failed to process struct ordinal access: &quot; + ctx.getText() + &quot; - &quot; + e.getMessage()</span>
+      );
+    }
+  }
+
+  @Override
+  public SqlNode visitSimpleStructAccessPE(BigQuerySqlParser.SimpleStructAccessPEContext ctx) {
+    try {
+      // Get the base struct expression
+<span class="fc" id="L1397">      SqlNode structExpr = visit(ctx.primaryExpression());</span>
+
+      // Get the field identifier
+<span class="fc" id="L1400">      SqlIdentifier fieldName = createIdentifier(ctx.identifier());</span>
+
+      // Handle SAFE access if present (struct?.field syntax)
+<span class="pc bpc" id="L1403" title="1 of 2 branches missed.">      boolean isSafeAccess = ctx.SAFE() != null;</span>
+
+<span class="pc bpc" id="L1405" title="1 of 2 branches missed.">      if (isSafeAccess) {</span>
+        // Use a special operator for safe struct access to prevent NULL errors
+<span class="nc" id="L1407">        return SAFE_ACCESS.createCall(</span>
+<span class="nc" id="L1408">            parserPos(ctx),</span>
+            structExpr,
+            fieldName
+        );
+      } else {
+        // Standard struct field access
+<span class="fc" id="L1414">        return SqlStdOperatorTable.DOT.createCall(</span>
+<span class="fc" id="L1415">            parserPos(ctx),</span>
+            structExpr,
+            fieldName
+        );
+      }
+<span class="nc" id="L1420">    } catch (Exception e) {</span>
+<span class="nc" id="L1421">      throw new UnsupportedOperationException(</span>
+<span class="nc" id="L1422">          &quot;Failed to process struct field access: &quot; + ctx.getText() + &quot; - &quot; + e.getMessage()</span>
+      );
+    }
+  }
+
+  @Override
+  public SqlNode visitParameterReference(BigQuerySqlParser.ParameterReferenceContext ctx) {
+    // Extract the parameter name without the '@' symbol
+<span class="fc" id="L1430">    String paramName = ctx.getText();</span>
+
+    // Create a parameter name identifier
+<span class="fc" id="L1433">    return new SqlIdentifier(paramName, parserPos(ctx));</span>
+  }
+
+  @Override
+  public SqlNode visitExtractExpression(BigQuerySqlParser.ExtractExpressionContext ctx) {
+    // Get the source datetime expression
+<span class="fc" id="L1439">    SqlNode sourceExpression = visit(ctx.expression());</span>
+
+    // Get the extract field
+<span class="fc" id="L1442">    String fieldName = ctx.extractField().getText().toUpperCase();</span>
+    SqlLiteral timeUnit;
+
+    // Map BigQuery extract fields to Calcite timeUnits
+<span class="pc bpc" id="L1446" title="14 of 16 branches missed.">    switch (fieldName) {</span>
+      case &quot;MICROSECOND&quot;:
+<span class="nc" id="L1448">        timeUnit = SqlLiteral.createSymbol(TimeUnitRange.MICROSECOND, parserPos(ctx.extractField()));</span>
+<span class="nc" id="L1449">        break;</span>
+      case &quot;MILLISECOND&quot;:
+<span class="nc" id="L1451">        timeUnit = SqlLiteral.createSymbol(TimeUnitRange.MILLISECOND, parserPos(ctx.extractField()));</span>
+<span class="nc" id="L1452">        break;</span>
+      case &quot;SECOND&quot;:
+<span class="nc" id="L1454">        timeUnit = SqlLiteral.createSymbol(TimeUnitRange.SECOND, parserPos(ctx.extractField()));</span>
+<span class="nc" id="L1455">        break;</span>
+      case &quot;MINUTE&quot;:
+<span class="nc" id="L1457">        timeUnit = SqlLiteral.createSymbol(TimeUnitRange.MINUTE, parserPos(ctx.extractField()));</span>
+<span class="nc" id="L1458">        break;</span>
+      case &quot;HOUR&quot;:
+<span class="nc" id="L1460">        timeUnit = SqlLiteral.createSymbol(TimeUnitRange.HOUR, parserPos(ctx.extractField()));</span>
+<span class="nc" id="L1461">        break;</span>
+      case &quot;DAY&quot;:
+<span class="nc" id="L1463">        timeUnit = SqlLiteral.createSymbol(TimeUnitRange.DAY, parserPos(ctx.extractField()));</span>
+<span class="nc" id="L1464">        break;</span>
+      case &quot;DAYOFWEEK&quot;:
+<span class="nc" id="L1466">        timeUnit = SqlLiteral.createSymbol(TimeUnitRange.DOW, parserPos(ctx.extractField()));</span>
+<span class="nc" id="L1467">        break;</span>
+      case &quot;DAYOFYEAR&quot;:
+<span class="nc" id="L1469">        timeUnit = SqlLiteral.createSymbol(TimeUnitRange.DOY, parserPos(ctx.extractField()));</span>
+<span class="nc" id="L1470">        break;</span>
+      case &quot;WEEK&quot;:
+<span class="nc" id="L1472">        timeUnit = SqlLiteral.createSymbol(TimeUnitRange.WEEK, parserPos(ctx.extractField()));</span>
+<span class="nc" id="L1473">        break;</span>
+      case &quot;MONTH&quot;:
+<span class="fc" id="L1475">        timeUnit = SqlLiteral.createSymbol(TimeUnitRange.MONTH, parserPos(ctx.extractField()));</span>
+<span class="fc" id="L1476">        break;</span>
+      case &quot;QUARTER&quot;:
+<span class="nc" id="L1478">        timeUnit = SqlLiteral.createSymbol(TimeUnitRange.QUARTER, parserPos(ctx.extractField()));</span>
+<span class="nc" id="L1479">        break;</span>
+      case &quot;YEAR&quot;:
+<span class="fc" id="L1481">        timeUnit = SqlLiteral.createSymbol(TimeUnitRange.YEAR, parserPos(ctx.extractField()));</span>
+<span class="fc" id="L1482">        break;</span>
+      case &quot;DATE&quot;:
+        // Special handling for DATE extraction
+<span class="nc" id="L1485">        timeUnit = SqlLiteral.createSymbol(SqlTypeName.DATE, parserPos(ctx.extractField()));</span>
+<span class="nc" id="L1486">        break;</span>
+      case &quot;TIME&quot;:
+        // Special handling for TIME extraction
+<span class="nc" id="L1489">        timeUnit = SqlLiteral.createSymbol(SqlTypeName.TIME, parserPos(ctx.extractField()));</span>
+<span class="nc" id="L1490">        break;</span>
+      case &quot;DATETIME&quot;:
+        // Special handling for DATETIME extraction
+<span class="nc" id="L1493">        timeUnit = SqlLiteral.createSymbol(SqlTypeName.TIMESTAMP, parserPos(ctx.extractField()));</span>
+<span class="nc" id="L1494">        break;</span>
+      default:
+<span class="nc" id="L1496">        throw new UnsupportedOperationException(&quot;Unsupported EXTRACT field: &quot; + fieldName);</span>
+    }
+
+    // Create the EXTRACT function call with the appropriate timeUnit and source expression
+<span class="fc" id="L1500">    return SqlStdOperatorTable.EXTRACT.createCall(</span>
+<span class="fc" id="L1501">        parserPos(ctx),</span>
+        timeUnit,
+        sourceExpression
+    );
+  }
+
+  @Override
+  public SqlNode visitArrayElementAccess(BigQuerySqlParser.ArrayElementAccessContext ctx) {
+<span class="nc" id="L1509">    throw new UnsupportedOperationException(&quot;Array element access not supported&quot;);</span>
+  }
+
+  @Override
+  public SqlNode visitArraySlice(BigQuerySqlParser.ArraySliceContext ctx) {
+<span class="nc" id="L1514">    throw new UnsupportedOperationException(&quot;Array slice not supported&quot;);</span>
+  }
+
+  @Override
+  public SqlNode visitArraySafeOffset(BigQuerySqlParser.ArraySafeOffsetContext ctx) {
+<span class="nc" id="L1519">    throw new UnsupportedOperationException(&quot;Array safe offset not supported&quot;);</span>
+  }
+
+  @Override
+  public SqlNode visitArrayOrdinal(BigQuerySqlParser.ArrayOrdinalContext ctx) {
+<span class="nc" id="L1524">    throw new UnsupportedOperationException(&quot;Array ordinal not supported&quot;);</span>
+  }
+
+  @Override
+  public SqlNode visitArraySafeOrdinal(BigQuerySqlParser.ArraySafeOrdinalContext ctx) {
+<span class="nc" id="L1529">    throw new UnsupportedOperationException(&quot;Array safe ordinal not supported&quot;);</span>
+  }
+
+  @Override
+  public SqlNode visitLiteralValue(BigQuerySqlParser.LiteralValueContext ctx) {
+    // Handle numeric literals
+<span class="fc bfc" id="L1535" title="All 2 branches covered.">    if (ctx.NUMERIC_LITERAL() != null) {</span>
+<span class="fc" id="L1536">      String text = ctx.NUMERIC_LITERAL().getText();</span>
+<span class="pc bpc" id="L1537" title="1 of 4 branches missed.">      if (text.contains(&quot;.&quot;) || text.toLowerCase().contains(&quot;e&quot;)) {</span>
+        // It's a decimal/float value
+<span class="fc" id="L1539">        return SqlLiteral.createExactNumeric(text, parserPos(ctx));</span>
+      } else {
+        // It's an integer
+<span class="fc" id="L1542">        return SqlLiteral.createExactNumeric(text, parserPos(ctx));</span>
+      }
+    }
+
+    // Handle string literals
+<span class="fc bfc" id="L1547" title="All 2 branches covered.">    if (ctx.STRING_LITERAL() != null) {</span>
+<span class="fc" id="L1548">      String text = ctx.STRING_LITERAL().getText();</span>
+      // Remove the surrounding quotes
+<span class="fc" id="L1550">      text = text.substring(1, text.length() - 1).replace(&quot;''&quot;, &quot;'&quot;);</span>
+<span class="fc" id="L1551">      return SqlLiteral.createCharString(text, parserPos(ctx));</span>
+    }
+
+    // Handle bytes literals
+<span class="pc bpc" id="L1555" title="1 of 2 branches missed.">    if (ctx.BYTES_LITERAL() != null) {</span>
+<span class="nc" id="L1556">      String text = ctx.BYTES_LITERAL().getText();</span>
+      // Remove the 'b' or 'rb' prefix and the surrounding quotes
+<span class="nc bnc" id="L1558" title="All 2 branches missed.">      int startIdx = text.startsWith(&quot;rb&quot;) ? 3 : 2;</span>
+<span class="nc" id="L1559">      text = text.substring(startIdx, text.length() - 1).replace(&quot;''&quot;, &quot;'&quot;);</span>
+<span class="nc" id="L1560">      return SqlLiteral.createBinaryString(text.getBytes(), parserPos(ctx));</span>
+    }
+
+    // Handle date literals
+<span class="pc bpc" id="L1564" title="1 of 2 branches missed.">    if (ctx.DATE_LITERAL() != null) {</span>
+<span class="nc" id="L1565">      String text = ctx.DATE_LITERAL().getText();</span>
+      // Extract the date part from 'DATE yyyy-mm-dd'
+<span class="nc" id="L1567">      String datePart = text.substring(5, text.length() - 1).replace(&quot;'&quot;, &quot;&quot;);</span>
+//      return SqlLiteral.createDate(DateString.parse(datePart), parserPos(ctx));
+<span class="nc" id="L1569">      throw new UnsupportedOperationException(&quot;Date literal not supported&quot;);</span>
+    }
+
+    // Handle timestamp literals
+<span class="pc bpc" id="L1573" title="1 of 2 branches missed.">    if (ctx.TIMESTAMP_LITERAL() != null) {</span>
+<span class="nc" id="L1574">      String text = ctx.TIMESTAMP_LITERAL().getText();</span>
+      // Extract the timestamp part from 'TIMESTAMP yyyy-mm-dd hh:mm:ss'
+<span class="nc" id="L1576">      String timestampPart = text.substring(10, text.length() - 1).replace(&quot;'&quot;, &quot;&quot;);</span>
+//      return SqlLiteral.createTimestamp(TimestampString.parse(timestampPart), 0, parserPos(ctx));
+<span class="nc" id="L1578">      throw new UnsupportedOperationException(&quot;Timestamp literal not supported&quot;);</span>
+    }
+
+    // Handle boolean literals
+<span class="pc bpc" id="L1582" title="1 of 2 branches missed.">    if (ctx.BOOL_LITERAL() != null) {</span>
+<span class="nc" id="L1583">      String text = ctx.BOOL_LITERAL().getText().toLowerCase();</span>
+<span class="nc" id="L1584">      boolean value = text.equals(&quot;true&quot;);</span>
+<span class="nc" id="L1585">      return SqlLiteral.createBoolean(value, parserPos(ctx));</span>
+    }
+
+    // Handle NULL literal
+<span class="pc bpc" id="L1589" title="1 of 2 branches missed.">    if (ctx.NULL() != null) {</span>
+<span class="fc" id="L1590">      return SqlLiteral.createNull(parserPos(ctx));</span>
+    }
+
+<span class="nc" id="L1593">    throw new UnsupportedOperationException(&quot;Unsupported literal type: &quot; + ctx.getText());</span>
+  }
+
+  //  @Override
+//    public SqlNode visitInPredicateValue(BigQuerySqlParser.InPredicateValueContext ctx) {
+//      if (!ctx.expression().isEmpty()) {
+//        List&lt;SqlNode&gt; values = ctx.expression().stream()
+//            .map(this::visit)
+//            .collect(Collectors.toList());
+//        return SqlStdOperatorTable.ROW.createCall(parserPos(ctx), values);
+//      } else if (ctx.queryExpression() != null) {
+//        return visit(ctx.queryExpression());
+//      } else if (ctx.UNNEST() != null) {
+//        return new SqlUnnestOperator(false).createCall(parserPos(ctx), visit(ctx.expression(0)));
+//      }
+//      return SqlStdOperatorTable.ROW.createCall(parserPos(ctx));
+//    }
+
+  @Override
+  public SqlNode visitCaseExpression(BigQuerySqlParser.CaseExpressionContext ctx) {
+<span class="pc bpc" id="L1613" title="1 of 2 branches missed.">    if (ctx.simpleCaseExpression() != null) {</span>
+<span class="nc" id="L1614">      return visit(ctx.simpleCaseExpression());</span>
+    } else {
+<span class="fc" id="L1616">      return visit(ctx.searchedCaseExpression());</span>
+    }
+  }
+
+  @Override
+  public SqlNode visitSimpleCaseExpression(BigQuerySqlParser.SimpleCaseExpressionContext ctx) {
+<span class="nc" id="L1622">    SqlNode value = visit(ctx.expression(0));</span>
+
+<span class="nc" id="L1624">    List&lt;SqlNode&gt; operands = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L1625">    operands.add(null); // First operand is null for a simple CASE</span>
+<span class="nc" id="L1626">    operands.add(value);</span>
+
+<span class="nc bnc" id="L1628" title="All 2 branches missed.">    for (int i = 0; i &lt; ctx.WHEN().size(); i++) {</span>
+<span class="nc" id="L1629">      operands.add(visit(ctx.expression(i * 2 + 1))); // When expression</span>
+<span class="nc" id="L1630">      operands.add(visit(ctx.expression(i * 2 + 2))); // Then expression</span>
+    }
+
+<span class="nc bnc" id="L1633" title="All 2 branches missed.">    if (ctx.ELSE() != null) {</span>
+<span class="nc" id="L1634">      operands.add(visit(ctx.expression().get(ctx.expression().size() - 1))); // Else expression</span>
+    }
+
+<span class="nc" id="L1637">    return SqlStdOperatorTable.CASE.createCall(parserPos(ctx), operands);</span>
+  }
+
+  @Override
+  public SqlNode visitSearchedCaseExpression(BigQuerySqlParser.SearchedCaseExpressionContext ctx) {
+<span class="fc" id="L1642">    SqlNodeList whenList = new SqlNodeList(parserPos(ctx));</span>
+<span class="fc" id="L1643">    SqlNodeList thenList = new SqlNodeList(parserPos(ctx));</span>
+<span class="fc" id="L1644">    SqlNode elseExpr = null;</span>
+
+<span class="fc bfc" id="L1646" title="All 2 branches covered.">    for (int i = 0; i &lt; ctx.WHEN().size(); i++) {</span>
+<span class="fc" id="L1647">      whenList.add(visit(ctx.expression(i * 2))); // When expression</span>
+<span class="fc" id="L1648">      thenList.add(visit(ctx.expression(i * 2 + 1))); // Then expression</span>
+    }
+
+<span class="pc bpc" id="L1651" title="1 of 2 branches missed.">    if (ctx.ELSE() != null) {</span>
+<span class="fc" id="L1652">      elseExpr = visit(ctx.expression().get(ctx.expression().size() - 1)); // Else expression</span>
+    }
+
+<span class="fc" id="L1655">    return new SqlCase(parserPos(ctx), null, whenList, thenList, elseExpr);</span>
+  }
+
+  private SqlBasicCall createUnresolvedCall(SqlParserPos pos, String opName, List&lt;SqlNode&gt; operands) {
+<span class="nc" id="L1659">    return new SqlBasicCall(</span>
+        new SqlUnresolvedFunction(
+            new SqlIdentifier(opName, pos),
+            null,
+            null,
+            null,
+            null,
+            SqlFunctionCategory.USER_DEFINED_FUNCTION
+        ),
+        operands,
+        pos
+    );
+  }
+
+  @Override
+  public SqlNode visitCastExpression(BigQuerySqlParser.CastExpressionContext ctx) {
+<span class="fc" id="L1675">    SqlNode operand = visit(ctx.expression());</span>
+<span class="fc" id="L1676">    SqlDataTypeSpec typeSpec = createDataTypeSpec(ctx.dataType());</span>
+
+<span class="fc bfc" id="L1678" title="All 2 branches covered.">    if (ctx.SAFE_CAST() != null) {</span>
+      // BigQuery specific safe cast
+<span class="fc" id="L1680">      return SqlLibraryOperators.SAFE_CAST.createCall(parserPos(ctx), operand, typeSpec);</span>
+    } else {
+<span class="fc" id="L1682">      return SqlStdOperatorTable.CAST.createCall(parserPos(ctx), operand, typeSpec);</span>
+    }
+  }
+
+  @Override
+  public SqlNode visitArrayExpression(BigQuerySqlParser.ArrayExpressionContext ctx) {
+<span class="nc bnc" id="L1688" title="All 2 branches missed.">    if (!ctx.expression().isEmpty()) {</span>
+      // Array literal [expr1, expr2, ...]
+<span class="nc" id="L1690">      List&lt;SqlNode&gt; elements = ctx.expression().stream()</span>
+<span class="nc" id="L1691">          .map(this::visit)</span>
+<span class="nc" id="L1692">          .collect(Collectors.toList());</span>
+
+<span class="nc bnc" id="L1694" title="All 2 branches missed.">      if (ctx.dataType() != null) {</span>
+        // Array with explicit type ARRAY&lt;type&gt;[...]
+<span class="nc" id="L1696">        SqlDataTypeSpec typeSpec = createDataTypeSpec(ctx.dataType());</span>
+//          new SqlArrayConstructor(typeSpec, parserPos(ctx))
+<span class="nc" id="L1698">        return SqlStdOperatorTable.ARRAY_VALUE_CONSTRUCTOR.createCall(parserPos(ctx), elements);</span>
+      } else {
+        // Simple array literal
+<span class="nc" id="L1701">        return SqlStdOperatorTable.ARRAY_VALUE_CONSTRUCTOR.createCall(parserPos(ctx), elements);</span>
+      }
+//    } else if (ctx.SELECT() != null) {
+//      // ARRAY subquery
+//      SqlNode selectItem = visit(ctx.selectItem());
+//      SqlNode from = visit(ctx.tableExpression());
+//      SqlNode where = ctx.whereClause() != null ? visit(ctx.whereClause()) : null;
+//
+//      List&lt;SqlNode&gt; operands = new ArrayList&lt;&gt;();
+//      operands.add(selectItem);
+//      operands.add(from);
+//      if (where != null) {
+//        operands.add(where);
+//      }
+//
+//      return SqlStdOperatorTable.ARRAY_VALUE_CONSTRUCTOR.createCall(parserPos(ctx), operands);
+    } else {
+      // Empty array
+<span class="nc" id="L1719">      return SqlStdOperatorTable.ARRAY_VALUE_CONSTRUCTOR.createCall(parserPos(ctx));</span>
+    }
+  }
+
+  @Override
+  public SqlNode visitStructExpression(BigQuerySqlParser.StructExpressionContext ctx) {
+<span class="nc bnc" id="L1725" title="All 2 branches missed.">    if (!ctx.structField().isEmpty()) {</span>
+      // STRUCT with fields
+<span class="nc" id="L1727">      List&lt;SqlNode&gt; fields = ctx.structField().stream()</span>
+<span class="nc" id="L1728">          .map(this::visit)</span>
+<span class="nc" id="L1729">          .collect(Collectors.toList());</span>
+<span class="nc" id="L1730">      throw new UnsupportedOperationException(&quot;StructExpression not supported.&quot;);</span>
+//        return SqlLibraryOperators.STRUCT.createCall(parserPos(ctx), fields);
+<span class="nc bnc" id="L1732" title="All 2 branches missed.">    } else if (!ctx.identifier().isEmpty()) {</span>
+      // STRUCT with typed fields
+<span class="nc" id="L1734">      List&lt;SqlNode&gt; fields = new ArrayList&lt;&gt;();</span>
+<span class="nc bnc" id="L1735" title="All 2 branches missed.">      for (int i = 0; i &lt; ctx.identifier().size(); i++) {</span>
+<span class="nc" id="L1736">        SqlIdentifier fieldName = new SqlIdentifier(ctx.identifier(i).getText(), parserPos(ctx));</span>
+<span class="nc" id="L1737">        SqlDataTypeSpec fieldType = createDataTypeSpec(ctx.dataType(i));</span>
+//          fields.add(new SqlStructFieldDeclaration(fieldName, fieldType, parserPos(ctx)));
+<span class="nc" id="L1739">        throw new UnsupportedOperationException(&quot;StructExpression not supported.&quot;);</span>
+      }
+<span class="nc" id="L1741">      throw new UnsupportedOperationException(&quot;StructExpression not supported.&quot;);</span>
+//        return new SqlStructTypeConstructor(parserPos(ctx)).createCall(parserPos(ctx), fields);
+    } else {
+      // Empty STRUCT
+<span class="nc" id="L1745">      throw new UnsupportedOperationException(&quot;StructExpression not supported.&quot;);</span>
+//        return new SqlStructConstructor(parserPos(ctx)).createCall(parserPos(ctx));
+    }
+  }
+
+  private SqlDataTypeSpec createDataTypeSpec(BigQuerySqlParser.DataTypeContext dataTypeContext) {
+<span class="fc" id="L1751">    return (SqlDataTypeSpec) visit(dataTypeContext);</span>
+  }
+
+  @Override
+  public SqlNode visitStructField(BigQuerySqlParser.StructFieldContext ctx) {
+<span class="nc" id="L1756">    SqlNode value = visit(ctx.expression());</span>
+<span class="nc bnc" id="L1757" title="All 2 branches missed.">    if (ctx.identifier() != null) {</span>
+<span class="nc" id="L1758">      SqlIdentifier fieldName = new SqlIdentifier(ctx.identifier().getText(), parserPos(ctx));</span>
+<span class="nc" id="L1759">      throw new UnsupportedOperationException(&quot;StructField not supported.&quot;);</span>
+//        return new SqlStructField(fieldName, value, parserPos(ctx));
+    } else {
+<span class="nc" id="L1762">      return value;</span>
+    }
+  }
+
+  @Override
+  public SqlNode visitFunctionCall(BigQuerySqlParser.FunctionCallContext ctx) {
+<span class="pc bpc" id="L1768" title="1 of 2 branches missed.">    if (ctx.COUNT() != null) {</span>
+<span class="nc bnc" id="L1769" title="All 2 branches missed.">      boolean distinct = ctx.DISTINCT() != null;</span>
+      SqlNode operand;
+<span class="nc bnc" id="L1771" title="All 2 branches missed.">      if (ctx.expression() != null) {</span>
+<span class="nc" id="L1772">        operand = visit(ctx.expression(0));</span>
+      } else {
+        // COUNT(*)
+<span class="nc" id="L1775">        operand = SqlIdentifier.star(parserPos(ctx));</span>
+      }
+<span class="nc" id="L1777">      return createAggFunction(SqlStdOperatorTable.COUNT, distinct, operand);</span>
+<span class="fc bfc" id="L1778" title="All 2 branches covered.">    } else if (ctx.SUM() != null) {</span>
+<span class="pc bpc" id="L1779" title="1 of 2 branches missed.">      boolean distinct = ctx.DISTINCT() != null;</span>
+<span class="pc bpc" id="L1780" title="1 of 2 branches missed.">      SqlNode operand = ctx.expression() != null ? visit(ctx.expression(0)) : SqlIdentifier.star(parserPos(ctx));</span>
+<span class="fc" id="L1781">      return createAggFunction(SqlStdOperatorTable.SUM, distinct, operand);</span>
+<span class="fc bfc" id="L1782" title="All 2 branches covered.">    } else if (ctx.AVG() != null) {</span>
+<span class="pc bpc" id="L1783" title="1 of 2 branches missed.">      boolean distinct = ctx.DISTINCT() != null;</span>
+<span class="pc bpc" id="L1784" title="1 of 2 branches missed.">      SqlNode operand = ctx.expression() != null ? visit(ctx.expression(0)) : SqlIdentifier.star(parserPos(ctx));</span>
+<span class="fc" id="L1785">      return createAggFunction(SqlStdOperatorTable.AVG, distinct, operand);</span>
+<span class="pc bpc" id="L1786" title="1 of 2 branches missed.">    } else if (ctx.MIN() != null) {</span>
+<span class="nc bnc" id="L1787" title="All 2 branches missed.">      boolean distinct = ctx.DISTINCT() != null;</span>
+<span class="nc bnc" id="L1788" title="All 2 branches missed.">      SqlNode operand = ctx.expression() != null ? visit(ctx.expression(0)) : SqlIdentifier.star(parserPos(ctx));</span>
+<span class="nc" id="L1789">      return createAggFunction(SqlStdOperatorTable.MIN, distinct, operand);</span>
+<span class="pc bpc" id="L1790" title="1 of 2 branches missed.">    } else if (ctx.MAX() != null) {</span>
+<span class="nc bnc" id="L1791" title="All 2 branches missed.">      boolean distinct = ctx.DISTINCT() != null;</span>
+<span class="nc bnc" id="L1792" title="All 2 branches missed.">      SqlNode operand = ctx.expression() != null ? visit(ctx.expression(0)) : SqlIdentifier.star(parserPos(ctx));</span>
+<span class="nc" id="L1793">      return createAggFunction(SqlStdOperatorTable.MAX, distinct, operand);</span>
+<span class="pc bpc" id="L1794" title="1 of 2 branches missed.">    } else if (ctx.EXTRACT() != null) {</span>
+<span class="nc" id="L1795">      SqlIdentifier timeUnit = new SqlIdentifier(ctx.identifier().getText(), parserPos(ctx));</span>
+<span class="nc" id="L1796">      SqlNode operand = visit(ctx.expression(0));</span>
+<span class="nc" id="L1797">      return SqlStdOperatorTable.EXTRACT.createCall(parserPos(ctx), timeUnit, operand);</span>
+<span class="pc bpc" id="L1798" title="1 of 2 branches missed.">    } else if (ctx.DATE_ADD() != null) {</span>
+<span class="nc" id="L1799">      SqlNode date = visit(ctx.expression(0));</span>
+<span class="nc" id="L1800">      SqlNode interval = visit(ctx.expression(1));</span>
+<span class="nc" id="L1801">      SqlIdentifier timeUnit = new SqlIdentifier(ctx.dateUnit().getText(), parserPos(ctx));</span>
+<span class="nc" id="L1802">      return SqlLibraryOperators.DATE_ADD.createCall(parserPos(ctx), date, interval, timeUnit);</span>
+<span class="fc bfc" id="L1803" title="All 2 branches covered.">    } else if (ctx.DATE_SUB() != null) {</span>
+<span class="fc" id="L1804">      SqlNode date = visit(ctx.expression(0));</span>
+<span class="fc" id="L1805">      SqlNode interval = visit(ctx.expression(1));</span>
+<span class="fc" id="L1806">      SqlIdentifier timeUnit = new SqlIdentifier(ctx.dateUnit().getText(), parserPos(ctx));</span>
+<span class="fc" id="L1807">      return SqlLibraryOperators.DATE_SUB.createCall(parserPos(ctx), date, interval, timeUnit);</span>
+<span class="pc bpc" id="L1808" title="1 of 2 branches missed.">    } else if (ctx.DATE_DIFF() != null) {</span>
+<span class="nc" id="L1809">      SqlNode date1 = visit(ctx.expression(0));</span>
+<span class="nc" id="L1810">      SqlNode date2 = visit(ctx.expression(1));</span>
+<span class="nc" id="L1811">      SqlIdentifier timeUnit = new SqlIdentifier(ctx.dateUnit().getText(), parserPos(ctx));</span>
+<span class="nc" id="L1812">      return SqlLibraryOperators.DATE_DIFF.createCall(parserPos(ctx), date1, date2, timeUnit);</span>
+<span class="pc bpc" id="L1813" title="1 of 2 branches missed.">    } else if (ctx.TIMESTAMP_ADD() != null) {</span>
+<span class="nc" id="L1814">      SqlNode timestamp = visit(ctx.expression(0));</span>
+<span class="nc" id="L1815">      SqlNode interval = visit(ctx.expression(1));</span>
+<span class="nc" id="L1816">      SqlIdentifier timeUnit = new SqlIdentifier(ctx.dateUnit().getText(), parserPos(ctx));</span>
+<span class="nc" id="L1817">      return SqlLibraryOperators.TIMESTAMP_ADD2.createCall(parserPos(ctx), timestamp, interval, timeUnit);</span>
+<span class="pc bpc" id="L1818" title="1 of 2 branches missed.">    } else if (ctx.TIMESTAMP_SUB() != null) {</span>
+<span class="nc" id="L1819">      SqlNode timestamp = visit(ctx.expression(0));</span>
+<span class="nc" id="L1820">      SqlNode interval = visit(ctx.expression(1));</span>
+<span class="nc" id="L1821">      SqlIdentifier timeUnit = new SqlIdentifier(ctx.dateUnit().getText(), parserPos(ctx));</span>
+<span class="nc" id="L1822">      return SqlLibraryOperators.TIMESTAMP_SUB.createCall(parserPos(ctx), timestamp, interval, timeUnit);</span>
+<span class="fc bfc" id="L1823" title="All 2 branches covered.">    } else if (ctx.TIMESTAMP_DIFF() != null) {</span>
+<span class="fc" id="L1824">      SqlNode timestamp1 = visit(ctx.expression(0));</span>
+<span class="fc" id="L1825">      SqlNode timestamp2 = visit(ctx.expression(1));</span>
+<span class="fc" id="L1826">      SqlIdentifier timeUnit = new SqlIdentifier(ctx.dateUnit().getText(), parserPos(ctx));</span>
+<span class="fc" id="L1827">      return SqlLibraryOperators.TIMESTAMP_DIFF3.createCall(parserPos(ctx), timestamp1, timestamp2, timeUnit);</span>
+<span class="pc bpc" id="L1828" title="1 of 2 branches missed.">    } else if (ctx.DATE_TRUNC() != null) {</span>
+<span class="nc" id="L1829">      SqlNode date = visit(ctx.expression(0));</span>
+<span class="nc" id="L1830">      SqlIdentifier timeUnit = new SqlIdentifier(ctx.dateUnit().getText(), parserPos(ctx));</span>
+<span class="nc" id="L1831">      return SqlLibraryOperators.DATE_TRUNC.createCall(parserPos(ctx), date, timeUnit);</span>
+<span class="pc bpc" id="L1832" title="1 of 2 branches missed.">    } else if (ctx.TIMESTAMP_TRUNC() != null) {</span>
+<span class="nc" id="L1833">      SqlNode timestamp = visit(ctx.expression(0));</span>
+<span class="nc" id="L1834">      SqlIdentifier timeUnit = new SqlIdentifier(ctx.dateUnit().getText(), parserPos(ctx));</span>
+<span class="nc" id="L1835">      return SqlLibraryOperators.TIMESTAMP_TRUNC.createCall(parserPos(ctx), timestamp, timeUnit);</span>
+<span class="pc bpc" id="L1836" title="1 of 2 branches missed.">    } else if (ctx.JSON_EXTRACT() != null) {</span>
+<span class="nc" id="L1837">      SqlNode json = visit(ctx.expression(0));</span>
+<span class="nc" id="L1838">      SqlNode path = visit(ctx.expression(1));</span>
+<span class="nc" id="L1839">      throw new UnsupportedOperationException(&quot;JsonExtract not supported.&quot;);</span>
+<span class="pc bpc" id="L1840" title="1 of 2 branches missed.">    } else if (ctx.JSON_EXTRACT_SCALAR() != null) {</span>
+<span class="nc" id="L1841">      SqlNode json = visit(ctx.expression(0));</span>
+<span class="nc" id="L1842">      SqlNode path = visit(ctx.expression(1));</span>
+<span class="nc" id="L1843">      throw new UnsupportedOperationException(&quot;JsonExtractScalar not supported.&quot;);</span>
+<span class="pc bpc" id="L1844" title="1 of 2 branches missed.">    } else if (ctx.JSON_QUERY() != null) {</span>
+<span class="nc" id="L1845">      SqlNode json = visit(ctx.expression(0));</span>
+<span class="nc" id="L1846">      SqlNode path = visit(ctx.expression(1));</span>
+<span class="nc" id="L1847">      throw new UnsupportedOperationException(&quot;JsonQuery not supported.&quot;);</span>
+<span class="pc bpc" id="L1848" title="1 of 2 branches missed.">    } else if (ctx.JSON_VALUE() != null) {</span>
+<span class="nc" id="L1849">      SqlNode json = visit(ctx.expression(0));</span>
+<span class="nc" id="L1850">      SqlNode path = visit(ctx.expression(1));</span>
+<span class="nc" id="L1851">      throw new UnsupportedOperationException(&quot;JsonValue not supported.&quot;);</span>
+<span class="pc bpc" id="L1852" title="1 of 2 branches missed.">    } else if (ctx.TO_JSON_STRING() != null) {</span>
+<span class="nc" id="L1853">      SqlNode value = visit(ctx.expression(0));</span>
+<span class="nc" id="L1854">      throw new UnsupportedOperationException(&quot;ToJsonString not supported.&quot;);</span>
+<span class="pc bpc" id="L1855" title="1 of 2 branches missed.">    } else if (ctx.PARSE_JSON() != null) {</span>
+<span class="nc" id="L1856">      SqlNode jsonString = visit(ctx.expression(0));</span>
+<span class="nc" id="L1857">      throw new UnsupportedOperationException(&quot;ParseJson not supported.&quot;);</span>
+<span class="pc bpc" id="L1858" title="1 of 2 branches missed.">    } else if (ctx.ARRAY_AGG() != null) {</span>
+<span class="nc bnc" id="L1859" title="All 2 branches missed.">      boolean distinct = ctx.DISTINCT() != null;</span>
+<span class="nc" id="L1860">      SqlNode value = visit(ctx.expression(0));</span>
+
+      // Handle optional ORDER BY and LIMIT
+<span class="nc" id="L1863">      List&lt;SqlNode&gt; operands = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L1864">      operands.add(value);</span>
+
+<span class="nc bnc" id="L1866" title="All 2 branches missed.">      if (!ctx.orderingItem().isEmpty()) {</span>
+<span class="nc" id="L1867">        List&lt;SqlNode&gt; orderList = ctx.orderingItem().stream()</span>
+<span class="nc" id="L1868">            .map(this::visit)</span>
+<span class="nc" id="L1869">            .collect(Collectors.toList());</span>
+<span class="nc" id="L1870">        operands.add(SqlNodeList.of(parserPos(ctx), orderList));</span>
+      }
+
+<span class="nc bnc" id="L1873" title="All 2 branches missed.">      if (ctx.LIMIT() != null) {</span>
+<span class="nc" id="L1874">        operands.add(visit(ctx.expression(ctx.expression().size() - 1)));</span>
+      }
+
+<span class="nc" id="L1877">      return SqlLibraryOperators.ARRAY_AGG.createCall(parserPos(ctx), operands);</span>
+<span class="pc bpc" id="L1878" title="1 of 2 branches missed.">    } else if (ctx.GENERATE_ARRAY() != null) {</span>
+<span class="nc" id="L1879">      SqlNode start = visit(ctx.expression(0));</span>
+<span class="nc" id="L1880">      SqlNode end = visit(ctx.expression(1));</span>
+<span class="nc bnc" id="L1881" title="All 2 branches missed.">      SqlNode step = ctx.expression().size() &gt; 2 ? visit(ctx.expression(2)) : null;</span>
+
+<span class="nc" id="L1883">      throw new UnsupportedOperationException(&quot;GenerateArray not supported.&quot;);</span>
+//        if (step != null) {
+//          return new SqlGenerateArrayFunction(parserPos(ctx)).createCall(parserPos(ctx), start, end, step);
+//        } else {
+//          return new SqlGenerateArrayFunction(parserPos(ctx)).createCall(parserPos(ctx), start, end);
+//        }
+<span class="pc bpc" id="L1889" title="1 of 2 branches missed.">    } else if (ctx.GENERATE_DATE_ARRAY() != null) {</span>
+<span class="nc" id="L1890">      SqlNode startDate = visit(ctx.expression(0));</span>
+<span class="nc" id="L1891">      SqlNode endDate = visit(ctx.expression(1));</span>
+<span class="nc bnc" id="L1892" title="All 2 branches missed.">      SqlNode step = ctx.expression().size() &gt; 2 ? visit(ctx.expression(2)) : null;</span>
+
+<span class="nc" id="L1894">      throw new UnsupportedOperationException(&quot;GenerateDateArray not supported.&quot;);</span>
+//        if (step != null) {
+//          return new SqlGenerateDateArrayFunction(parserPos(ctx)).createCall(parserPos(ctx), startDate, endDate, step);
+//        } else {
+//          return new SqlGenerateDateArrayFunction(parserPos(ctx)).createCall(parserPos(ctx), startDate, endDate);
+//        }
+    } else {
+      SqlNode call;
+<span class="fc bfc" id="L1902" title="All 2 branches covered.">      if (ctx.ROW_NUMBER() != null) {</span>
+<span class="fc" id="L1903">        call = createAggFunction(SqlStdOperatorTable.ROW_NUMBER, false);</span>
+<span class="fc bfc" id="L1904" title="All 2 branches covered.">      } else if (ctx.RANK() != null) {</span>
+<span class="fc" id="L1905">        call = createAggFunction(SqlStdOperatorTable.RANK, false);</span>
+      } else {
+        // Generic function call
+<span class="fc" id="L1908">        SqlIdentifier funcName = new SqlIdentifier(ctx.identifier().getText(), parserPos(ctx));</span>
+<span class="fc" id="L1909">        List&lt;SqlNode&gt; operands = new ArrayList&lt;&gt;();</span>
+
+<span class="pc bpc" id="L1911" title="1 of 2 branches missed.">        boolean distinct = ctx.DISTINCT() != null;</span>
+
+        // Handle arguments
+<span class="fc bfc" id="L1914" title="All 2 branches covered.">        if (!ctx.expression().isEmpty()) {</span>
+<span class="fc" id="L1915">          operands.addAll(ctx.expression().stream()</span>
+<span class="fc" id="L1916">              .map(this::visit)</span>
+<span class="fc" id="L1917">              .toList());</span>
+<span class="pc bpc" id="L1918" title="1 of 2 branches missed.">        } else if (ctx.getChild(2).getText().equals(&quot;*&quot;)) {</span>
+<span class="nc" id="L1919">          operands.add(SqlIdentifier.star(parserPos(ctx)));</span>
+        }
+
+        // Create the function
+<span class="pc bpc" id="L1923" title="1 of 2 branches missed.">        SqlFunction sqlFunction = distinct</span>
+<span class="nc" id="L1924">            ? new SqlUserDefinedAggFunction(funcName, SqlKind.OTHER_FUNCTION, null, null, null, null, false, false, Optionality.OPTIONAL)</span>
+<span class="fc" id="L1925">            : new SqlUserDefinedFunction(funcName, SqlKind.OTHER_FUNCTION, null, null, null, null);</span>
+
+<span class="fc" id="L1927">        call = sqlFunction.createCall(parserPos(ctx), operands);</span>
+      }
+
+      // Handle OVER clause if present
+<span class="fc bfc" id="L1931" title="All 2 branches covered.">      if (ctx.windowSpecification() != null) {</span>
+<span class="fc" id="L1932">        SqlNode window = visit(ctx.windowSpecification());</span>
+<span class="fc" id="L1933">        return SqlStdOperatorTable.OVER.createCall(parserPos(ctx), call, window);</span>
+      }
+
+<span class="fc" id="L1936">      return call;</span>
+    }
+  }
+
+  private SqlNode createAggFunction(SqlAggFunction aggFunction, boolean distinct, SqlNode... operands) {
+<span class="pc bpc" id="L1941" title="1 of 2 branches missed.">    assert !distinct;</span>
+<span class="fc" id="L1942">    return aggFunction.createCall(SqlParserPos.ZERO, operands);</span>
+  }
+
+  @Override
+  public SqlNode visitColumnReference(BigQuerySqlParser.ColumnReferenceContext ctx) {
+//    List&lt;String&gt; names = ctx.tableIdentifier().stream().map(RuleContext::getText).toList();
+<span class="fc" id="L1948">    List&lt;String&gt; names = ctx.identifier().stream().map(RuleContext::getText).toList();</span>
+//    if (ctx.tableIdentifier().size() == 2) {
+//      // Three-part identifier: a.b.c
+//      String catalog = ctx.tableIdentifier(0).getText();
+//      String schema = ctx.tableIdentifier(1).getText();
+//      String column = ctx.identifier().getText();
+//      return new SqlIdentifier(
+//          List.of(catalog, schema, column),
+//          parserPos(ctx));
+//    } else if (ctx.tableIdentifier().size() == 1) {
+//      // Two-part identifier: a.b
+//      String table = ctx.tableIdentifier(0).getText();
+//      String column = ctx.identifier().getText();
+//      return new SqlIdentifier(
+//          List.of(table, column),
+//          parserPos(ctx));
+//    } else {
+//      // Simple identifier
+//      return new SqlIdentifier(ctx.identifier().getText(), parserPos(ctx));
+//    }
+<span class="fc" id="L1968">    return new SqlIdentifier(names, parserPos(ctx));</span>
+  }
+
+  @Override
+  public SqlNode visitLiteral(BigQuerySqlParser.LiteralContext ctx) {
+<span class="nc bnc" id="L1973" title="All 2 branches missed.">    if (ctx.STRING_LITERAL() != null) {</span>
+<span class="nc" id="L1974">      String text = ctx.STRING_LITERAL().getText();</span>
+      // Remove surrounding quotes and handle escaped quotes
+<span class="nc" id="L1976">      text = text.substring(1, text.length() - 1).replace(&quot;''&quot;, &quot;'&quot;);</span>
+<span class="nc" id="L1977">      return SqlLiteral.createCharString(text, parserPos(ctx));</span>
+<span class="nc bnc" id="L1978" title="All 2 branches missed.">    } else if (ctx.INTEGER_LITERAL() != null) {</span>
+<span class="nc" id="L1979">      long value = Long.parseLong(ctx.INTEGER_LITERAL().getText());</span>
+<span class="nc" id="L1980">      return SqlLiteral.createExactNumeric(String.valueOf(value), parserPos(ctx));</span>
+<span class="nc bnc" id="L1981" title="All 2 branches missed.">    } else if (ctx.FLOAT_LITERAL() != null) {</span>
+<span class="nc" id="L1982">      double value = Double.parseDouble(ctx.FLOAT_LITERAL().getText());</span>
+<span class="nc" id="L1983">      return SqlLiteral.createApproxNumeric(String.valueOf(value), parserPos(ctx));</span>
+<span class="nc bnc" id="L1984" title="All 2 branches missed.">    } else if (ctx.TRUE() != null) {</span>
+<span class="nc" id="L1985">      return SqlLiteral.createBoolean(true, parserPos(ctx));</span>
+<span class="nc bnc" id="L1986" title="All 2 branches missed.">    } else if (ctx.FALSE() != null) {</span>
+<span class="nc" id="L1987">      return SqlLiteral.createBoolean(false, parserPos(ctx));</span>
+<span class="nc bnc" id="L1988" title="All 2 branches missed.">    } else if (ctx.NULL() != null) {</span>
+<span class="nc" id="L1989">      return SqlLiteral.createNull(parserPos(ctx));</span>
+<span class="nc bnc" id="L1990" title="All 2 branches missed.">    } else if (ctx.DATE() != null) {</span>
+<span class="nc" id="L1991">      String dateStr = ctx.STRING_LITERAL().getText();</span>
+<span class="nc" id="L1992">      dateStr = dateStr.substring(1, dateStr.length() - 1).replace(&quot;''&quot;, &quot;'&quot;);</span>
+<span class="nc" id="L1993">      return SqlLiteral.createDate(new DateString(dateStr), parserPos(ctx));</span>
+<span class="nc bnc" id="L1994" title="All 2 branches missed.">    } else if (ctx.TIME() != null) {</span>
+<span class="nc" id="L1995">      String timeStr = ctx.STRING_LITERAL().getText();</span>
+<span class="nc" id="L1996">      timeStr = timeStr.substring(1, timeStr.length() - 1).replace(&quot;''&quot;, &quot;'&quot;);</span>
+<span class="nc" id="L1997">      return SqlLiteral.createTime(new TimeString(timeStr), 0, parserPos(ctx));</span>
+<span class="nc bnc" id="L1998" title="All 2 branches missed.">    } else if (ctx.TIMESTAMP() != null) {</span>
+<span class="nc" id="L1999">      String timestampStr = ctx.STRING_LITERAL().getText();</span>
+<span class="nc" id="L2000">      timestampStr = timestampStr.substring(1, timestampStr.length() - 1).replace(&quot;''&quot;, &quot;'&quot;);</span>
+<span class="nc" id="L2001">      return SqlLiteral.createTimestamp(SqlTypeName.TIMESTAMP, new TimestampString(timestampStr), 0, parserPos(ctx));</span>
+<span class="nc bnc" id="L2002" title="All 2 branches missed.">    } else if (ctx.DATETIME() != null) {</span>
+<span class="nc" id="L2003">      String datetimeStr = ctx.STRING_LITERAL().getText();</span>
+<span class="nc" id="L2004">      datetimeStr = datetimeStr.substring(1, datetimeStr.length() - 1).replace(&quot;''&quot;, &quot;'&quot;);</span>
+<span class="nc" id="L2005">      return SqlLiteral.createTimestamp(SqlTypeName.TIMESTAMP, new TimestampString(datetimeStr), 0, parserPos(ctx));</span>
+    }
+
+<span class="nc" id="L2008">    throw new UnsupportedOperationException(&quot;Unsupported literal: &quot; + ctx.getText());</span>
+  }
+
+  // Helper methods
+  private SqlOperator getComparisonOperator(BigQuerySqlParser.ComparisonOperatorContext ctx) {
+<span class="nc" id="L2013">    String text = ctx.getText();</span>
+<span class="nc bnc" id="L2014" title="All 7 branches missed.">    switch (text) {</span>
+      case &quot;=&quot;:
+<span class="nc" id="L2016">        return SqlStdOperatorTable.EQUALS;</span>
+      case &quot;&lt;&quot;:
+<span class="nc" id="L2018">        return SqlStdOperatorTable.LESS_THAN;</span>
+      case &quot;&gt;&quot;:
+<span class="nc" id="L2020">        return SqlStdOperatorTable.GREATER_THAN;</span>
+      case &quot;&lt;=&quot;:
+<span class="nc" id="L2022">        return SqlStdOperatorTable.LESS_THAN_OR_EQUAL;</span>
+      case &quot;&gt;=&quot;:
+<span class="nc" id="L2024">        return SqlStdOperatorTable.GREATER_THAN_OR_EQUAL;</span>
+      case &quot;&lt;&gt;&quot;:
+      case &quot;!=&quot;:
+<span class="nc" id="L2027">        return SqlStdOperatorTable.NOT_EQUALS;</span>
+      default:
+<span class="nc" id="L2029">        throw new UnsupportedOperationException(&quot;Unsupported comparison operator: &quot; + text);</span>
+    }
+  }
+
+  /**
+   * Visits a dataType rule and converts it to a SqlDataTypeSpec.
+   */
+  @Override
+  public SqlNode visitDataType(BigQuerySqlParser.DataTypeContext ctx) {
+<span class="fc" id="L2038">    SqlParserPos pos = getPos(ctx);</span>
+
+    // Handle basic data types
+<span class="pc bpc" id="L2041" title="1 of 2 branches missed.">    if (ctx.getChildCount() == 1) {</span>
+<span class="fc" id="L2042">      String typeName = ctx.getChild(0).getText().toUpperCase();</span>
+<span class="fc" id="L2043">      return createBasicDataType(typeName, pos);</span>
+    }
+
+    // Handle STRING or BYTES with precision
+<span class="nc bnc" id="L2047" title="All 6 branches missed.">    if ((ctx.STRING() != null || ctx.BYTES() != null) &amp;&amp; ctx.INTEGER_LITERAL() != null) {</span>
+<span class="nc" id="L2048">      String typeName = ctx.getChild(0).getText().toUpperCase();</span>
+<span class="nc" id="L2049">      int precision = Integer.parseInt(ctx.INTEGER_LITERAL().getText());</span>
+<span class="nc" id="L2050">      return new SqlDataTypeSpec(</span>
+          new SqlBasicTypeNameSpec(
+<span class="nc" id="L2052">              getTypeNameForString(typeName),</span>
+              precision,
+              pos),
+          pos);
+    }
+
+    // Handle ARRAY types
+<span class="nc bnc" id="L2059" title="All 2 branches missed.">    if (ctx.ARRAY() != null) {</span>
+<span class="nc" id="L2060">      SqlNode elementType = visit(ctx.dataType());</span>
+<span class="nc bnc" id="L2061" title="All 2 branches missed.">      if (elementType instanceof SqlDataTypeSpec) {</span>
+<span class="nc" id="L2062">        return createArrayType((SqlDataTypeSpec) elementType, pos);</span>
+      }
+    }
+
+    // Handle STRUCT types
+<span class="nc bnc" id="L2067" title="All 4 branches missed.">    if (ctx.STRUCT() != null &amp;&amp; !ctx.structTypeElement().isEmpty()) {</span>
+<span class="nc" id="L2068">      return createStructType(ctx, pos);</span>
+    }
+
+    // Default fallback
+<span class="nc" id="L2072">    return new SqlDataTypeSpec(</span>
+        new SqlBasicTypeNameSpec(
+            SqlTypeName.ANY,
+            pos),
+        pos);
+  }
+
+  /**
+   * Visits a structTypeElement rule and converts it to a SqlIdentifier and SqlDataTypeSpec pair.
+   */
+  @Override
+  public SqlNode visitStructTypeElement(BigQuerySqlParser.StructTypeElementContext ctx) {
+<span class="nc" id="L2084">    SqlParserPos pos = getPos(ctx);</span>
+<span class="nc" id="L2085">    SqlNode identifier = visit(ctx.identifier());</span>
+<span class="nc" id="L2086">    SqlNode dataType = visit(ctx.dataType());</span>
+
+<span class="nc bnc" id="L2088" title="All 4 branches missed.">    if (identifier instanceof SqlIdentifier &amp;&amp; dataType instanceof SqlDataTypeSpec) {</span>
+      // Create a custom node that holds both the identifier and type
+<span class="nc" id="L2090">      return new StructFieldNode(</span>
+          (SqlIdentifier) identifier,
+          (SqlDataTypeSpec) dataType,
+          pos);
+    }
+
+<span class="nc" id="L2096">    return null;</span>
+  }
+
+  /**
+   * Creates a basic SqlDataTypeSpec without precision or scale.
+   */
+  private SqlDataTypeSpec createBasicDataType(String typeName, SqlParserPos pos) {
+<span class="fc" id="L2103">    SqlTypeName sqlTypeName = mapBigQueryTypeToCalciteType(typeName);</span>
+<span class="fc" id="L2104">    return new SqlDataTypeSpec(</span>
+        new SqlBasicTypeNameSpec(
+            sqlTypeName,
+            pos),
+        pos);
+  }
+
+  /**
+   * Maps BigQuery type names to Calcite SqlTypeName.
+   */
+  private SqlTypeName mapBigQueryTypeToCalciteType(String typeName) {
+<span class="pc bpc" id="L2115" title="11 of 13 branches missed.">    switch (typeName) {</span>
+      case &quot;INT64&quot;:
+<span class="nc" id="L2117">        return SqlTypeName.BIGINT;</span>
+      case &quot;FLOAT64&quot;:
+<span class="nc" id="L2119">        return SqlTypeName.DOUBLE;</span>
+      case &quot;NUMERIC&quot;:
+      case &quot;BIGNUMERIC&quot;:
+<span class="nc" id="L2122">        return SqlTypeName.DECIMAL;</span>
+      case &quot;BOOL&quot;:
+      case &quot;BOOLEAN&quot;:
+<span class="nc" id="L2125">        return SqlTypeName.BOOLEAN;</span>
+      case &quot;STRING&quot;:
+<span class="fc" id="L2127">        return SqlTypeName.VARCHAR;</span>
+      case &quot;BYTES&quot;:
+<span class="nc" id="L2129">        return SqlTypeName.VARBINARY;</span>
+      case &quot;DATE&quot;:
+<span class="fc" id="L2131">        return SqlTypeName.DATE;</span>
+      case &quot;DATETIME&quot;:
+<span class="nc" id="L2133">        return SqlTypeName.TIMESTAMP;</span>
+      case &quot;TIME&quot;:
+<span class="nc" id="L2135">        return SqlTypeName.TIME;</span>
+      case &quot;TIMESTAMP&quot;:
+<span class="nc" id="L2137">        return SqlTypeName.TIMESTAMP_WITH_LOCAL_TIME_ZONE;</span>
+      case &quot;INTERVAL&quot;:
+<span class="nc" id="L2139">        return SqlTypeName.INTERVAL_DAY;</span>
+      case &quot;GEOGRAPHY&quot;:
+<span class="nc" id="L2141">        return SqlTypeName.GEOMETRY;</span>
+//      case &quot;JSON&quot;:
+//        return SqlTypeName.ANY;
+      default:
+<span class="nc" id="L2145">        return SqlTypeName.ANY;</span>
+    }
+  }
+
+  /**
+   * Creates an ARRAY type from an element type.
+   */
+  private SqlDataTypeSpec createArrayType(SqlDataTypeSpec elementType, SqlParserPos pos) {
+<span class="nc" id="L2153">    return new SqlDataTypeSpec(</span>
+        new SqlCollectionTypeNameSpec(
+<span class="nc" id="L2155">            elementType.getTypeNameSpec(),</span>
+            SqlTypeName.ARRAY,
+            pos),
+        pos);
+  }
+
+  /**
+   * Creates a STRUCT type from a list of field specifications.
+   */
+  private SqlDataTypeSpec createStructType(BigQuerySqlParser.DataTypeContext ctx, SqlParserPos pos) {
+<span class="nc" id="L2165">    List&lt;SqlNode&gt; fieldNodes = new ArrayList&lt;&gt;();</span>
+
+<span class="nc bnc" id="L2167" title="All 2 branches missed.">    for (BigQuerySqlParser.StructTypeElementContext elementCtx : ctx.structTypeElement()) {</span>
+<span class="nc" id="L2168">      SqlNode fieldNode = visit(elementCtx);</span>
+<span class="nc bnc" id="L2169" title="All 2 branches missed.">      if (fieldNode != null) {</span>
+<span class="nc" id="L2170">        fieldNodes.add(fieldNode);</span>
+      }
+<span class="nc" id="L2172">    }</span>
+
+<span class="nc" id="L2174">    throw new UnsupportedOperationException(&quot;StructType not supported.&quot;);</span>
+
+//    // Create a ROW type with the fields
+//    return new SqlDataTypeSpec(
+//        new SqlRowTypeNameSpec(
+//            fieldNodes,
+//            pos),
+//        pos);
+  }
+
+  /**
+   * Gets the type name for STRING or BYTES types.
+   */
+  private SqlTypeName getTypeNameForString(String typeName) {
+<span class="nc bnc" id="L2188" title="All 2 branches missed.">    if (&quot;STRING&quot;.equals(typeName)) {</span>
+<span class="nc" id="L2189">      return SqlTypeName.VARCHAR;</span>
+<span class="nc bnc" id="L2190" title="All 2 branches missed.">    } else if (&quot;BYTES&quot;.equals(typeName)) {</span>
+<span class="nc" id="L2191">      return SqlTypeName.VARBINARY;</span>
+    } else {
+<span class="nc" id="L2193">      return SqlTypeName.ANY;</span>
+    }
+  }
+
+  /**
+   * Helper method to get parser position from a parse tree node.
+   */
+  private SqlParserPos getPos(org.antlr.v4.runtime.ParserRuleContext ctx) {
+<span class="fc" id="L2201">    return new SqlParserPos(</span>
+<span class="fc" id="L2202">        ctx.getStart().getLine(),</span>
+<span class="fc" id="L2203">        ctx.getStart().getCharPositionInLine(),</span>
+<span class="fc" id="L2204">        ctx.getStop().getLine(),</span>
+<span class="fc" id="L2205">        ctx.getStop().getCharPositionInLine());</span>
+  }
+
+
+  // Enum for join types (already defined in Calcite but listed here for clarity)
+//  private enum JoinType {
+//    INNER, LEFT, RIGHT, FULL, CROSS, COMMA
+//  }
+
+  // Enum for join condition types
+//  private enum JoinConditionType {
+//    ON, USING, NONE
+//  }
+
+  // Enum for Set qualifiers
+<span class="nc" id="L2220">  private enum SetQualifier {</span>
+<span class="nc" id="L2221">    ALL, DISTINCT</span>
+  }
+
+<span class="nc" id="L2224">  private enum FrameUnit {</span>
+<span class="nc" id="L2225">    FALSE</span>
+  }
+
+  private SqlParserPos parserPos(ParserRuleContext ctx) {
+<span class="fc" id="L2229">    return new SqlParserPos(</span>
+<span class="fc" id="L2230">        ctx.getStart().getLine(),</span>
+<span class="fc" id="L2231">        ctx.getStart().getCharPositionInLine(),</span>
+<span class="fc" id="L2232">        ctx.getStop().getLine(),</span>
+<span class="fc" id="L2233">        ctx.getStop().getCharPositionInLine() + ctx.getStop().getText().length());</span>
+  }
+
+  /**
+   * Helper method to get parser position from a terminal node
+   */
+  private SqlParserPos parserPos(TerminalNode node) {
+<span class="fc" id="L2240">    return new SqlParserPos(</span>
+<span class="fc" id="L2241">        node.getSymbol().getLine(),</span>
+<span class="fc" id="L2242">        node.getSymbol().getCharPositionInLine(),</span>
+<span class="fc" id="L2243">        node.getSymbol().getLine(),</span>
+<span class="fc" id="L2244">        node.getSymbol().getCharPositionInLine() + node.getText().length());</span>
+  }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

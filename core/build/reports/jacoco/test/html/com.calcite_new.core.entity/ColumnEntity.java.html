@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ColumnEntity.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">core</a> &gt; <a href="index.source.html" class="el_package">com.calcite_new.core.entity</a> &gt; <span class="el_source">ColumnEntity.java</span></div><h1>ColumnEntity.java</h1><pre class="source lang-java linenums">package com.calcite_new.core.entity;
+
+import jakarta.persistence.*;
+import lombok.*;
+
+@Entity
+@Table(name = &quot;column_metadata&quot;)
+@Getter
+<span class="nc" id="L9">@Setter</span>
+<span class="nc" id="L10">@NoArgsConstructor</span>
+<span class="nc" id="L11">@AllArgsConstructor</span>
+<span class="nc" id="L12">@Builder</span>
+<span class="nc bnc" id="L13" title="All 182 branches missed.">@EqualsAndHashCode</span>
+<span class="nc" id="L14">@ToString</span>
+public class ColumnEntity {
+    
+    @Id
+    @Column(name = &quot;column_name&quot;)
+<span class="nc" id="L19">    private String columnName;</span>
+    
+    @Column(name = &quot;source_product&quot;)
+<span class="nc" id="L22">    private String sourceProduct;</span>
+    
+    @Column(name = &quot;database&quot;)
+<span class="nc" id="L25">    private String database;</span>
+    
+    @Column(name = &quot;schema&quot;)
+<span class="nc" id="L28">    private String schema;</span>
+    
+    @Column(name = &quot;\&quot;table\&quot;&quot;)
+<span class="nc" id="L31">    private String table;</span>
+    
+    @Column(name = &quot;username&quot;)
+<span class="nc" id="L34">    private String userName;</span>
+    
+    @Column(name = &quot;column_position&quot;)
+<span class="nc" id="L37">    private Long columnPosition;</span>
+    
+    @Column(name = &quot;data_type&quot;)
+<span class="nc" id="L40">    private String dataType;</span>
+    
+    @Column(name = &quot;column_length&quot;)
+<span class="nc" id="L43">    private Long columnLength;</span>
+    
+    @Column(name = &quot;column_precision&quot;)
+<span class="nc" id="L46">    private Long columnPrecision;</span>
+    
+    @Column(name = &quot;column_scale&quot;)
+<span class="nc" id="L49">    private Long columnScale;</span>
+    
+    @Column(name = &quot;column_format&quot;)
+<span class="nc" id="L52">    private String columnFormat;</span>
+    
+    @Column(name = &quot;default_value&quot;)
+<span class="nc" id="L55">    private String defaultValue;</span>
+    
+    @Column(name = &quot;nullable&quot;)
+<span class="nc" id="L58">    private Boolean nullable;</span>
+    
+    @Column(name = &quot;is_uppercase&quot;)
+<span class="nc" id="L61">    private Boolean isUppercase;</span>
+    
+    @Column(name = &quot;is_case_sensitive&quot;)
+<span class="nc" id="L64">    private Boolean isCaseSensitive;</span>
+    
+    @Column(name = &quot;column_constraint&quot;)
+<span class="nc" id="L67">    private String columnConstraint;</span>
+    
+    @Column(name = &quot;compressible&quot;)
+<span class="nc" id="L70">    private Boolean compressible;</span>
+    
+    @Column(name = &quot;compress_value_list&quot;)
+<span class="nc" id="L73">    private String compressValueList;</span>
+    
+    @Column(name = &quot;create_at&quot;)
+<span class="nc" id="L76">    private Long createAt;</span>
+    
+    @Column(name = &quot;update_at&quot;)
+<span class="nc" id="L79">    private Long updateAt;</span>
+    
+    @Column(name = &quot;instance&quot;)
+<span class="nc" id="L82">    private String instance;</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>
